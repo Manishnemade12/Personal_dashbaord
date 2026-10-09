@@ -1,29 +1,32 @@
-# DECISIONS.md
+# Design Decisions
 
-1. **Indexes.** `employees.emp_code` is unique because it is the business
-identifier. `employees(department, joined_on)` supports department headcount
-filters. `attendance_logs(emp_code, date)` is unique because there is one
-record per employee/day. `attendance_logs(date, emp_code)` supports sorted
-listing and date-range analytics, and the status suffix helps filtered
-attendance reads. I considered a separate status-first index, but rejected it:
-the common filters include employee/date and the extra index would increase
-write cost without helping the required sort.
+1. **Indexes.** `employees.emp_code` is unique because it is the immutable
+business identifier. `employees(department, joined_on)` supports department
+headcount selection. The unique `attendance_logs(emp_code, date)` index
+represents the natural key and prevents duplicate punch-ins. The
+`attendance_logs(date, emp_code)` index supports the required attendance sort
+and date ranges. The `(emp_code, date, status)` index supports common filtered
+attendance reads. A status-first index was considered but rejected because it
+would add write overhead without supporting the required sort.
 
-2. **Punch-in race.** Both requests first read the employee, build the same
-natural key, and attempt an insert. MongoDB's unique
-`(emp_code, date)` index permits exactly one insert. The other receives
-`DuplicateKeyError`, which the API returns as 409. There is no check-then-insert
-decision that can race.
+2. **Punch-in race.** Requests may both read the employee, but both then insert
+the same natural key. MongoDB's unique index allows exactly one insert; the
+loser receives `DuplicateKeyError` and the API returns 409. There is no
+application-level check-then-insert decision.
 
-3. **Ties.** Rows are sorted by total minutes and employee code. The rank is
-the first sorted position for each total, so equal totals share a rank and
-the next rank is skipped. Filtering happens after ranking, therefore all
-employees tied at the cutoff rank are returned.
+3. **Punch-out and corrections.** Punch-out updates with a predicate requiring
+`punch_out` to still be null. Therefore simultaneous requests cannot both
+close the record. Corrections use the same optimistic predicate, including the
+current history array, so a concurrent edit returns 409 instead of silently
+losing an audit entry.
 
-4. **Headcount.** The department summary starts from employees joined by the
-period end, groups those employees by department, and only then overlays
-attendance logs. Thus an employee with no log still contributes to headcount.
+4. **Ties and headcount.** Leaderboard rows are sorted by total late minutes
+and employee code, then ranked by first sorted position; ties share a rank and
+all rows at the cutoff rank are returned. Department summaries begin with
+employees who joined by period end, then overlay logs, so employees with no
+logs still count in headcount.
 
-5. **At 100x scale.** I would move the repeated monthly rollups to materialized
-daily/monthly summary collections updated by a change stream or scheduled job,
-while keeping the raw logs as the audit source.
+5. **Scale consideration.** At 100x data volume, I would materialize daily and
+monthly summaries using a change stream or scheduled job while retaining raw
+logs as the audit source. This would keep interactive analytics from scanning
+the same raw records repeatedly.
