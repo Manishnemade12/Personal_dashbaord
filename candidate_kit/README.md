@@ -1,12 +1,54 @@
-# Candidate kit
+# Employee Attendance & Analytics API
 
-## Implementation
+This project implements the HROne technical assignment using Python, FastAPI,
+Pydantic, and MongoDB. The complete application is intentionally kept in
+`app/main.py`, as requested by the assignment.
 
-This repository contains the Employee Attendance & Analytics API requested in
-the assignment. The implementation is in `app/main.py` and uses FastAPI,
-Pydantic 2 and MongoDB. It creates its indexes idempotently at startup.
+## What is implemented
 
-Run locally with Python 3.11+, MongoDB 6+, and:
+### Attendance
+
+- Employee creation and paginated employee listing
+- Punch-in for `PRESENT`, `WFH`, and `ON_DUTY`
+- Punch-out across midnight for overnight shifts
+- Manual regularization with append-only audit history
+- Paginated attendance search with employee, date-range, and status filters
+
+### Analytics
+
+- Monthly employee attendance summary
+- Monthly department summary
+- Late-comers leaderboard with standard competition ranking
+- Daily department trend with weekend and no-record gap days
+- MongoDB explain endpoint for the supported query paths
+
+## Important behavior
+
+- Instants at the API boundary use epoch milliseconds.
+- Calendar dates and shift times are interpreted using IST (UTC+05:30).
+- Overnight shifts are assigned to the date on which the shift started.
+- Late minutes, overtime, work hours, and half-day status are derived by the
+  API and stored with the attendance record.
+- Manual corrections append one audit entry containing only changed fields.
+- MongoDB unique indexes protect employee codes, attendance natural keys, and
+  concurrent punch-in requests.
+
+## Requirements
+
+- Python 3.11 or newer
+- MongoDB 6.0 or newer
+
+## Setup
+
+Set these environment variables locally. A `.env` file may be used during
+development, but it must not be committed:
+
+```text
+MONGO_URI=mongodb://localhost:27017
+MONGO_DB=attendance_db
+```
+
+Install dependencies and start the API:
 
 ```bash
 python -m venv .venv
@@ -15,15 +57,16 @@ pip install -r requirements.txt
 uvicorn app.main:app --port 8000
 ```
 
-Set `MONGO_URI` and `MONGO_DB` in the environment (or a local `.env` file).
+The application creates its MongoDB indexes idempotently during startup.
+Interactive API documentation is available at
+`http://localhost:8000/docs`.
 
-All API instants are epoch milliseconds. Attendance dates and shift times use
-IST, including overnight shifts. Analytics use stored derived attendance
-values, while correction history is append-only.
+## Repository documentation
 
-MongoDB **6.0 or newer** is required (the grader uses 7.0). MongoDB Atlas free tier (M0) works.
+- `REVIEW.md` records defects found in the starter implementation and how they
+  were addressed.
+- `DECISIONS.md` explains index choices, concurrency handling, leaderboard ties,
+  headcount calculation, and scalability considerations.
 
-## Submit
-A public Git repository with `app/main.py`, `requirements.txt`, `REVIEW.md`,
-`DECISIONS.md`, and this `README.md`.
-No `.env`, no secrets, no Dockerfile.
+No credentials, `.env` files, Dockerfiles, or assignment source documents are
+included in this repository.
