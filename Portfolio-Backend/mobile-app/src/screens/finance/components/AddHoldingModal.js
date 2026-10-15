@@ -81,7 +81,15 @@ export default function AddHoldingModal({
               {/* Instrument Search / Catalog Picker */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>
-                  Search & Select {newAssetClass === 'Mutual Fund' ? 'Mutual Fund Scheme' : 'Stock / Company'}
+                  Search & Select {
+                    newAssetClass === 'Mutual Fund'
+                      ? 'Mutual Fund Scheme'
+                      : newAssetClass === 'ETF'
+                      ? 'ETF (Gold, Silver, Index, Sectoral)'
+                      : newAssetClass === 'Gold'
+                      ? 'Gold & Silver Asset'
+                      : 'Stock / Company'
+                  }
                 </Text>
                 <View
                   style={[
@@ -101,8 +109,12 @@ export default function AddHoldingModal({
                     ]}
                     placeholder={
                       newAssetClass === 'Mutual Fund'
-                        ? 'Search any mutual fund scheme (e.g. Axis, Parag Parikh, HDFC)...'
-                        : 'Search any stock or company (e.g. Axis Bank, Tata, Reliance)...'
+                        ? 'Search any mutual fund (e.g. Parag Parikh, HDFC, SBI)...'
+                        : newAssetClass === 'ETF'
+                        ? 'Search any ETF (e.g. GoldBeES, SilverBeES, NiftyBeES, HDFC Silver)...'
+                        : newAssetClass === 'Gold'
+                        ? 'Search Gold / Silver ETF or Commodity (e.g. GoldBeES, SilverBeES)...'
+                        : 'Search any stock or company (e.g. Reliance, TCS, Tata, HDFC)...'
                     }
                     placeholderTextColor="#94a3b8"
                     value={instrumentQuery}
@@ -121,7 +133,7 @@ export default function AddHoldingModal({
 
                 {/* Autocomplete list */}
                 <View style={styles.instListContainer}>
-                  {searchResults.slice(0, 8).map((inst) => {
+                  {searchResults.slice(0, 12).map((inst) => {
                     const isSelected = selectedInstrument?.symbolOrCode === inst.symbolOrCode;
                     return (
                       <TouchableOpacity

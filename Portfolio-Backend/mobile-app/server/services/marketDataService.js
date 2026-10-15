@@ -14,7 +14,8 @@ const CURATED_INSTRUMENTS = [
     assetClass: 'Equity',
     subCategory: 'Large Cap Stocks',
     exchange: 'NSE',
-    basePrice: 2840.5,
+    basePrice: 1215.0,
+    keywords: ['reliance', 'ril', 'jio'],
   },
   {
     symbolOrCode: 'TCS.NS',
@@ -22,7 +23,8 @@ const CURATED_INSTRUMENTS = [
     assetClass: 'Equity',
     subCategory: 'Large Cap Stocks',
     exchange: 'NSE',
-    basePrice: 4210.0,
+    basePrice: 2350.0,
+    keywords: ['tcs', 'tata', 'tech'],
   },
   {
     symbolOrCode: 'HDFCBANK.NS',
@@ -30,7 +32,8 @@ const CURATED_INSTRUMENTS = [
     assetClass: 'Equity',
     subCategory: 'Large Cap Stocks',
     exchange: 'NSE',
-    basePrice: 1680.25,
+    basePrice: 726.85,
+    keywords: ['hdfc', 'bank'],
   },
   {
     symbolOrCode: 'INFY.NS',
@@ -38,7 +41,8 @@ const CURATED_INSTRUMENTS = [
     assetClass: 'Equity',
     subCategory: 'Large Cap Stocks',
     exchange: 'NSE',
-    basePrice: 1915.8,
+    basePrice: 1110.0,
+    keywords: ['infy', 'infosys'],
   },
   {
     symbolOrCode: 'ICICIBANK.NS',
@@ -46,7 +50,8 @@ const CURATED_INSTRUMENTS = [
     assetClass: 'Equity',
     subCategory: 'Large Cap Stocks',
     exchange: 'NSE',
-    basePrice: 1245.5,
+    basePrice: 1389.4,
+    keywords: ['icici', 'bank'],
   },
   {
     symbolOrCode: 'TATAMOTORS.NS',
@@ -55,6 +60,7 @@ const CURATED_INSTRUMENTS = [
     subCategory: 'Auto & EV',
     exchange: 'NSE',
     basePrice: 935.4,
+    keywords: ['tata', 'motors', 'auto'],
   },
   {
     symbolOrCode: 'ITC.NS',
@@ -62,7 +68,8 @@ const CURATED_INSTRUMENTS = [
     assetClass: 'Equity',
     subCategory: 'FMCG Stocks',
     exchange: 'NSE',
-    basePrice: 502.1,
+    basePrice: 263.9,
+    keywords: ['itc', 'fmcg'],
   },
   {
     symbolOrCode: 'BHARTIARTL.NS',
@@ -70,7 +77,8 @@ const CURATED_INSTRUMENTS = [
     assetClass: 'Equity',
     subCategory: 'Telecom',
     exchange: 'NSE',
-    basePrice: 1685.0,
+    basePrice: 1854.0,
+    keywords: ['airtel', 'bharti', 'telecom'],
   },
   {
     symbolOrCode: 'SBIN.NS',
@@ -78,7 +86,8 @@ const CURATED_INSTRUMENTS = [
     assetClass: 'Equity',
     subCategory: 'PSU Banking',
     exchange: 'NSE',
-    basePrice: 795.3,
+    basePrice: 960.0,
+    keywords: ['sbi', 'sbin', 'psu'],
   },
   {
     symbolOrCode: 'BAJFINANCE.NS',
@@ -86,15 +95,8 @@ const CURATED_INSTRUMENTS = [
     assetClass: 'Equity',
     subCategory: 'NBFC & Fintech',
     exchange: 'NSE',
-    basePrice: 7150.0,
-  },
-  {
-    symbolOrCode: 'ZOMATO.NS',
-    instrumentName: 'Zomato Ltd',
-    assetClass: 'Equity',
-    subCategory: 'Consumer Tech',
-    exchange: 'NSE',
-    basePrice: 275.6,
+    basePrice: 965.25,
+    keywords: ['bajaj', 'finance'],
   },
   {
     symbolOrCode: 'LT.NS',
@@ -102,33 +104,221 @@ const CURATED_INSTRUMENTS = [
     assetClass: 'Equity',
     subCategory: 'Infrastructure',
     exchange: 'NSE',
-    basePrice: 3560.0,
+    basePrice: 3632.0,
+    keywords: ['l&t', 'lt', 'infra'],
   },
 
-  // 2. Popular Indian ETFs
+  // 2. Indian Gold ETFs (NSE) - Traded both as ETF and Gold Asset
+  {
+    symbolOrCode: 'GOLDBEES.NS',
+    instrumentName: 'Nippon India ETF Gold BeES',
+    assetClass: 'ETF',
+    subCategory: 'Gold ETF',
+    exchange: 'NSE',
+    basePrice: 119.82,
+    keywords: ['gold', 'bees', 'goldbees', 'commodity', 'nippon', 'gold etf'],
+  },
+  {
+    symbolOrCode: 'HDFCGOLD.NS',
+    instrumentName: 'HDFC Gold ETF',
+    assetClass: 'ETF',
+    subCategory: 'Gold ETF',
+    exchange: 'NSE',
+    basePrice: 123.86,
+    keywords: ['gold', 'hdfc', 'hdfcgold', 'commodity', 'gold etf'],
+  },
+  {
+    symbolOrCode: 'SETFGOLD.NS',
+    instrumentName: 'SBI ETF Gold',
+    assetClass: 'ETF',
+    subCategory: 'Gold ETF',
+    exchange: 'NSE',
+    basePrice: 123.62,
+    keywords: ['gold', 'sbi', 'sbigold', 'setfgold', 'commodity', 'gold etf'],
+  },
+  {
+    symbolOrCode: 'GOLDIETF.NS',
+    instrumentName: 'ICICI Prudential Gold ETF',
+    assetClass: 'ETF',
+    subCategory: 'Gold ETF',
+    exchange: 'NSE',
+    basePrice: 124.12,
+    keywords: ['gold', 'icici', 'icicigold', 'goldietf', 'commodity', 'gold etf'],
+  },
+  {
+    symbolOrCode: 'GOLD1.NS',
+    instrumentName: 'Kotak Gold ETF',
+    assetClass: 'ETF',
+    subCategory: 'Gold ETF',
+    exchange: 'NSE',
+    basePrice: 120.98,
+    keywords: ['gold', 'kotak', 'kotakgold', 'gold1', 'commodity', 'gold etf'],
+  },
+  {
+    symbolOrCode: 'GOLDAXIS.NS',
+    instrumentName: 'Axis Gold ETF',
+    assetClass: 'ETF',
+    subCategory: 'Gold ETF',
+    exchange: 'NSE',
+    basePrice: 120.63,
+    keywords: ['gold', 'axis', 'axisgold', 'goldaxis', 'commodity', 'gold etf'],
+  },
+  {
+    symbolOrCode: 'TATAGOLD.NS',
+    instrumentName: 'Tata Gold ETF',
+    assetClass: 'ETF',
+    subCategory: 'Gold ETF',
+    exchange: 'NSE',
+    basePrice: 14.08,
+    keywords: ['gold', 'tata', 'tatagold', 'commodity', 'gold etf'],
+  },
+  {
+    symbolOrCode: 'BSLGOLDETF.NS',
+    instrumentName: 'Aditya Birla Sun Life Gold ETF',
+    assetClass: 'ETF',
+    subCategory: 'Gold ETF',
+    exchange: 'NSE',
+    basePrice: 127.41,
+    keywords: ['gold', 'birla', 'absl', 'bslgoldetf', 'commodity', 'gold etf'],
+  },
+  {
+    symbolOrCode: 'QGOLDHALF.NS',
+    instrumentName: 'Quantum Gold ETF',
+    assetClass: 'ETF',
+    subCategory: 'Gold ETF',
+    exchange: 'NSE',
+    basePrice: 120.05,
+    keywords: ['gold', 'quantum', 'qgoldhalf', 'commodity', 'gold etf'],
+  },
+
+  // 3. Indian Silver ETFs (NSE) - Traded both as ETF and Commodity Asset
+  {
+    symbolOrCode: 'SILVERBEES.NS',
+    instrumentName: 'Nippon India Silver ETF BeES',
+    assetClass: 'ETF',
+    subCategory: 'Silver ETF',
+    exchange: 'NSE',
+    basePrice: 197.57,
+    keywords: ['silver', 'bees', 'silverbees', 'commodity', 'nippon', 'silver etf'],
+  },
+  {
+    symbolOrCode: 'HDFCSILVER.NS',
+    instrumentName: 'HDFC Silver ETF',
+    assetClass: 'ETF',
+    subCategory: 'Silver ETF',
+    exchange: 'NSE',
+    basePrice: 197.39,
+    keywords: ['silver', 'hdfc', 'hdfcsilver', 'commodity', 'silver etf'],
+  },
+  {
+    symbolOrCode: 'SILVERIETF.NS',
+    instrumentName: 'ICICI Prudential Silver ETF',
+    assetClass: 'ETF',
+    subCategory: 'Silver ETF',
+    exchange: 'NSE',
+    basePrice: 206.23,
+    keywords: ['silver', 'icici', 'icicisilver', 'silverietf', 'commodity', 'silver etf'],
+  },
+  {
+    symbolOrCode: 'TATSILV.NS',
+    instrumentName: 'Tata Silver ETF',
+    assetClass: 'ETF',
+    subCategory: 'Silver ETF',
+    exchange: 'NSE',
+    basePrice: 20.08,
+    keywords: ['silver', 'tata', 'tatasilver', 'tatsilv', 'commodity', 'silver etf'],
+  },
+  {
+    symbolOrCode: 'SBISILVER.NS',
+    instrumentName: 'SBI Silver ETF',
+    assetClass: 'ETF',
+    subCategory: 'Silver ETF',
+    exchange: 'NSE',
+    basePrice: 202.7,
+    keywords: ['silver', 'sbi', 'sbisilver', 'commodity', 'silver etf'],
+  },
+  {
+    symbolOrCode: 'SILVERAXIS.NS',
+    instrumentName: 'Axis Silver ETF',
+    assetClass: 'ETF',
+    subCategory: 'Silver ETF',
+    exchange: 'NSE',
+    basePrice: 205.6,
+    keywords: ['silver', 'axis', 'axissilver', 'silveraxis', 'commodity', 'silver etf'],
+  },
+  {
+    symbolOrCode: 'SILVER1.NS',
+    instrumentName: 'Kotak Silver ETF',
+    assetClass: 'ETF',
+    subCategory: 'Silver ETF',
+    exchange: 'NSE',
+    basePrice: 20.06,
+    keywords: ['silver', 'kotak', 'kotaksilver', 'silver1', 'commodity', 'silver etf'],
+  },
+  {
+    symbolOrCode: 'SILVERBETA.NS',
+    instrumentName: 'UTI Silver ETF',
+    assetClass: 'ETF',
+    subCategory: 'Silver ETF',
+    exchange: 'NSE',
+    basePrice: 199.26,
+    keywords: ['silver', 'uti', 'utisilver', 'silverbeta', 'commodity', 'silver etf'],
+  },
+  {
+    symbolOrCode: 'SILVERADD.NS',
+    instrumentName: 'DSP Silver ETF',
+    assetClass: 'ETF',
+    subCategory: 'Silver ETF',
+    exchange: 'NSE',
+    basePrice: 19.88,
+    keywords: ['silver', 'dsp', 'dspsilver', 'silveradd', 'commodity', 'silver etf'],
+  },
+
+  // 4. Indian Index, Sectoral & Global ETFs (NSE)
   {
     symbolOrCode: 'NIFTYBEES.NS',
     instrumentName: 'Nippon India Nifty 50 BeES ETF',
     assetClass: 'ETF',
     subCategory: 'Index ETF',
     exchange: 'NSE',
-    basePrice: 275.4,
-  },
-  {
-    symbolOrCode: 'GOLDBEES.NS',
-    instrumentName: 'Nippon India ETF Gold BeES',
-    assetClass: 'Gold',
-    subCategory: 'Gold ETF',
-    exchange: 'NSE',
-    basePrice: 68.5,
+    basePrice: 261.51,
+    keywords: ['nifty', 'bees', 'niftybees', 'index', 'etf'],
   },
   {
     symbolOrCode: 'BANKBEES.NS',
     instrumentName: 'Nippon India Nifty Bank BeES ETF',
     assetClass: 'ETF',
-    subCategory: 'Sectoral ETF',
+    subCategory: 'Sectoral ETF (Banking)',
     exchange: 'NSE',
-    basePrice: 545.2,
+    basePrice: 577.48,
+    keywords: ['bank', 'bees', 'bankbees', 'banking', 'etf'],
+  },
+  {
+    symbolOrCode: 'ITBEES.NS',
+    instrumentName: 'Nippon India Nifty IT ETF',
+    assetClass: 'ETF',
+    subCategory: 'Sectoral ETF (IT)',
+    exchange: 'NSE',
+    basePrice: 34.12,
+    keywords: ['it', 'bees', 'itbees', 'tech', 'etf'],
+  },
+  {
+    symbolOrCode: 'JUNIORBEES.NS',
+    instrumentName: 'Nippon India Nifty Next 50 ETF',
+    assetClass: 'ETF',
+    subCategory: 'Index ETF',
+    exchange: 'NSE',
+    basePrice: 743.18,
+    keywords: ['junior', 'bees', 'juniorbees', 'next50', 'index', 'etf'],
+  },
+  {
+    symbolOrCode: 'CPSEETF.NS',
+    instrumentName: 'CPSE ETF (Central Public Sector)',
+    assetClass: 'ETF',
+    subCategory: 'Thematic ETF',
+    exchange: 'NSE',
+    basePrice: 88.65,
+    keywords: ['cpse', 'psu', 'cpseetf', 'thematic', 'etf'],
   },
   {
     symbolOrCode: 'MON100.NS',
@@ -136,10 +326,65 @@ const CURATED_INSTRUMENTS = [
     assetClass: 'ETF',
     subCategory: 'Global ETF',
     exchange: 'NSE',
-    basePrice: 182.1,
+    basePrice: 310.9,
+    keywords: ['mon100', 'nasdaq', 'us', 'motilal', 'global', 'etf'],
+  },
+  {
+    symbolOrCode: 'SETFNIF50.NS',
+    instrumentName: 'SBI Nifty 50 ETF',
+    assetClass: 'ETF',
+    subCategory: 'Index ETF',
+    exchange: 'NSE',
+    basePrice: 247.09,
+    keywords: ['sbi', 'nifty', 'setfnif50', 'index', 'etf'],
+  },
+  {
+    symbolOrCode: 'HDFCNIFTY.NS',
+    instrumentName: 'HDFC Nifty 50 ETF',
+    assetClass: 'ETF',
+    subCategory: 'Index ETF',
+    exchange: 'NSE',
+    basePrice: 258.92,
+    keywords: ['hdfc', 'nifty', 'hdfcnifty', 'index', 'etf'],
+  },
+  {
+    symbolOrCode: 'AUTOBEES.NS',
+    instrumentName: 'Nippon India Nifty Auto ETF',
+    assetClass: 'ETF',
+    subCategory: 'Sectoral ETF (Auto)',
+    exchange: 'NSE',
+    basePrice: 264.7,
+    keywords: ['auto', 'bees', 'autobees', 'automobile', 'etf'],
+  },
+  {
+    symbolOrCode: 'PHARMABEES.NS',
+    instrumentName: 'Nippon India Nifty Pharma ETF',
+    assetClass: 'ETF',
+    subCategory: 'Sectoral ETF (Pharma)',
+    exchange: 'NSE',
+    basePrice: 26.54,
+    keywords: ['pharma', 'bees', 'pharmabees', 'healthcare', 'etf'],
+  },
+  {
+    symbolOrCode: 'MID150BEES.NS',
+    instrumentName: 'Nippon India Nifty Midcap 150 ETF',
+    assetClass: 'ETF',
+    subCategory: 'Midcap ETF',
+    exchange: 'NSE',
+    basePrice: 225.15,
+    keywords: ['midcap', 'bees', 'mid150bees', 'index', 'etf'],
+  },
+  {
+    symbolOrCode: 'LIQUIDBEES.NS',
+    instrumentName: 'Nippon India Liquid BeES ETF',
+    assetClass: 'ETF',
+    subCategory: 'Liquid / Debt ETF',
+    exchange: 'NSE',
+    basePrice: 1000.0,
+    keywords: ['liquid', 'bees', 'liquidbees', 'debt', 'etf'],
   },
 
-  // 3. Leading Indian Mutual Funds (AMFI Scheme Codes)
+  // 5. Leading Indian Mutual Funds (AMFI Scheme Codes)
   {
     symbolOrCode: '120716',
     instrumentName: 'Parag Parikh Flexi Cap Fund - Direct Plan - Growth',
@@ -147,6 +392,7 @@ const CURATED_INSTRUMENTS = [
     subCategory: 'Flexi Cap Fund',
     exchange: 'AMFI',
     basePrice: 84.62,
+    keywords: ['parag', 'parikh', 'ppfc', 'flexi'],
   },
   {
     symbolOrCode: '118989',
@@ -155,6 +401,7 @@ const CURATED_INSTRUMENTS = [
     subCategory: 'Large Cap Fund',
     exchange: 'AMFI',
     basePrice: 1125.4,
+    keywords: ['hdfc', 'top 100', 'large cap'],
   },
   {
     symbolOrCode: '120503',
@@ -163,6 +410,7 @@ const CURATED_INSTRUMENTS = [
     subCategory: 'Small Cap Fund',
     exchange: 'AMFI',
     basePrice: 178.25,
+    keywords: ['sbi', 'small cap'],
   },
   {
     symbolOrCode: '119598',
@@ -171,6 +419,7 @@ const CURATED_INSTRUMENTS = [
     subCategory: 'Large Cap Fund',
     exchange: 'AMFI',
     basePrice: 122.9,
+    keywords: ['mirae', 'large cap', 'bluechip'],
   },
   {
     symbolOrCode: '145552',
@@ -179,6 +428,7 @@ const CURATED_INSTRUMENTS = [
     subCategory: 'Small Cap Fund',
     exchange: 'AMFI',
     basePrice: 165.75,
+    keywords: ['nippon', 'small cap'],
   },
   {
     symbolOrCode: '120828',
@@ -187,6 +437,7 @@ const CURATED_INSTRUMENTS = [
     subCategory: 'Bluechip Fund',
     exchange: 'AMFI',
     basePrice: 108.45,
+    keywords: ['icici', 'bluechip', 'large cap'],
   },
 ];
 
@@ -231,34 +482,95 @@ function fetchJson(url, headers = {}) {
 }
 
 class MarketDataService {
-  // Autocomplete & live search instruments (Stocks, ETFs, Mutual Funds) directly from market APIs
+  // Autocomplete & live search instruments (Stocks, ETFs, Mutual Funds, Gold & Silver) directly from market APIs
   async searchInstruments(query = '', type = '') {
     const q = query.trim();
     const qLower = q.toLowerCase();
 
-    // Local matches from curated list as base/fast cache
+    // 1. Match local curated list as fast cache & guaranteed high-quality Indian instruments
     const localMatches = CURATED_INSTRUMENTS.filter((inst) => {
-      const matchType =
-        !type ||
-        type === 'all' ||
-        inst.assetClass.toLowerCase() === type.toLowerCase() ||
-        (type === 'stock' && inst.assetClass === 'Equity');
+      const isGoldOrSilver =
+        inst.subCategory.toLowerCase().includes('gold') ||
+        inst.subCategory.toLowerCase().includes('silver') ||
+        inst.assetClass === 'Gold' ||
+        inst.symbolOrCode.includes('GOLD') ||
+        inst.symbolOrCode.includes('SILV');
+
+      const isEtf =
+        inst.assetClass === 'ETF' ||
+        inst.subCategory.toLowerCase().includes('etf') ||
+        inst.symbolOrCode.includes('BEES') ||
+        inst.symbolOrCode.includes('ETF');
+
+      let matchType = false;
+      if (!type || type === 'all') {
+        matchType = true;
+      } else if (type === 'ETF') {
+        // Any ETF (Index, Sectoral, Thematic, Gold, Silver) matches ETF tab
+        matchType = isEtf;
+      } else if (type === 'Gold') {
+        // Any Gold or Silver ETF/Commodity matches Gold tab
+        matchType = isGoldOrSilver;
+      } else if (type === 'Equity' || type === 'stock') {
+        matchType = inst.assetClass === 'Equity';
+      } else if (type === 'Mutual Fund') {
+        matchType = inst.assetClass === 'Mutual Fund';
+      }
 
       if (!matchType) return false;
       if (!q) return true;
 
+      const inKeywords = inst.keywords && inst.keywords.some((k) => k.toLowerCase().includes(qLower));
       return (
         inst.symbolOrCode.toLowerCase().includes(qLower) ||
         inst.instrumentName.toLowerCase().includes(qLower) ||
-        inst.subCategory.toLowerCase().includes(qLower)
+        inst.subCategory.toLowerCase().includes(qLower) ||
+        inKeywords
       );
+    }).map((inst) => {
+      let targetAssetClass = inst.assetClass;
+      if (type === 'ETF' && (inst.subCategory.includes('Gold') || inst.subCategory.includes('Silver'))) {
+        targetAssetClass = 'ETF';
+      } else if (type === 'Gold' && (inst.subCategory.includes('Gold') || inst.subCategory.includes('Silver'))) {
+        targetAssetClass = 'Gold';
+      }
+      return {
+        ...inst,
+        assetClass: targetAssetClass,
+      };
     });
 
     if (!q) {
-      return localMatches.slice(0, 8);
+      if (type === 'ETF') {
+        const featuredSymbols = [
+          'NIFTYBEES.NS',
+          'BANKBEES.NS',
+          'GOLDBEES.NS',
+          'SILVERBEES.NS',
+          'ITBEES.NS',
+          'HDFCSILVER.NS',
+          'HDFCGOLD.NS',
+          'CPSEETF.NS',
+          'MON100.NS',
+          'JUNIORBEES.NS',
+          'SETFGOLD.NS',
+          'SILVERIETF.NS',
+        ];
+        return [...localMatches]
+          .sort((a, b) => {
+            const idxA = featuredSymbols.indexOf(a.symbolOrCode);
+            const idxB = featuredSymbols.indexOf(b.symbolOrCode);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return 0;
+          })
+          .slice(0, 12);
+      }
+      return localMatches.slice(0, 12);
     }
 
-    // 1. If Mutual Fund: search official AMFI API (mfapi.in)
+    // 2. If Mutual Fund: search official AMFI API (mfapi.in)
     if (type === 'Mutual Fund') {
       try {
         const url = `https://api.mfapi.in/mf/search?q=${encodeURIComponent(q)}`;
@@ -289,73 +601,115 @@ class MarketDataService {
       return localMatches;
     }
 
-    // 2. For Stocks, ETFs, Gold: search live Yahoo Finance query search API
+    // 3. For Stocks, ETFs, Gold & Silver: search live Yahoo Finance query search API
     try {
-      const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(
-        q
-      )}&quotesCount=15&newsCount=0`;
-      const searchRes = await fetchJson(url);
-
-      if (searchRes && Array.isArray(searchRes.quotes)) {
-        const apiMatches = [];
-        for (const quote of searchRes.quotes) {
-          const sym = quote.symbol;
-          if (!sym) continue;
-
-          let assetClass = 'Equity';
-          let subCategory = 'Stocks';
-          const symUpper = sym.toUpperCase();
-          const nameLower = (quote.longname || quote.shortname || '').toLowerCase();
-          const isEtf = quote.quoteType === 'ETF' || symUpper.includes('BEES') || symUpper.includes('ETF');
-          const isGold = symUpper.includes('GOLD') || nameLower.includes('gold');
-
-          if (isGold) {
-            assetClass = 'Gold';
-            subCategory = 'Gold ETF / Commodity';
-          } else if (isEtf) {
-            assetClass = 'ETF';
-            subCategory = 'Index / Sectoral ETF';
-          } else {
-            assetClass = 'Equity';
-            subCategory = quote.exchDisp ? `${quote.exchDisp} Stock` : 'Equity Stock';
-          }
-
-          if (type && type !== 'all') {
-            if (type === 'ETF' && assetClass !== 'ETF') continue;
-            if (type === 'Gold' && assetClass !== 'Gold') continue;
-            if ((type === 'Equity' || type === 'stock') && assetClass !== 'Equity') continue;
-          }
-
-          apiMatches.push({
-            symbolOrCode: sym,
-            instrumentName: quote.longname || quote.shortname || sym,
-            assetClass,
-            subCategory,
-            exchange: quote.exchDisp || (symUpper.endsWith('.NS') ? 'NSE' : symUpper.endsWith('.BO') ? 'BSE' : 'NSE'),
-            basePrice: 0,
-          });
-        }
-
-        const seen = new Set(localMatches.map((m) => m.symbolOrCode));
-        const combined = [...localMatches];
-        for (const item of apiMatches) {
-          if (!seen.has(item.symbolOrCode)) {
-            seen.add(item.symbolOrCode);
-            combined.push(item);
-          }
-        }
-
-        // Prioritize Indian NSE/BSE stocks at top of list
-        combined.sort((a, b) => {
-          const aIsIndian = a.symbolOrCode.endsWith('.NS') || a.symbolOrCode.endsWith('.BO') || a.exchange === 'NSE' || a.exchange === 'BSE';
-          const bIsIndian = b.symbolOrCode.endsWith('.NS') || b.symbolOrCode.endsWith('.BO') || b.exchange === 'NSE' || b.exchange === 'BSE';
-          if (aIsIndian && !bIsIndian) return -1;
-          if (!aIsIndian && bIsIndian) return 1;
-          return 0;
-        });
-
-        return combined.slice(0, 20);
+      const searchQueries = [q];
+      if (type === 'ETF' && !qLower.includes('etf') && !qLower.includes('bees')) {
+        searchQueries.push(`${q} etf`);
       }
+      if (type === 'Gold' && (qLower.includes('silver') || qLower.includes('gold'))) {
+        searchQueries.push(`${q} etf`);
+      }
+
+      const searchPromises = searchQueries.map((term) => {
+        const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(
+          term
+        )}&quotesCount=15&newsCount=0`;
+        return fetchJson(url).catch(() => ({ quotes: [] }));
+      });
+
+      const searchResponses = await Promise.all(searchPromises);
+      const allQuotes = [];
+      const seenQuotes = new Set();
+      for (const res of searchResponses) {
+        if (res && Array.isArray(res.quotes)) {
+          for (const quote of res.quotes) {
+            if (quote.symbol && !seenQuotes.has(quote.symbol)) {
+              seenQuotes.add(quote.symbol);
+              allQuotes.push(quote);
+            }
+          }
+        }
+      }
+
+      const apiMatches = [];
+      for (const quote of allQuotes) {
+        const sym = quote.symbol;
+        if (!sym) continue;
+
+        // Skip futures, options, indices unless relevant
+        const quoteType = (quote.quoteType || '').toUpperCase();
+        if (quoteType === 'FUTURE' || quoteType === 'OPTION') continue;
+
+        const symUpper = sym.toUpperCase();
+        const nameLower = (quote.longname || quote.shortname || '').toLowerCase();
+
+        const isGold = symUpper.includes('GOLD') || nameLower.includes('gold');
+        const isSilver = symUpper.includes('SILV') || nameLower.includes('silver');
+        const isEtf =
+          quoteType === 'ETF' ||
+          symUpper.includes('BEES') ||
+          symUpper.includes('ETF') ||
+          symUpper.includes('IETF') ||
+          nameLower.includes('etf') ||
+          nameLower.includes('bees') ||
+          isGold ||
+          isSilver;
+
+        let assetClass = 'Equity';
+        let subCategory = 'Stocks';
+
+        if (isGold) {
+          assetClass = type === 'ETF' ? 'ETF' : 'Gold';
+          subCategory = 'Gold ETF';
+        } else if (isSilver) {
+          assetClass = type === 'ETF' ? 'ETF' : 'Gold';
+          subCategory = 'Silver ETF';
+        } else if (isEtf) {
+          assetClass = 'ETF';
+          subCategory = 'Index / Sectoral ETF';
+        } else {
+          assetClass = 'Equity';
+          subCategory = quote.exchDisp ? `${quote.exchDisp} Stock` : 'Equity Stock';
+        }
+
+        if (type && type !== 'all') {
+          if (type === 'ETF' && !isEtf) continue;
+          if (type === 'Gold' && !isGold && !isSilver) continue;
+          if ((type === 'Equity' || type === 'stock') && isEtf && !symUpper.includes('.NS') && !symUpper.includes('.BO')) {
+            continue;
+          }
+        }
+
+        apiMatches.push({
+          symbolOrCode: sym,
+          instrumentName: quote.longname || quote.shortname || sym,
+          assetClass,
+          subCategory,
+          exchange: quote.exchDisp || (symUpper.endsWith('.NS') ? 'NSE' : symUpper.endsWith('.BO') ? 'BSE' : 'NSE'),
+          basePrice: 0,
+        });
+      }
+
+      const seen = new Set(localMatches.map((m) => m.symbolOrCode));
+      const combined = [...localMatches];
+      for (const item of apiMatches) {
+        if (!seen.has(item.symbolOrCode)) {
+          seen.add(item.symbolOrCode);
+          combined.push(item);
+        }
+      }
+
+      // Prioritize Indian NSE/BSE stocks & ETFs at top of list
+      combined.sort((a, b) => {
+        const aIsIndian = a.symbolOrCode.endsWith('.NS') || a.symbolOrCode.endsWith('.BO') || a.exchange === 'NSE' || a.exchange === 'BSE';
+        const bIsIndian = b.symbolOrCode.endsWith('.NS') || b.symbolOrCode.endsWith('.BO') || b.exchange === 'NSE' || b.exchange === 'BSE';
+        if (aIsIndian && !bIsIndian) return -1;
+        if (!aIsIndian && bIsIndian) return 1;
+        return 0;
+      });
+
+      return combined.slice(0, 25);
     } catch (err) {
       console.log('[Stock API Search Notice]:', err.message);
     }

@@ -107,7 +107,14 @@ export default function InvestmentScreen({ onNavigate }) {
     setSearchingInstruments(true);
     const timer = setTimeout(async () => {
       try {
-        const type = newAssetClass === 'Mutual Fund' ? 'Mutual Fund' : newAssetClass === 'ETF' ? 'ETF' : 'stock';
+        const type =
+          newAssetClass === 'Mutual Fund'
+            ? 'Mutual Fund'
+            : newAssetClass === 'ETF'
+            ? 'ETF'
+            : newAssetClass === 'Gold'
+            ? 'Gold'
+            : 'Equity';
         const res = await api.searchInstruments(instrumentQuery, type);
         setSearchResults(Array.isArray(res) ? res : []);
       } catch (e) {
@@ -122,11 +129,16 @@ export default function InvestmentScreen({ onNavigate }) {
   // When an instrument is picked in Add modal
   const handlePickInstrument = async (inst) => {
     setSelectedInstrument(inst);
-    setNewAssetClass(inst.assetClass);
-    setNewSubCategory(inst.subCategory);
+    // If user was on ETF tab or Gold tab, keep that asset class for Gold/Silver ETFs
+    const finalAssetClass =
+      (newAssetClass === 'ETF' || newAssetClass === 'Gold')
+        ? newAssetClass
+        : (inst.assetClass || 'Equity');
+    setNewAssetClass(finalAssetClass);
+    setNewSubCategory(inst.subCategory || (finalAssetClass === 'ETF' ? 'ETF' : 'Large Cap Stocks'));
     setLoadingQuote(true);
     try {
-      const quote = await api.getInstrumentPrice(inst.symbolOrCode, inst.assetClass);
+      const quote = await api.getInstrumentPrice(inst.symbolOrCode, finalAssetClass);
       setLiveQuoteForNew(quote);
       // Pre-fill user's buy price with live quote price as a helpful default, but let them edit freely
       setNewBuyPrice(String(quote.price || inst.basePrice || ''));
