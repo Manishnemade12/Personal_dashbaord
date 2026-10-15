@@ -1,0 +1,522 @@
+import { StyleSheet } from 'react-native';
+
+export default StyleSheet.create({
+// Monthly Studio Styles
+  monthlyStudioContainer: {
+    gap: 20,
+    marginBottom: 30,
+  },
+  monthlyKpiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  monthlyKpiCard: {
+    flex: 1,
+    minWidth: 160,
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+  },
+  monthlyKpiTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  monthlyKpiIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthlyKpiBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#3b82f6',
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  monthlyKpiValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.3,
+  },
+  monthlyKpiLabel: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+
+  // Monthly Chart Card
+  monthlyChartCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+  },
+  monthlyChartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    paddingBottom: 14,
+    marginBottom: 16,
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  chartHeaderIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthlyChartTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  monthlyChartSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  clearMonthBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: '#fee2e2',
+  },
+  clearMonthText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ef4444',
+  },
+
+  // Bar Chart Components
+  barChartContainer: {
+    paddingVertical: 12,
+    width: '100%',
+  },
+  barChartContainerMini: {
+    paddingVertical: 4,
+    marginBottom: 10,
+  },
+  barChartCanvas: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 8,
+  },
+  barColumn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    height: '100%',
+  },
+  barColumnMini: {
+    paddingHorizontal: 2,
+  },
+  barAmountText: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  barAmountActive: {
+    color: '#0f172a',
+  },
+  barAmountZero: {
+    color: '#94a3b8',
+    opacity: 0.6,
+  },
+  barAmountSelected: {
+    color: '#1d4ed8',
+    fontWeight: '800',
+  },
+  barTrack: {
+    width: '100%',
+    maxWidth: 42,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  barFill: {
+    width: '85%',
+    maxWidth: 38,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    minHeight: 4,
+  },
+  barFillSelected: {
+    backgroundColor: '#1d4ed8',
+    borderWidth: 2,
+    borderColor: '#93c5fd',
+  },
+  barMonthText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748b',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  barMonthTextMini: {
+    fontSize: 10,
+    marginTop: 4,
+  },
+  barMonthCurrent: {
+    color: '#0f172a',
+    fontWeight: '800',
+  },
+  barMonthSelected: {
+    color: '#1d4ed8',
+    fontWeight: '800',
+  },
+  currentMonthDotBadge: {
+    marginTop: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+    backgroundColor: '#dcfce7',
+  },
+  currentMonthDotText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#166534',
+  },
+  emptyBarChart: {
+    padding: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyBarChartText: {
+    fontSize: 13,
+    color: '#94a3b8',
+  },
+  chartFootnote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  chartFootnoteText: {
+    fontSize: 11,
+    color: '#64748b',
+    flex: 1,
+  },
+
+  // Timeline Inspection Section
+  monthlyTimelineSection: {
+    gap: 14,
+  },
+  timelineHeader: {
+    marginBottom: 4,
+  },
+  timelineTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  timelineSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  monthBreakdownCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    gap: 14,
+  },
+  monthBreakdownCardActive: {
+    borderColor: '#3b82f6',
+    borderWidth: 1.5,
+    backgroundColor: '#f8faff',
+  },
+  monthCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    paddingBottom: 12,
+  },
+  monthCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  calendarMiniIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  currentMonthBadge: {
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  currentMonthBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#166534',
+  },
+  monthCardSub: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  monthCardRight: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  monthCardTotal: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: -0.3,
+  },
+  momBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  momBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+
+  // Asset Split Bar
+  monthAssetSplitSection: {
+    gap: 8,
+  },
+  monthAssetSplitTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  monthAssetSplitBar: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
+  },
+  monthAssetSplitSegment: {
+    height: '100%',
+  },
+  monthAssetSplitPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 2,
+  },
+  assetPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  assetPillDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  assetPillName: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  assetPillVal: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  // Instruments Grid
+  monthInstrumentsSection: {
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    paddingTop: 12,
+  },
+  monthInstrumentsTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  monthInstrumentsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  monthInstrumentCard: {
+    flex: 1,
+    minWidth: 180,
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  monthInstTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  monthInstSymbolBadge: {
+    backgroundColor: '#0f172a',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  monthInstSymbolText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  monthInstAmount: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  monthInstName: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '500',
+    marginBottom: 6,
+  },
+  monthInstFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  monthInstUnits: {
+    fontSize: 10,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  monthInstShare: {
+    fontSize: 10,
+    color: '#3b82f6',
+    fontWeight: '700',
+  },
+  emptyMonthBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  emptyMonthText: {
+    fontSize: 12,
+    color: '#94a3b8',
+    fontStyle: 'italic',
+  },
+
+  // Overview Card Additions
+  overviewCardSubtitle: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 1,
+  },
+  monthlyOverviewStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    width: '100%',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#f1f5f9',
+    marginVertical: 10,
+  },
+  monthlyMiniKpi: {
+    alignItems: 'center',
+  },
+  monthlyMiniKpiLabel: {
+    fontSize: 10,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  monthlyMiniKpiVal: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginTop: 2,
+  },
+  monthlyMiniKpiDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#e2e8f0',
+  },
+  exploreMonthlyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    width: '100%',
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#f0f9ff',
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+    marginTop: 4,
+  },
+  exploreMonthlyBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0284c7',
+  }
+});

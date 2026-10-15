@@ -1,0 +1,9 @@
+export { default as BlogsScreen } from './BlogsScreen';
+export { default as BlogFormScreen } from './BlogFormScreen';
+export { default as ProjectsScreen } from './ProjectsScreen';
+export { default as ProjectFormScreen } from './ProjectFormScreen';
+export { default as SkillsScreen } from './SkillsScreen';
+export { default as GalleryScreen } from './GalleryScreen';
+export { default as ContactsScreen } from './ContactsScreen';
+export { default as EducationScreen } from './EducationScreen';
+export { default as SocialLinksScreen } from './SocialLinksScreen';
