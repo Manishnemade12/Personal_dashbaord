@@ -2,19 +2,21 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
   Modal,
   Linking,
+  ScrollView,
 } from 'react-native';
-import { colors } from '../../constants/theme';
+import { colors } from '../../styles/theme';
 import { api } from '../../api/client';
 import { Ionicons } from '@expo/vector-icons';
+import { ScreenHeader, EmptyState } from '../../components/common';
+import styles from './styles/contactsStyles';
 
-export default function ContactsScreen() {
+export default function ContactsScreen({ onNavigate }) {
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,20 +75,24 @@ export default function ContactsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
-        <View>
-          <Text style={styles.headingTitle}>
-            Contact <Text style={styles.headingSpan}>Requests</Text>
-          </Text>
-          <Text style={styles.headingSubtitle}>ADMIN PANEL</Text>
-        </View>
-        <View style={styles.badgeCount}>
-          <Text style={styles.badgeCountText}>{contacts.length} Total</Text>
-        </View>
-      </View>
+      <ScreenHeader
+        title="Contact Inquiries"
+        subtitle="Manage client inquiries, project proposals & messages"
+        category="COMMUNICATION"
+        iconName="mail-outline"
+        onBack={() => onNavigate && onNavigate('Dashboard')}
+        backText="Dashboard"
+        rightAction={
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{contacts.length} Total</Text>
+          </View>
+        }
+      />
 
       {loading ? (
-        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
       ) : (
         <FlatList
           data={contacts}
@@ -96,14 +102,19 @@ export default function ContactsScreen() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => { setRefreshing(true); fetchContacts(); }}
+              onRefresh={() => {
+                setRefreshing(true);
+                fetchContacts();
+              }}
+              colors={[colors.primary]}
             />
           }
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="mail-unread-outline" size={48} color={colors.textMuted} />
-              <Text style={styles.emptyText}>No inquiries received yet</Text>
-            </View>
+            <EmptyState
+              icon="mail-unread-outline"
+              title="No Inquiries Yet"
+              description="Messages sent through your public portfolio contact form will appear here."
+            />
           }
         />
       )}
@@ -119,14 +130,14 @@ export default function ContactsScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Message Details</Text>
+                <Text style={styles.modalTitle}>Inquiry Details</Text>
                 <TouchableOpacity onPress={() => setSelectedContact(null)}>
-                  <Ionicons name="close" size={22} color={colors.textSecondary} />
+                  <Ionicons name="close" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
 
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>From:</Text>
+                <Text style={styles.detailLabel}>Sender:</Text>
                 <Text style={styles.detailValue}>
                   {selectedContact.name || selectedContact.fullname || 'Anonymous'}
                 </Text>
@@ -135,7 +146,7 @@ export default function ContactsScreen() {
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Email:</Text>
                 <TouchableOpacity
-                  onPress={() => Linking.openURL(`mailto:${selectedContact.email}`)}
+                  onPress={() => Linking.openURL(`mailto:${selectedContact.email}`).catch(() => {})}
                 >
                   <Text style={[styles.detailValue, { color: colors.primary }]}>
                     {selectedContact.email || 'N/A'}
@@ -152,7 +163,7 @@ export default function ContactsScreen() {
 
               {selectedContact.project || selectedContact.subject ? (
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Project:</Text>
+                  <Text style={styles.detailLabel}>Subject:</Text>
                   <Text style={styles.detailValue}>
                     {selectedContact.project || selectedContact.subject}
                   </Text>
@@ -160,16 +171,19 @@ export default function ContactsScreen() {
               ) : null}
 
               <Text style={styles.msgHeader}>Message:</Text>
-              <View style={styles.msgBox}>
-                <Text style={styles.msgBody}>{selectedContact.description || selectedContact.message || 'No message'}</Text>
-              </View>
+              <ScrollView style={styles.msgBox}>
+                <Text style={styles.msgBody}>
+                  {selectedContact.description || selectedContact.message || 'No message content provided.'}
+                </Text>
+              </ScrollView>
 
               {selectedContact.email ? (
                 <TouchableOpacity
                   style={styles.replyBtn}
-                  onPress={() => Linking.openURL(`mailto:${selectedContact.email}`)}
+                  onPress={() => Linking.openURL(`mailto:${selectedContact.email}`).catch(() => {})}
+                  activeOpacity={0.8}
                 >
-                  <Ionicons name="mail" size={18} color="#ffffff" />
+                  <Ionicons name="mail" size={16} color={colors.textLight} />
                   <Text style={styles.replyBtnText}>Reply via Email</Text>
                 </TouchableOpacity>
               ) : null}
@@ -180,197 +194,3 @@ export default function ContactsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  topBar: {
-    padding: 16,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headingTitle: {
-    color: '#7e37d8',
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  headingSpan: {
-    color: '#000000',
-  },
-  headingSubtitle: {
-    color: '#7e37d8',
-    letterSpacing: 3,
-    fontWeight: '700',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  badgeCount: {
-    backgroundColor: '#eee8fa',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  badgeCountText: {
-    color: '#5f22db',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryBg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    color: colors.primary,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  nameWrap: {
-    flex: 1,
-  },
-  nameText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1e293b',
-  },
-  emailText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  badge: {
-    backgroundColor: '#fef3c7',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#d97706',
-  },
-  subjectText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#334155',
-    marginBottom: 6,
-  },
-  messagePreview: {
-    fontSize: 13,
-    color: '#64748b',
-    lineHeight: 18,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    marginTop: 10,
-    fontSize: 15,
-    color: colors.textMuted,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 20,
-    elevation: 8,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1e293b',
-  },
-  detailRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  detailLabel: {
-    width: 70,
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#64748b',
-  },
-  detailValue: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1e293b',
-  },
-  msgHeader: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#64748b',
-    marginTop: 10,
-    marginBottom: 6,
-  },
-  msgBox: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    marginBottom: 16,
-  },
-  msgBody: {
-    fontSize: 13,
-    color: '#334155',
-    lineHeight: 20,
-  },
-  replyBtn: {
-    backgroundColor: colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  replyBtnText: {
-    color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-});

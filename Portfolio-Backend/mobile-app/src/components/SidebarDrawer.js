@@ -574,6 +574,7 @@ const styles = StyleSheet.create({
   },
   asideLeft: {
     width: 285,
+    maxWidth: '85%',
     height: '100%',
     backgroundColor: '#ffffff',
     elevation: 16,

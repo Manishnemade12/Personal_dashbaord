@@ -1,0 +1,161 @@
+import { StyleSheet, Platform } from 'react-native';
+import { colors, spacing, radii, typography, layout } from '../../../styles/theme';
+
+export default StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  listContent: {
+    padding: spacing.md,
+    paddingBottom: spacing.xxl + 20,
+    maxWidth: 960,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  columnWrapper: {
+    gap: spacing.sm,
+    justifyContent: 'space-between',
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
+    minHeight: 36,
+  },
+  addBtnText: {
+    color: colors.textLight,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  skillCard: {
+    flex: 1,
+    minWidth: 140,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...Platform.select({
+      web: { boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)' },
+      default: {
+        elevation: 2,
+        shadowColor: colors.shadows.card,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+      },
+    }),
+  },
+  cardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  iconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: radii.md,
+    backgroundColor: colors.primaryBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  skillImg: {
+    width: '80%',
+    height: '80%',
+    resizeMode: 'contain',
+  },
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  actionBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: radii.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionBtnEdit: {
+    backgroundColor: colors.primaryBg,
+  },
+  actionBtnDelete: {
+    backgroundColor: colors.dangerBg,
+  },
+  skillTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  skillDesc: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    lineHeight: 15,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.md,
+  },
+  modalCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.xl,
+    padding: spacing.lg,
+    width: '100%',
+    maxWidth: 440,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  formGroup: {
+    marginBottom: spacing.md,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  modalInput: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  saveModalBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radii.md,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
+  saveModalBtnText: {
+    color: colors.textLight,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+});

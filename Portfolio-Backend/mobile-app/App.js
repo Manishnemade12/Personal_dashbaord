@@ -258,5 +258,6 @@ const styles = StyleSheet.create({
   },
   screenWrapper: {
     flex: 1,
+    overflow: 'hidden',
   },
 });

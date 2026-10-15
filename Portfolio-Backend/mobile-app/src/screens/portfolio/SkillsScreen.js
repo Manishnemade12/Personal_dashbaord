@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
   TouchableOpacity,
   TextInput,
@@ -11,12 +10,18 @@ import {
   ActivityIndicator,
   Modal,
   Image,
+  useWindowDimensions,
 } from 'react-native';
-import { colors } from '../../constants/theme';
+import { colors } from '../../styles/theme';
 import { api } from '../../api/client';
 import { Ionicons } from '@expo/vector-icons';
+import { ScreenHeader, SearchInput, EmptyState } from '../../components/common';
+import styles from './styles/skillsStyles';
 
-export default function SkillsScreen({ routeParams }) {
+export default function SkillsScreen({ routeParams, onNavigate }) {
+  const { width } = useWindowDimensions();
+  const numColumns = width < 480 ? 1 : width < 800 ? 2 : 3;
+
   const [skills, setSkills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -119,12 +124,14 @@ export default function SkillsScreen({ routeParams }) {
     );
   };
 
-  const filteredSkills = skills.filter((s) =>
-    searchQuery.trim() === ''
-      ? true
-      : s.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredSkills = useMemo(() => {
+    return skills.filter((s) =>
+      searchQuery.trim() === ''
+        ? true
+        : s.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [skills, searchQuery]);
 
   const renderSkillItem = ({ item }) => {
     const firstImg = Array.isArray(item.images) ? item.images[0] : item.images;
@@ -136,28 +143,32 @@ export default function SkillsScreen({ routeParams }) {
             {firstImg ? (
               <Image source={{ uri: firstImg }} style={styles.skillImg} />
             ) : (
-              <Ionicons name="code-slash" size={24} color="#7e37d8" />
+              <Ionicons name="code-slash" size={20} color={colors.primary} />
             )}
           </View>
 
           <View style={styles.cardActions}>
             <TouchableOpacity
-              style={styles.actionBtnEdit}
+              style={[styles.actionBtn, styles.actionBtnEdit]}
               onPress={() => openModal(item)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <Ionicons name="create-outline" size={16} color="#7e37d8" />
+              <Ionicons name="create-outline" size={14} color={colors.primary} />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.actionBtnDelete}
+              style={[styles.actionBtn, styles.actionBtnDelete]}
               onPress={() => handleDelete(item._id, item.title)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <Ionicons name="trash-outline" size={16} color="#ef4444" />
+              <Ionicons name="trash-outline" size={14} color={colors.danger} />
             </TouchableOpacity>
           </View>
         </View>
 
-        <Text style={styles.skillTitle}>{item.title}</Text>
+        <Text style={styles.skillTitle} numberOfLines={1}>{item.title}</Text>
         {item.description ? (
           <Text style={styles.skillDesc} numberOfLines={2}>
             {item.description}
@@ -169,70 +180,68 @@ export default function SkillsScreen({ routeParams }) {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.headingTitle}>
-            All <Text style={styles.headingSpan}>Skills</Text>
-          </Text>
-          <Text style={styles.headingSubtitle}>ADMIN PANEL</Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => openModal()}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add" size={18} color="#ffffff" />
-          <Text style={styles.addBtnText}>Add Skill</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Search */}
-      <View style={styles.searchBarWrap}>
-        <Ionicons name="search-outline" size={18} color="#64748b" style={{ marginRight: 8 }} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search Skills..."
-          placeholderTextColor="#94a3b8"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searchQuery ? (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={18} color="#94a3b8" />
+      <ScreenHeader
+        title="Technical Skills"
+        subtitle="Manage programming languages, frameworks & tech tools"
+        category="PORTFOLIO HUB"
+        iconName="code-slash-outline"
+        onBack={() => onNavigate && onNavigate('Dashboard')}
+        backText="Dashboard"
+        rightAction={
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() => openModal()}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={16} color={colors.textLight} />
+            <Text style={styles.addBtnText}>Add Skill</Text>
           </TouchableOpacity>
-        ) : null}
-      </View>
+        }
+      />
 
-      {/* List */}
       {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color="#7e37d8" />
-          <Text style={styles.loadingText}>Loading skills...</Text>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
+          key={`skills-grid-${numColumns}`}
           data={filteredSkills}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item) => item._id || Math.random().toString()}
           renderItem={renderSkillItem}
-          numColumns={2}
-          columnWrapperStyle={styles.columnWrapper}
+          numColumns={numColumns}
+          columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={fetchSkills} colors={['#7e37d8']} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={fetchSkills}
+              colors={[colors.primary]}
+            />
+          }
+          ListHeaderComponent={
+            <View style={{ marginBottom: 12 }}>
+              <SearchInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search tech stack or skill level..."
+              />
+            </View>
           }
           ListEmptyComponent={
-            <View style={styles.emptyWrap}>
-              <Ionicons name="code-slash-outline" size={48} color="#cbd5e1" />
-              <Text style={styles.emptyText}>No Skills found</Text>
-            </View>
+            <EmptyState
+              icon="code-slash-outline"
+              title="No Skills Added"
+              description="Add your core engineering competencies, libraries, and tools."
+              actionLabel="Add Skill"
+              onAction={() => openModal()}
+            />
           }
         />
       )}
 
-      {/* Add / Edit Skill Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
+      {/* Modal */}
+      <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
@@ -240,7 +249,7 @@ export default function SkillsScreen({ routeParams }) {
                 {editingSkill ? 'Edit Skill' : 'Add New Skill'}
               </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#64748b" />
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -248,19 +257,19 @@ export default function SkillsScreen({ routeParams }) {
               <Text style={styles.label}>Skill Title *</Text>
               <TextInput
                 style={styles.modalInput}
-                placeholder="e.g. React Native, Node.js, Docker"
-                placeholderTextColor="#94a3b8"
+                placeholder="e.g. React Native, TypeScript, Docker"
+                placeholderTextColor={colors.textMuted}
                 value={title}
                 onChangeText={setTitle}
               />
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Description / Level</Text>
+              <Text style={styles.label}>Description / Proficiency</Text>
               <TextInput
                 style={styles.modalInput}
-                placeholder="e.g. Advanced / 3+ Years Experience"
-                placeholderTextColor="#94a3b8"
+                placeholder="e.g. Advanced / 4+ Years Experience"
+                placeholderTextColor={colors.textMuted}
                 value={description}
                 onChangeText={setDescription}
               />
@@ -270,8 +279,8 @@ export default function SkillsScreen({ routeParams }) {
               <Text style={styles.label}>Icon / Image URL</Text>
               <TextInput
                 style={styles.modalInput}
-                placeholder="https://example.com/icon.png"
-                placeholderTextColor="#94a3b8"
+                placeholder="https://cdn.jsdelivr.net/..."
+                placeholderTextColor={colors.textMuted}
                 value={images}
                 onChangeText={setImages}
               />
@@ -281,6 +290,7 @@ export default function SkillsScreen({ routeParams }) {
               style={styles.saveModalBtn}
               onPress={handleSave}
               disabled={saving}
+              activeOpacity={0.8}
             >
               <Text style={styles.saveModalBtnText}>
                 {saving ? 'Saving...' : editingSkill ? 'Update Skill' : 'Create Skill'}
@@ -292,212 +302,3 @@ export default function SkillsScreen({ routeParams }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'rgb(248, 250, 252)',
-    padding: 16,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  headingTitle: {
-    color: '#7e37d8',
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  headingSpan: {
-    color: '#000000',
-  },
-  headingSubtitle: {
-    color: '#7e37d8',
-    letterSpacing: 3,
-    fontWeight: '700',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#7e37d8',
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    gap: 4,
-  },
-  addBtnText: {
-    color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  searchBarWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    height: 46,
-    marginBottom: 16,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: '#0f172a',
-  },
-  listContent: {
-    paddingBottom: 30,
-  },
-  columnWrapper: {
-    justifyContent: 'space-between',
-  },
-  skillCard: {
-    width: '48%',
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-  },
-  cardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#eee8fa',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  skillImg: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  cardActions: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  actionBtnEdit: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#eee8fa',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionBtnDelete: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#fee2e2',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  skillTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  skillDesc: {
-    fontSize: 12,
-    color: '#64748b',
-    lineHeight: 16,
-  },
-  loadingWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 15,
-    color: '#7e37d8',
-    fontWeight: '600',
-  },
-  emptyWrap: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#94a3b8',
-    fontWeight: '600',
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    padding: 24,
-    elevation: 10,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 18,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1e293b',
-  },
-  formGroup: {
-    marginBottom: 14,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#475569',
-    marginBottom: 6,
-  },
-  modalInput: {
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    fontSize: 15,
-    color: '#0f172a',
-  },
-  saveModalBtn: {
-    backgroundColor: '#7e37d8',
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  saveModalBtnText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});

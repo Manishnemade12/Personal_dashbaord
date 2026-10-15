@@ -9,12 +9,16 @@ import {
   Alert,
   ActivityIndicator,
   Switch,
+  useWindowDimensions,
 } from 'react-native';
-import { colors } from '../../constants/theme';
+import { colors, spacing, radii, typography, layout } from '../../styles/theme';
 import { api } from '../../api/client';
 import { Ionicons } from '@expo/vector-icons';
+import { ScreenHeader } from '../../components/common';
 
 export default function ProjectFormScreen({ project, onBack, onSuccess }) {
+  const { width } = useWindowDimensions();
+  const isMobile = width < 600;
   const isEditing = !!project?._id;
 
   const [title, setTitle] = useState(project?.title || '');
@@ -81,149 +85,143 @@ export default function ProjectFormScreen({ project, onBack, onSuccess }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerBar}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Ionicons name="arrow-back" size={20} color={colors.primary} />
-          <Text style={styles.backBtnText}>Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {isEditing ? 'Edit Project' : 'Add Project'}
-        </Text>
-        <View style={{ width: 60 }} />
-      </View>
+      <ScreenHeader
+        title={isEditing ? 'Edit Project' : 'Add New Project'}
+        subtitle={isEditing ? `Modifying "${title || 'Untitled'}"` : 'Showcase a new application or client work'}
+        category="PORTFOLIO EDITOR"
+        iconName="briefcase-outline"
+        onBack={onBack}
+        backText="All Projects"
+      />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Title */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Project Title *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. E-Commerce Platform"
-            value={title}
-            onChangeText={setTitle}
-            placeholderTextColor={colors.textMuted}
-          />
-        </View>
-
-        {/* Slug */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Slug</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. e-commerce-platform"
-            value={slug}
-            onChangeText={setSlug}
-            placeholderTextColor={colors.textMuted}
-            autoCapitalize="none"
-          />
-        </View>
-
-        {/* Client */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Client Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Acme Corp / Self Project"
-            value={client}
-            onChangeText={setClient}
-            placeholderTextColor={colors.textMuted}
-          />
-        </View>
-
-        {/* Category */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Project Category</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Full Stack, Mobile App, Web Design"
-            value={category}
-            onChangeText={setCategory}
-            placeholderTextColor={colors.textMuted}
-          />
-        </View>
-
-        {/* Live Preview URL */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Live Preview URL</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="https://myproject.com"
-            value={livepreview}
-            onChangeText={setLivepreview}
-            placeholderTextColor={colors.textMuted}
-            autoCapitalize="none"
-          />
-        </View>
-
-        {/* Tags */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Tags (comma separated)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. react, nextjs, tailwind"
-            value={tags}
-            onChangeText={setTags}
-            placeholderTextColor={colors.textMuted}
-          />
-        </View>
-
-        {/* Images */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Image URLs (comma separated)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="https://example.com/project-preview.jpg"
-            value={images}
-            onChangeText={setImages}
-            placeholderTextColor={colors.textMuted}
-          />
-        </View>
-
-        {/* Publish Status Toggle */}
-        <View style={styles.switchRow}>
-          <View>
-            <Text style={styles.label}>Publication Status</Text>
-            <Text style={styles.sublabel}>
-              {isPublish ? 'Publish (Show in portfolio)' : 'Draft (Saved as draft)'}
-            </Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <View style={[styles.formCard, isMobile && styles.formCardMobile]}>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Project Title *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Distributed Task Orchestrator"
+              value={title}
+              onChangeText={setTitle}
+              placeholderTextColor={colors.textMuted}
+            />
           </View>
-          <Switch
-            value={isPublish}
-            onValueChange={setIsPublish}
-            trackColor={{ false: '#cbd5e1', true: colors.primaryLight }}
-            thumbColor={isPublish ? colors.primary : '#f4f3f4'}
-          />
-        </View>
 
-        {/* Description */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Project Description</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Describe the project overview, tech stack, and achievements..."
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={6}
-            textAlignVertical="top"
-            placeholderTextColor={colors.textMuted}
-          />
-        </View>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Slug (URL Endpoint)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. distributed-task-orchestrator"
+              value={slug}
+              onChangeText={setSlug}
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+            />
+          </View>
 
-        {/* Submit Button */}
-        <TouchableOpacity
-          style={styles.submitBtn}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text style={styles.submitBtnText}>
-              {isEditing ? 'Update Project' : 'Save & Publish Project'}
-            </Text>
-          )}
-        </TouchableOpacity>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Client or Organization</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Open Source / Self-Initiated"
+              value={client}
+              onChangeText={setClient}
+              placeholderTextColor={colors.textMuted}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Category</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Full Stack, Cloud Infrastructure"
+              value={category}
+              onChangeText={setCategory}
+              placeholderTextColor={colors.textMuted}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Live Preview or Repository URL</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="https://github.com/..."
+              value={livepreview}
+              onChangeText={setLivepreview}
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Tags (comma separated)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. react, typescript, golang"
+              value={tags}
+              onChangeText={setTags}
+              placeholderTextColor={colors.textMuted}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Cover Image URL</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="https://images.unsplash.com/photo-..."
+              value={images}
+              onChangeText={setImages}
+              placeholderTextColor={colors.textMuted}
+            />
+          </View>
+
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Publication Status</Text>
+              <Text style={styles.sublabel}>
+                {isPublish ? 'Published (Live on public portfolio)' : 'Draft (Admin preview only)'}
+              </Text>
+            </View>
+            <Switch
+              value={isPublish}
+              onValueChange={setIsPublish}
+              trackColor={{ false: colors.borderDark, true: colors.primaryLight }}
+              thumbColor={isPublish ? colors.primary : '#f8fafc'}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Project Description</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Detailed architecture overview, tech stack highlights, features..."
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+              placeholderTextColor={colors.textMuted}
+            />
+          </View>
+
+          <TouchableOpacity
+            style={styles.submitBtn}
+            onPress={handleSave}
+            disabled={saving}
+            activeOpacity={0.8}
+          >
+            {saving ? (
+              <ActivityIndicator color={colors.textLight} />
+            ) : (
+              <>
+                <Ionicons name="cloud-upload-outline" size={18} color={colors.textLight} />
+                <Text style={styles.submitBtnText}>
+                  {isEditing ? 'Update Project' : 'Save & Publish Project'}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -234,87 +232,81 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  headerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-  },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  backBtnText: {
-    color: colors.primary,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1e293b',
-  },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
+    padding: spacing.md,
+    paddingBottom: spacing.xxl + 20,
+    alignItems: 'center',
+  },
+  formCard: {
+    width: '100%',
+    maxWidth: 720,
+    backgroundColor: colors.surface,
+    borderRadius: radii.xl,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    elevation: 2,
+    shadowColor: colors.shadows.card,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+  },
+  formCardMobile: {
+    padding: spacing.md,
   },
   formGroup: {
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   label: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#334155',
-    marginBottom: 6,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
   },
   sublabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   input: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    fontSize: 14,
+    borderColor: colors.border,
+    fontSize: 13,
     color: colors.textPrimary,
   },
   textArea: {
-    minHeight: 140,
+    minHeight: 120,
   },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: colors.surfaceAlt,
+    padding: spacing.md,
+    borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    marginBottom: 16,
+    borderColor: colors.border,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   submitBtn: {
     backgroundColor: colors.primary,
-    borderRadius: 14,
-    paddingVertical: 15,
+    borderRadius: radii.md,
+    paddingVertical: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
-    elevation: 3,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: spacing.sm,
+    minHeight: layout.minTouchTarget,
   },
   submitBtnText: {
-    color: '#ffffff',
-    fontWeight: '800',
-    fontSize: 15,
+    color: colors.textLight,
+    fontWeight: '700',
+    fontSize: 14,
   },
 });
