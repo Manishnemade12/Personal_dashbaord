@@ -69,12 +69,12 @@ export default function InvestmentScreen({ onNavigate }) {
           showsVerticalScrollIndicator={false}
         >
           {/* 2. Portfolio KPI Summary */}
-          <View style={[styles.kpiGrid, isMobile && { justifyContent: 'space-between', gap: 10 }]}>
-            {/* Total Portfolio Value */}
+          <View style={[styles.kpiGrid, isMobile && styles.kpiGridMobile]}>
+            {/* Total Portfolio Value (100% full width on mobile) */}
             <View
               style={[
                 styles.kpiCard,
-                isMobile ? { width: '100%', minWidth: 0 } : { flex: 1, minWidth: 170 },
+                isMobile ? styles.kpiCardMobileFull : styles.kpiCardDesktop,
                 { borderLeftColor: '#7e37d8' },
               ]}
             >
@@ -90,11 +90,11 @@ export default function InvestmentScreen({ onNavigate }) {
               <Text style={styles.kpiSub}>Real-time value at current market prices</Text>
             </View>
 
-            {/* Total Invested Capital */}
+            {/* Total Invested Capital (50% grid card on mobile) */}
             <View
               style={[
                 styles.kpiCard,
-                isMobile ? { width: '48%', minWidth: 0, flexGrow: 1 } : { flex: 1, minWidth: 170 },
+                isMobile ? styles.kpiCardMobileHalf : styles.kpiCardDesktop,
                 { borderLeftColor: '#3b82f6' },
               ]}
             >
@@ -112,11 +112,11 @@ export default function InvestmentScreen({ onNavigate }) {
               </Text>
             </View>
 
-            {/* Overall Returns / P&L */}
+            {/* Overall Returns / P&L (50% grid card on mobile) */}
             <View
               style={[
                 styles.kpiCard,
-                isMobile ? { width: '48%', minWidth: 0, flexGrow: 1 } : { flex: 1, minWidth: 170 },
+                isMobile ? styles.kpiCardMobileHalf : styles.kpiCardDesktop,
                 { borderLeftColor: (summary?.totalPnL || 0) >= 0 ? '#10b981' : '#ef4444' },
               ]}
             >
@@ -215,7 +215,7 @@ export default function InvestmentScreen({ onNavigate }) {
           </View>
 
           {/* 4. Asset Class Filters & Search */}
-          <View style={styles.filterBarRow}>
+          <View style={[styles.filterBarRow, isMobile && { flexDirection: 'column', alignItems: 'stretch' }]}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.classPillsScroll}>
               {ASSET_CLASSES.map((cls) => {
                 const isSelected = selectedAssetClass === cls;
@@ -233,7 +233,7 @@ export default function InvestmentScreen({ onNavigate }) {
               })}
             </ScrollView>
 
-            <View style={styles.searchBox}>
+            <View style={[styles.searchBox, isMobile && { width: '100%', minWidth: 0, marginTop: 4 }]}>
               <Ionicons name="search-outline" size={15} color="#94a3b8" />
               <TextInput
                 style={styles.searchField}

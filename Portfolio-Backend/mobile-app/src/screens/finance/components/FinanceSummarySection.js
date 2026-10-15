@@ -277,22 +277,22 @@ export default function FinanceSummarySection({ summary, isMobile, onOpenInvestm
           {/* 3B. Current Month Wealth Deployments & Investments Breakdown (Kisme kitna invest kiya) */}
           {((summary?.monthlyInvested || 0) > 0 || (summary?.investedByInstrument?.length || 0) > 0) && (
             <View style={styles.investmentsOverviewCard}>
-              <View style={styles.invCardHeader}>
-                <View style={styles.invCardTitleWrap}>
+              <View style={[styles.invCardHeader, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 10 }]}>
+                <View style={[styles.invCardTitleWrap, isMobile && { width: '100%' }]}>
                   <View style={styles.invIconBadge}>
                     <Ionicons name="trending-up" size={18} color="#7e37d8" />
                   </View>
-                  <View>
-                    <Text style={styles.invCardTitle}>Current Month Wealth Investments</Text>
-                    <Text style={styles.invCardSubtitle}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.invCardTitle} numberOfLines={1}>Current Month Wealth</Text>
+                    <Text style={styles.invCardSubtitle} numberOfLines={isMobile ? 2 : 1}>
                       Kisme kitna paisa invest kiya • ₹{(summary?.monthlyInvested || 0).toLocaleString('en-IN')} deployed across {summary?.investedByInstrument?.length || 0} assets
                     </Text>
                   </View>
                 </View>
 
-                <View style={styles.invCardActions}>
+                <View style={[styles.invCardActions, isMobile && { width: '100%', justifyContent: 'flex-start', flexWrap: 'wrap', gap: 8 }]}>
                   <TouchableOpacity
-                    style={styles.invViewAllBtn}
+                    style={[styles.invViewAllBtn, isMobile && { flex: 1, justifyContent: 'center' }]}
                     onPress={onOpenInvestmentDetail}
                     activeOpacity={0.8}
                   >
@@ -304,7 +304,7 @@ export default function FinanceSummarySection({ summary, isMobile, onOpenInvestm
 
                   {onNavigate && (
                     <TouchableOpacity
-                      style={styles.invPortfolioLinkBtn}
+                      style={[styles.invPortfolioLinkBtn, isMobile && { flex: 1, justifyContent: 'center', alignItems: 'center' }]}
                       onPress={() => onNavigate('Investments')}
                       activeOpacity={0.8}
                     >

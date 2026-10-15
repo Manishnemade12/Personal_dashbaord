@@ -194,4 +194,7 @@ export const api = {
   getPortfolioSummary: () => request('/portfolio/summary'),
 };
 
+export default api;
+
+
 

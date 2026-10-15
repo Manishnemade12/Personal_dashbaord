@@ -436,10 +436,11 @@ modalOverlay: {
     flexWrap: 'wrap',
     gap: 14,
     marginBottom: 16,
+    width: '100%',
   },
   investmentMeterCard: {
     flex: 1,
-    minWidth: 280,
+    minWidth: 0,
     backgroundColor: '#ffffff',
     borderRadius: 14,
     padding: 18,
@@ -472,7 +473,7 @@ modalOverlay: {
   investmentsOverviewCard: {
     backgroundColor: '#ffffff',
     borderRadius: 14,
-    padding: 18,
+    padding: 16,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -481,6 +482,9 @@ modalOverlay: {
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 6,
     elevation: 1,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   invCardHeader: {
     flexDirection: 'row',
@@ -494,6 +498,8 @@ modalOverlay: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
+    minWidth: 0,
   },
   invIconBadge: {
     width: 36,
@@ -504,7 +510,7 @@ modalOverlay: {
     justifyContent: 'center',
   },
   invCardTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#0f172a',
   },
@@ -516,6 +522,7 @@ modalOverlay: {
   invCardActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
   },
   invViewAllBtn: {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Alert, Platform, useWindowDimensions } from 'react-native';
-import api from '../../../api/client';
+import apiDefault, { api as apiNamed } from '../../../api/client';
+const api = apiNamed || apiDefault;
 
 export default function useInvestments() {
   const { width } = useWindowDimensions();
@@ -23,10 +24,10 @@ export default function useInvestments() {
         api.getInvestmentSummary(),
         api.getHoldings(),
       ]);
-      setSummary(sumRes);
+      setSummary(sumRes || null);
       setHoldings(Array.isArray(holdRes) ? holdRes : []);
     } catch (err) {
-      console.log('Error loading investment portfolio:', err);
+      console.error('Error loading investment portfolio:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
