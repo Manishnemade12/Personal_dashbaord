@@ -31,6 +31,10 @@ const InvestmentTransactionSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    realizedGain: {
+      type: Number,
+      default: 0,
+    },
     date: {
       type: Date,
       default: Date.now,

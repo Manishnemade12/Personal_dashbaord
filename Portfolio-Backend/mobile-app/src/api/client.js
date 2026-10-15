@@ -153,6 +153,8 @@ export const api = {
   clearAllInvestments: () => request('/investments/clear-all', { method: 'DELETE' }),
   bulkAddHoldings: (data) => request('/investments/holdings/bulk', { method: 'POST', body: data }),
   aiExtractHoldings: (data) => request('/investments/ai-extract', { method: 'POST', body: data }),
+  getHoldingTransactions: (holdingId) => request(`/investments/holdings/${holdingId}/transactions`),
+  getAllTransactions: (holdingId = '') => request(`/investments/transactions${holdingId ? `?holdingId=${holdingId}` : ''}`),
 
 
   // API Management (/api/apis)

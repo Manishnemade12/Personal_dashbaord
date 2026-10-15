@@ -375,10 +375,10 @@ Do not output markdown backticks or any conversational text. Just the raw JSON a
   }
 });
 
-// 3. POST /api/investments/transaction (Buy / Sell units at live market price)
+// 3. POST /api/investments/transaction (Buy / Sell units with custom or live price & realized P&L calculation)
 router.post('/transaction', async (req, res) => {
   try {
-    const { holdingId, type, units, notes, userId = 'admin' } = req.body;
+    const { holdingId, type, units, price, notes, userId = 'admin' } = req.body;
 
     if (!holdingId || !type || !units || Number(units) <= 0) {
       return res.status(400).json({ error: 'holdingId, type (BUY/SELL), and units are required' });
@@ -389,9 +389,14 @@ router.post('/transaction', async (req, res) => {
       return res.status(404).json({ error: 'Holding not found' });
     }
 
-    // Fetch current live price
-    const quote = await marketDataService.getLiveQuote(holding.symbolOrCode, holding.assetClass);
-    const livePrice = quote.price > 0 ? quote.price : holding.latestPrice || holding.averageBuyPrice;
+    // Fetch current live price if specific execution price not provided
+    let livePrice = holding.latestPrice || holding.averageBuyPrice;
+    try {
+      const quote = await marketDataService.getLiveQuote(holding.symbolOrCode, holding.assetClass);
+      if (quote && quote.price > 0) livePrice = quote.price;
+    } catch (e) {}
+
+    const execPrice = price && Number(price) > 0 ? Number(Number(price).toFixed(2)) : livePrice;
     const numUnits = Number(units);
 
     if (type === 'SELL') {
@@ -401,35 +406,133 @@ router.post('/transaction', async (req, res) => {
         });
       }
 
+      const avgBuy = holding.averageBuyPrice || 0;
+      const realizedGain = Number(((execPrice - avgBuy) * numUnits).toFixed(2));
+      const pnlPercent = avgBuy > 0 ? Number((((execPrice - avgBuy) / avgBuy) * 100).toFixed(2)) : 0;
+
       holding.quantity = Number((holding.quantity - numUnits).toFixed(4));
-      holding.latestPrice = livePrice;
+      holding.latestPrice = execPrice;
       holding.latestPriceDate = new Date();
       await holding.save();
+
+      const tx = await InvestmentTransaction.create({
+        holdingId: holding._id,
+        userId,
+        type: 'SELL',
+        units: numUnits,
+        pricePerUnit: execPrice,
+        totalAmount: Number((numUnits * execPrice).toFixed(2)),
+        realizedGain,
+        notes:
+          notes ||
+          `Sold ${numUnits} units @ ₹${execPrice} (${realizedGain >= 0 ? '+' : ''}₹${realizedGain} / ${pnlPercent}%)`,
+      });
+
+      return res.json({ success: true, holding, transaction: tx, realizedGain, pnlPercent });
     } else if (type === 'BUY') {
       const oldQty = holding.quantity;
-      const totalCost = oldQty * holding.averageBuyPrice + numUnits * livePrice;
+      const totalCost = oldQty * holding.averageBuyPrice + numUnits * execPrice;
       const newQty = oldQty + numUnits;
 
       holding.quantity = Number(newQty.toFixed(4));
       holding.averageBuyPrice = Number((totalCost / newQty).toFixed(2));
-      holding.latestPrice = livePrice;
+      holding.latestPrice = execPrice;
       holding.latestPriceDate = new Date();
       await holding.save();
+
+      const tx = await InvestmentTransaction.create({
+        holdingId: holding._id,
+        userId,
+        type: 'BUY',
+        units: numUnits,
+        pricePerUnit: execPrice,
+        totalAmount: Number((numUnits * execPrice).toFixed(2)),
+        realizedGain: 0,
+        notes: notes || `Bought ${numUnits} units @ ₹${execPrice}`,
+      });
+
+      return res.json({ success: true, holding, transaction: tx });
+    } else {
+      return res.status(400).json({ error: 'Invalid transaction type. Must be BUY or SELL.' });
     }
-
-    const tx = await InvestmentTransaction.create({
-      holdingId: holding._id,
-      userId,
-      type,
-      units: numUnits,
-      pricePerUnit: livePrice,
-      totalAmount: Number((numUnits * livePrice).toFixed(2)),
-      notes: notes || `${type} ${numUnits} units @ ₹${livePrice}`,
-    });
-
-    res.json({ success: true, holding, transaction: tx });
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+// 3b. GET /api/investments/holdings/:id/transactions (Full buy/sell transaction history for a particular asset)
+router.get('/holdings/:id/transactions', async (req, res) => {
+  try {
+    const holding = await InvestmentHolding.findById(req.params.id);
+    if (!holding) {
+      return res.status(404).json({ error: 'Holding not found' });
+    }
+
+    let transactions = await InvestmentTransaction.find({ holdingId: req.params.id }).sort({ date: -1, createdAt: -1 });
+
+    // If no transactions in DB, synthesize initial BUY transaction from holding creation
+    if (!transactions || transactions.length === 0) {
+      transactions = [
+        {
+          _id: 'init_' + holding._id,
+          holdingId: holding._id,
+          userId: holding.userId,
+          type: 'BUY',
+          units: holding.quantity,
+          pricePerUnit: holding.averageBuyPrice,
+          totalAmount: Number((holding.quantity * holding.averageBuyPrice).toFixed(2)),
+          realizedGain: 0,
+          date: holding.createdAt || new Date(),
+          notes: `Initial Position: ${holding.quantity} units @ ₹${holding.averageBuyPrice}`,
+          isInitialPosition: true,
+        },
+      ];
+    }
+
+    const currentPrice = holding.latestPrice || holding.averageBuyPrice;
+    const investedVal = Number((holding.quantity * holding.averageBuyPrice).toFixed(2));
+    const currentVal = Number((holding.quantity * currentPrice).toFixed(2));
+    const pnlVal = Number((currentVal - investedVal).toFixed(2));
+    const pnlPct = holding.averageBuyPrice > 0 ? Number((((currentPrice - holding.averageBuyPrice) / holding.averageBuyPrice) * 100).toFixed(2)) : 0;
+
+    res.json({
+      success: true,
+      holding: {
+        _id: holding._id,
+        symbolOrCode: holding.symbolOrCode,
+        instrumentName: holding.instrumentName,
+        assetClass: holding.assetClass,
+        subCategory: holding.subCategory,
+        quantity: holding.quantity,
+        averageBuyPrice: holding.averageBuyPrice,
+        latestPrice: currentPrice,
+        investedValue: investedVal,
+        currentValue: currentVal,
+        pnl: pnlVal,
+        pnlPercent: pnlPct,
+        createdAt: holding.createdAt,
+      },
+      transactions,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3c. GET /api/investments/transactions (List all user investment transactions)
+router.get('/transactions', async (req, res) => {
+  try {
+    const { holdingId, userId = 'admin' } = req.query;
+    const filter = { userId };
+    if (holdingId) filter.holdingId = holdingId;
+
+    const transactions = await InvestmentTransaction.find(filter)
+      .populate('holdingId', 'symbolOrCode instrumentName assetClass subCategory')
+      .sort({ date: -1, createdAt: -1 });
+
+    res.json(transactions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
