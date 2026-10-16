@@ -34,10 +34,10 @@ export const RISK_COLORS = {
 };
 
 export const TAB_OPTIONS = [
-  { key: 'monthly', label: 'Monthly Investments', icon: 'calendar-outline' },
-  { key: 'sector', label: 'Sector & Industry', icon: 'business-outline' },
-  { key: 'marketCap', label: 'Market Cap Spread', icon: 'bar-chart-outline' },
-  { key: 'risk', label: 'Risk & Volatility Spectrum', icon: 'shield-checkmark-outline' },
-  { key: 'assetClass', label: 'Asset Classes', icon: 'pie-chart-outline' },
-  { key: 'overview', label: 'All Visuals Studio', icon: 'grid-outline' },
+  { key: 'monthly', label: 'Monthly', icon: 'calendar-outline' },
+  { key: 'sector', label: 'Sectors', icon: 'business-outline' },
+  { key: 'marketCap', label: 'Market Cap', icon: 'bar-chart-outline' },
+  { key: 'risk', label: 'Risk', icon: 'shield-checkmark-outline' },
+  { key: 'assetClass', label: 'Assets', icon: 'pie-chart-outline' },
+  { key: 'overview', label: 'Overview', icon: 'grid-outline' },
 ];

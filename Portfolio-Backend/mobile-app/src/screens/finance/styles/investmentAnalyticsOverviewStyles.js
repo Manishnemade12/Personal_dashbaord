@@ -113,20 +113,20 @@ container: {
 
   // Tab Bar
   tabBarWrapper: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   tabBar: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   tabButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 22,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -136,7 +136,7 @@ container: {
     borderColor: '#0f172a',
   },
   tabButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#475569',
   },

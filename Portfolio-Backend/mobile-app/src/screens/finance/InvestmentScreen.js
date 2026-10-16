@@ -12,7 +12,7 @@ import styles from './styles/investmentStyles';
 import { ASSET_CLASSES, ASSET_META } from './constants/assetOptions';
 import InvestmentHeader from './components/InvestmentHeader';
 import InvestmentModals from './components/InvestmentModals';
-import HoldingHistorySection from './components/HoldingHistorySection';
+import HoldingHistoryModal from './components/HoldingHistoryModal';
 import useInvestments from './hooks/useInvestments';
 
 export default function InvestmentScreen({ onNavigate }) {
@@ -38,8 +38,10 @@ export default function InvestmentScreen({ onNavigate }) {
     openBulkRemoveModal,
     openAiImportModal,
     handleDeleteHolding,
-    expandedHoldingId,
-    toggleHoldingExpand,
+    historyModalVisible,
+    selectedHistoryHolding,
+    openHistoryModal,
+    closeHistoryModal,
     holdingTransactionsMap,
     loadingHistoryId,
     modalData,
@@ -278,17 +280,11 @@ export default function InvestmentScreen({ onNavigate }) {
                 const isExpanded = expandedHoldingId === h._id;
 
                 return (
-                  <View
-                    key={h._id}
-                    style={[
-                      styles.holdingCard,
-                      isExpanded && { borderColor: '#3b82f6', shadowOpacity: 0.1 },
-                    ]}
-                  >
-                    {/* Top Row: Clickable Header to Toggle Transaction History & Details */}
+                  <View key={h._id} style={styles.holdingCard}>
+                    {/* Top Row: Clickable Header to Open Transaction History & Details Modal */}
                     <TouchableOpacity
                       activeOpacity={0.7}
-                      onPress={() => toggleHoldingExpand(h._id)}
+                      onPress={() => openHistoryModal(h)}
                       style={styles.holdingHeader}
                     >
                       <View style={[styles.assetIconBox, { backgroundColor: meta.bg }]}>
@@ -316,9 +312,9 @@ export default function InvestmentScreen({ onNavigate }) {
                             {h.quantity} {meta.unit}
                           </Text>
                           <Ionicons
-                            name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                            size={14}
-                            color="#94a3b8"
+                            name="time-outline"
+                            size={13}
+                            color="#3b82f6"
                           />
                         </View>
                       </View>
@@ -388,7 +384,7 @@ export default function InvestmentScreen({ onNavigate }) {
                       </View>
                     </View>
 
-                    {/* Bottom Action Strip: History Toggle, Buy More, Sell Units, Edit, Remove */}
+                    {/* Bottom Action Strip: History, Buy More, Sell Units, Edit, Remove */}
                     <View style={styles.holdingFooter}>
                       <View style={styles.footerNoteRow}>
                         <Ionicons name="information-circle-outline" size={13} color="#94a3b8" />
@@ -398,26 +394,18 @@ export default function InvestmentScreen({ onNavigate }) {
                       </View>
 
                       <View style={styles.holdingActionBtns}>
-                        {/* History Accordion Toggle Button */}
+                        {/* History Modal Trigger Button */}
                         <TouchableOpacity
-                          style={[
-                            styles.historyToggleBtn,
-                            isExpanded && { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
-                          ]}
-                          onPress={() => toggleHoldingExpand(h._id)}
+                          style={styles.historyToggleBtn}
+                          onPress={() => openHistoryModal(h)}
                         >
                           <Ionicons
-                            name={isExpanded ? 'chevron-up-circle-outline' : 'time-outline'}
+                            name="time-outline"
                             size={14}
-                            color={isExpanded ? '#2563eb' : '#475569'}
+                            color="#2563eb"
                           />
-                          <Text
-                            style={[
-                              styles.historyToggleText,
-                              isExpanded && { color: '#2563eb' },
-                            ]}
-                          >
-                            {isExpanded ? 'Hide History' : 'History'}
+                          <Text style={[styles.historyToggleText, { color: '#2563eb' }]}>
+                            History
                           </Text>
                         </TouchableOpacity>
 
@@ -458,17 +446,6 @@ export default function InvestmentScreen({ onNavigate }) {
                         </TouchableOpacity>
                       </View>
                     </View>
-
-                    {/* Expandable Accordion: Buy & Sell Timeline & Deep-Dive Metrics */}
-                    {isExpanded ? (
-                      <HoldingHistorySection
-                        holding={h}
-                        transactions={holdingTransactionsMap[h._id]}
-                        isLoading={loadingHistoryId === h._id}
-                        onAddMore={openAddMoreModal}
-                        onSell={openSellModal}
-                      />
-                    ) : null}
                   </View>
                 );
               })
@@ -478,6 +455,17 @@ export default function InvestmentScreen({ onNavigate }) {
           <View style={{ height: 40 }} />
         </ScrollView>
       )}
+
+      {/* Dedicated Holding History Modal (With Prominent Close Button, Summary Grid, & Chronological Ledger) */}
+      <HoldingHistoryModal
+        visible={historyModalVisible}
+        holding={selectedHistoryHolding}
+        transactions={selectedHistoryHolding ? holdingTransactionsMap[selectedHistoryHolding._id] : []}
+        isLoading={selectedHistoryHolding ? loadingHistoryId === selectedHistoryHolding._id : false}
+        onClose={closeHistoryModal}
+        onAddMore={openAddMoreModal}
+        onSell={openSellModal}
+      />
 
       {/* Unified Modals: Add, Edit, Add More, Sell, Bulk Remove, and AI Vision Import */}
       <InvestmentModals data={modalData} />

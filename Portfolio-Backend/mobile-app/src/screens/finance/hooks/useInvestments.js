@@ -329,8 +329,10 @@ export default function useInvestments() {
   };
 
   // =========================================================================
-  // SECTION 5: HOLDING TRANSACTION HISTORY & EXPANDED CARD ACCORDION
+  // SECTION 5: HOLDING TRANSACTION HISTORY MODAL & DEDICATED LEDGER
   // =========================================================================
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [selectedHistoryHolding, setSelectedHistoryHolding] = useState(null);
   const [expandedHoldingId, setExpandedHoldingId] = useState(null);
   const [holdingTransactionsMap, setHoldingTransactionsMap] = useState({});
   const [loadingHistoryId, setLoadingHistoryId] = useState(null);
@@ -355,6 +357,19 @@ export default function useInvestments() {
       setLoadingHistoryId(null);
     }
     return [];
+  };
+
+  const openHistoryModal = async (holding) => {
+    setSelectedHistoryHolding(holding);
+    setHistoryModalVisible(true);
+    if (!holdingTransactionsMap[holding._id]) {
+      await fetchHoldingHistory(holding._id);
+    }
+  };
+
+  const closeHistoryModal = () => {
+    setHistoryModalVisible(false);
+    setSelectedHistoryHolding(null);
   };
 
   const toggleHoldingExpand = async (holdingId) => {
@@ -806,7 +821,11 @@ export default function useInvestments() {
     openAiImportModal,
     handleDeleteHolding,
 
-    // History & Toggle Accordion
+    // History Modal & Ledger
+    historyModalVisible,
+    selectedHistoryHolding,
+    openHistoryModal,
+    closeHistoryModal,
     expandedHoldingId,
     toggleHoldingExpand,
     holdingTransactionsMap,
