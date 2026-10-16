@@ -137,7 +137,13 @@ export default function InvestmentAnalyticsScreen({ onNavigate }) {
           style={[
             styles.donutOuter,
             { width: size, height: size, borderRadius: size / 2 },
-            Platform.OS === 'web' ? { background: conicCss } : { backgroundColor: '#3b82f6' },
+            Platform.OS === 'web'
+              ? {
+                  backgroundImage: conicCss.startsWith('conic') ? conicCss : undefined,
+                  backgroundColor: !conicCss.startsWith('conic') ? conicCss : '#3b82f6',
+                  background: conicCss,
+                }
+              : { backgroundColor: '#3b82f6' },
           ]}
         >
           <View
@@ -153,31 +159,31 @@ export default function InvestmentAnalyticsScreen({ onNavigate }) {
             {activeItem ? (
               <View style={styles.donutCenterContent}>
                 <View style={[styles.donutCenterDot, { backgroundColor: activeItem.color }]} />
-                <Text style={[styles.donutCenterPercent, { color: activeItem.color }]}>
+                <Text style={[styles.donutCenterPercent, { color: activeItem.color }, isMobile && { fontSize: 20 }]}>
                   {activeItem.percent}%
                 </Text>
-                <Text style={styles.donutCenterName} numberOfLines={2}>
+                <Text style={[styles.donutCenterName, isMobile && { fontSize: 11, maxWidth: 95 }]} numberOfLines={1}>
                   {activeItem.name}
                 </Text>
-                <Text style={styles.donutCenterValue}>
+                <Text style={[styles.donutCenterValue, isMobile && { fontSize: 12 }]}>
                   {formatINR(activeItem.value)}
                 </Text>
-                <Text style={styles.donutCenterCount}>
+                <Text style={[styles.donutCenterCount, isMobile && { fontSize: 10 }]}>
                   {activeItem.items?.length || 0} Assets
                 </Text>
               </View>
             ) : (
               <View style={styles.donutCenterContent}>
-                <Text style={styles.donutCenterTotalLabel}>PORTFOLIO TOTAL</Text>
-                <Text style={styles.donutCenterTotalVal}>
+                <Text style={[styles.donutCenterTotalLabel, isMobile && { fontSize: 9 }]}>PORTFOLIO</Text>
+                <Text style={[styles.donutCenterTotalVal, isMobile && { fontSize: 15 }]}>
                   {formatINR(analytics?.totalPortfolioValue)}
                 </Text>
-                <View style={styles.donutCenterPill}>
-                  <Text style={styles.donutCenterPillText}>
+                <View style={[styles.donutCenterPill, isMobile && { paddingHorizontal: 6, paddingVertical: 1 }]}>
+                  <Text style={[styles.donutCenterPillText, isMobile && { fontSize: 10 }]}>
                     {analytics?.holdingsCount || 0} Holdings
                   </Text>
                 </View>
-                <Text style={styles.donutCenterHint}>Tap slice or row to inspect</Text>
+                {!isMobile && <Text style={styles.donutCenterHint}>Tap slice to inspect</Text>}
               </View>
             )}
           </View>
@@ -661,9 +667,6 @@ export default function InvestmentAnalyticsScreen({ onNavigate }) {
           style={[styles.contentScroll, isMobile && { padding: 12 }]}
           showsVerticalScrollIndicator={false}
         >
-          {/* Continuous Visual Allocation Ribbon (Hidden in overview and monthly) */}
-          {selectedTab !== 'overview' && selectedTab !== 'monthly' && renderAllocationRibbon(currentDataset.list)}
-
           {selectedTab === 'overview' ? (
             /* Multi-View Visual Studio */
             <View style={[styles.overviewGrid, isMobile && { flexDirection: 'column' }]}>
@@ -790,30 +793,30 @@ export default function InvestmentAnalyticsScreen({ onNavigate }) {
             /* Single Dimension Focused Visual Studio */
             <View style={styles.studioCard}>
               <View style={styles.studioHeader}>
-                <View>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.studioTitle}>{currentDataset.title}</Text>
-                  <Text style={styles.studioSubtitle}>{currentDataset.subtitle}</Text>
+                  {!isMobile && <Text style={styles.studioSubtitle}>{currentDataset.subtitle}</Text>}
                 </View>
                 {selectedSlice && (
                   <TouchableOpacity
                     style={styles.clearFilterBtn}
                     onPress={() => setSelectedSlice(null)}
                   >
-                    <Ionicons name="close-circle" size={15} color="#ef4444" />
-                    <Text style={styles.clearFilterText}>Reset Filter ({selectedSlice})</Text>
+                    <Ionicons name="close-circle" size={14} color="#ef4444" />
+                    <Text style={styles.clearFilterText}>Reset ({selectedSlice})</Text>
                   </TouchableOpacity>
                 )}
               </View>
 
               {/* Visual Ring & Weightage Leaderboard */}
-              <View style={[styles.studioBody, isMobile && { flexDirection: 'column', alignItems: 'center' }]}>
+              <View style={[styles.studioBody, isMobile && { flexDirection: 'column', alignItems: 'center', gap: 10 }]}>
                 {/* Donut Chart Canvas */}
                 <View style={styles.donutCanvas}>
-                  {renderDonutChart(currentDataset.list, isMobile ? 210 : 260, isMobile ? 140 : 175)}
+                  {renderDonutChart(currentDataset.list, isMobile ? 180 : 250, isMobile ? 120 : 165)}
                 </View>
 
                 {/* Visual Weightage Leaderboard */}
-                <View style={[styles.leaderboardSection, isMobile && { width: '100%', minWidth: '100%', marginTop: 14 }]}>
+                <View style={styles.leaderboardSection}>
                   <Text style={styles.leaderboardSectionTitle}>Distribution Leaderboard</Text>
                   {currentDataset.list.map((item) => {
                     const isSelected = selectedSlice === item.name;

@@ -3,20 +3,22 @@ import { StyleSheet } from 'react-native';
 export default StyleSheet.create({
 // Monthly Studio Styles
   monthlyStudioContainer: {
-    gap: 20,
-    marginBottom: 30,
+    gap: 12,
+    marginBottom: 20,
   },
   monthlyKpiGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
   },
   monthlyKpiCard: {
-    flex: 1,
-    minWidth: 160,
+    width: '48%',
+    flexBasis: '48%',
+    flexGrow: 1,
+    minWidth: 0,
     backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     shadowColor: '#000',
@@ -394,11 +396,12 @@ export default StyleSheet.create({
   monthInstrumentsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   monthInstrumentCard: {
-    flex: 1,
-    minWidth: 180,
+    width: '100%',
+    minWidth: 0,
+    flexBasis: '100%',
     backgroundColor: '#f8fafc',
     borderRadius: 10,
     padding: 10,
