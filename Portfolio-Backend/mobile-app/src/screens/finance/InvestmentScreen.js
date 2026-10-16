@@ -277,7 +277,6 @@ export default function InvestmentScreen({ onNavigate }) {
                   unit: 'Units',
                 };
                 const isProfit = (h.pnl || 0) >= 0;
-                const isExpanded = expandedHoldingId === h._id;
 
                 return (
                   <View key={h._id} style={styles.holdingCard}>

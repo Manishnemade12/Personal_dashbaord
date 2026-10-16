@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, SafeAreaView, View, StatusBar, Platform, Alert } from 'react-native';
+import { StyleSheet, SafeAreaView, View, StatusBar, Platform, Alert, Text, TouchableOpacity } from 'react-native';
 import Header from './src/components/Header';
 import SidebarDrawer from './src/components/SidebarDrawer';
 import AuthScreen from './src/screens/auth/AuthScreen';
