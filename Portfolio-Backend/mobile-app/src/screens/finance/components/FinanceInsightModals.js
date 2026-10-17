@@ -27,7 +27,7 @@ export default function FinanceModals(props) {
       {/* ========================================================= */}
       <Modal visible={categoryDetailModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.categoryDrilldownCard}>
+          <View style={[styles.categoryDrilldownCard, isMobile && { width: '98%', maxWidth: '100%', padding: 12, borderRadius: 14, maxHeight: '94%' }]}>
             {(() => {
               const catMeta = getCategoryMeta(detailCategoryName, 'expense');
               const catSummary = summary?.categoryBreakdown?.find((c) => c.category === detailCategoryName);
@@ -38,25 +38,25 @@ export default function FinanceModals(props) {
                 <>
                   {/* Modal Header */}
                   <View style={styles.modalHeader}>
-                    <View style={styles.catDrillHeaderLeft}>
-                      <View style={[styles.catDrillIconBadge, { backgroundColor: `${catMeta.color || '#64748b'}20` }]}>
-                        <Ionicons name={catMeta.icon || 'pricetag'} size={24} color={catMeta.color || '#64748b'} />
+                    <View style={[styles.catDrillHeaderLeft, { flex: 1, minWidth: 0, marginRight: 8 }]}>
+                      <View style={[styles.catDrillIconBadge, { backgroundColor: `${catMeta.color || '#64748b'}20` }, isMobile && { width: 36, height: 36, borderRadius: 10 }]}>
+                        <Ionicons name={catMeta.icon || 'pricetag'} size={isMobile ? 18 : 24} color={catMeta.color || '#64748b'} />
                       </View>
-                      <View>
-                        <Text style={styles.catDrillTitle}>{detailCategoryName}</Text>
-                        <Text style={styles.catDrillSubtitle}>End-to-End Itemized Activity & Breakdown</Text>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={[styles.catDrillTitle, isMobile && { fontSize: 16 }]} numberOfLines={1}>{detailCategoryName}</Text>
+                        <Text style={styles.catDrillSubtitle} numberOfLines={1}>Itemized Breakdown</Text>
                       </View>
                     </View>
-                    <TouchableOpacity onPress={() => setCategoryDetailModalVisible(false)}>
-                      <Ionicons name="close" size={24} color="#64748b" />
+                    <TouchableOpacity onPress={() => setCategoryDetailModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Ionicons name="close" size={22} color="#64748b" />
                     </TouchableOpacity>
                   </View>
 
                   {/* Category Summary Stats Banner */}
-                  <View style={styles.catDrillStatsBanner}>
+                  <View style={[styles.catDrillStatsBanner, isMobile && { paddingVertical: 8, paddingHorizontal: 6, marginVertical: 8 }]}>
                     <View style={styles.catDrillStatItem}>
-                      <Text style={styles.catDrillStatLabel}>Total Spent</Text>
-                      <Text style={[styles.catDrillStatVal, { color: catMeta.color || '#0f172a' }]}>
+                      <Text style={[styles.catDrillStatLabel, isMobile && { fontSize: 9 }]}>Total Spent</Text>
+                      <Text style={[styles.catDrillStatVal, { color: catMeta.color || '#0f172a' }, isMobile && { fontSize: 13 }]}>
                         ₹{totalCatAmount.toLocaleString('en-IN')}
                       </Text>
                     </View>
@@ -184,43 +184,43 @@ export default function FinanceModals(props) {
       {/* ========================================================= */}
       <Modal visible={investmentDetailModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.investmentsDrilldownCard}>
+          <View style={[styles.investmentsDrilldownCard, isMobile && { width: '98%', maxWidth: '100%', padding: 12, borderRadius: 14, maxHeight: '94%' }]}>
             <View style={styles.modalHeader}>
-              <View style={styles.invDrillHeaderLeft}>
-                <View style={styles.invDrillIconBadge}>
-                  <Ionicons name="trending-up" size={24} color="#7e37d8" />
+              <View style={[styles.invDrillHeaderLeft, { flex: 1, minWidth: 0, marginRight: 8 }]}>
+                <View style={[styles.invDrillIconBadge, isMobile && { width: 36, height: 36, borderRadius: 10 }]}>
+                  <Ionicons name="trending-up" size={isMobile ? 18 : 24} color="#7e37d8" />
                 </View>
-                <View>
-                  <Text style={styles.invDrillTitle}>Monthly Wealth Deployments</Text>
-                  <Text style={styles.invDrillSubtitle}>
-                    Kisme kitna paisa invest kiya • {monthName}
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[styles.invDrillTitle, isMobile && { fontSize: 16 }]} numberOfLines={1}>Monthly Wealth Deployments</Text>
+                  <Text style={styles.invDrillSubtitle} numberOfLines={1}>
+                    Deployments • {monthName}
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => setInvestmentDetailModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#64748b" />
+              <TouchableOpacity onPress={() => setInvestmentDetailModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close" size={22} color="#64748b" />
               </TouchableOpacity>
             </View>
 
             {/* Investment Target vs Real Deployment Banner */}
-            <View style={styles.invDrillStatsBanner}>
+            <View style={[styles.invDrillStatsBanner, isMobile && { paddingVertical: 8, paddingHorizontal: 6, marginVertical: 8 }]}>
               <View style={styles.invDrillStatItem}>
-                <Text style={styles.invDrillStatLabel}>Invested This Month</Text>
-                <Text style={[styles.invDrillStatVal, { color: '#7e37d8' }]}>
+                <Text style={[styles.invDrillStatLabel, isMobile && { fontSize: 9 }]}>Invested</Text>
+                <Text style={[styles.invDrillStatVal, { color: '#7e37d8' }, isMobile && { fontSize: 13 }]}>
                   ₹{(summary?.monthlyInvested || 0).toLocaleString('en-IN')}
                 </Text>
               </View>
               <View style={styles.invDrillStatDivider} />
               <View style={styles.invDrillStatItem}>
-                <Text style={styles.invDrillStatLabel}>Target Goal</Text>
-                <Text style={styles.invDrillStatVal}>
+                <Text style={[styles.invDrillStatLabel, isMobile && { fontSize: 9 }]}>Target</Text>
+                <Text style={[styles.invDrillStatVal, isMobile && { fontSize: 13 }]}>
                   ₹{(summary?.investmentTarget || 0).toLocaleString('en-IN')}
                 </Text>
               </View>
               <View style={styles.invDrillStatDivider} />
               <View style={styles.invDrillStatItem}>
-                <Text style={styles.invDrillStatLabel}>Target Status</Text>
-                <Text style={[styles.invDrillStatVal, { color: summary?.investmentTargetProgress >= 100 ? '#10b981' : '#7e37d8' }]}>
+                <Text style={[styles.invDrillStatLabel, isMobile && { fontSize: 9 }]}>Progress</Text>
+                <Text style={[styles.invDrillStatVal, { color: summary?.investmentTargetProgress >= 100 ? '#10b981' : '#7e37d8' }, isMobile && { fontSize: 13 }]}>
                   {summary?.investmentTargetProgress || 0}%
                 </Text>
               </View>

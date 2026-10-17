@@ -260,18 +260,36 @@ export default function InvestmentAnalyticsScreen({ onNavigate }) {
       );
     }
 
+    const selectedMonthObj = selectedMonth ? dataList.find((m) => m.month === selectedMonth) : null;
     const maxVal = Math.max(...dataList.map((m) => m.totalInvested || 0), 1000);
-    const chartHeight = isMini ? 85 : 150;
+    const chartHeight = isMini ? 85 : 155;
 
     return (
       <View style={[styles.barChartContainer, isMini && styles.barChartContainerMini]}>
+        {/* Interactive Selected Month Amount Display */}
+        {!isMini && selectedMonthObj && (
+          <View style={styles.selectedMonthBanner}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#2563eb' }} />
+              <Text style={styles.selectedMonthBannerTitle}>{selectedMonthObj.monthLabel}:</Text>
+              <Text style={styles.selectedMonthBannerAmount}>
+                {formatINR(selectedMonthObj.totalInvested || 0)}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => setSelectedMonth(null)} style={styles.clearMonthPill}>
+              <Text style={styles.clearMonthPillText}>Show All ✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={[styles.barChartCanvas, { height: chartHeight }]}>
           {dataList.map((m, idx) => {
             const isSelected = selectedMonth === m.month;
             const isCurrent = idx === dataList.length - 1;
             const amount = m.totalInvested || 0;
             const heightPercent = Math.max((amount / maxVal) * 100, amount > 0 ? 12 : 4);
-            const barPixelHeight = Math.max((heightPercent / 100) * (chartHeight - (isMini ? 22 : 38)), amount > 0 ? 14 : 4);
+            const availableHeight = chartHeight - (isMini ? 24 : 56);
+            const barPixelHeight = Math.max((heightPercent / 100) * availableHeight, amount > 0 ? 12 : 4);
 
             return (
               <TouchableOpacity
@@ -287,7 +305,7 @@ export default function InvestmentAnalyticsScreen({ onNavigate }) {
                 }}
                 activeOpacity={0.75}
               >
-                {/* Top Amount Label */}
+                {/* Top Amount Label: Guaranteed headroom to prevent clipping */}
                 {!isMini && (
                   <Text
                     style={[
@@ -297,7 +315,7 @@ export default function InvestmentAnalyticsScreen({ onNavigate }) {
                     ]}
                     numberOfLines={1}
                   >
-                    {amount > 0 ? (amount >= 1000 ? `₹${Math.round(amount / 1000)}k` : formatINR(amount)) : '₹0'}
+                    {amount > 0 ? (amount >= 1000 ? `₹${Math.round(amount / 1000)}k` : `₹${amount}`) : '₹0'}
                   </Text>
                 )}
 
@@ -481,7 +499,7 @@ export default function InvestmentAnalyticsScreen({ onNavigate }) {
                     <View style={styles.calendarMiniIcon}>
                       <Ionicons name="calendar" size={16} color="#3b82f6" />
                     </View>
-                    <View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <Text style={styles.monthCardTitle}>{m.monthLabel}</Text>
                         {isLatest && (
@@ -490,8 +508,8 @@ export default function InvestmentAnalyticsScreen({ onNavigate }) {
                           </View>
                         )}
                       </View>
-                      <Text style={styles.monthCardSub}>
-                        {m.transactionsCount} Transaction{m.transactionsCount === 1 ? '' : 's'} • {m.assetsCount} Unique Asset{m.assetsCount === 1 ? '' : 's'}
+                      <Text style={styles.monthCardSub} numberOfLines={1} ellipsizeMode="tail">
+                        {m.transactionsCount} tx{m.transactionsCount === 1 ? '' : 's'} • {m.assetsCount} unique asset{m.assetsCount === 1 ? '' : 's'}
                       </Text>
                     </View>
                   </View>

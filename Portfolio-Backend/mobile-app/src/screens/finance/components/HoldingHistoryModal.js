@@ -266,11 +266,11 @@ export default function HoldingHistoryModal({
           </ScrollView>
 
           {/* 4. Bottom Actions Toolbar */}
-          <View style={modalStyles.modalFooter}>
-            <View style={modalStyles.footerActionGroup}>
+          <View style={[modalStyles.modalFooter, isMobile && modalStyles.modalFooterMobile]}>
+            <View style={[modalStyles.footerActionGroup, isMobile && modalStyles.footerActionGroupMobile]}>
               {onAddMore && (
                 <TouchableOpacity
-                  style={modalStyles.footerAddMoreBtn}
+                  style={[modalStyles.footerAddMoreBtn, isMobile && { flex: 1, justifyContent: 'center' }]}
                   onPress={() => {
                     onClose();
                     onAddMore(holding);
@@ -284,7 +284,7 @@ export default function HoldingHistoryModal({
 
               {onSell && (
                 <TouchableOpacity
-                  style={modalStyles.footerSellBtn}
+                  style={[modalStyles.footerSellBtn, isMobile && { flex: 1, justifyContent: 'center' }]}
                   onPress={() => {
                     onClose();
                     onSell(holding);
@@ -298,7 +298,7 @@ export default function HoldingHistoryModal({
             </View>
 
             <TouchableOpacity
-              style={modalStyles.closeFooterBtn}
+              style={[modalStyles.closeFooterBtn, isMobile && modalStyles.closeFooterBtnMobile]}
               onPress={onClose}
               activeOpacity={0.8}
             >
@@ -598,11 +598,32 @@ const modalStyles = StyleSheet.create({
     backgroundColor: '#ffffff',
     gap: 10,
   },
+  modalFooterMobile: {
+    flexDirection: 'column',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    width: '100%',
+  },
   footerActionGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     flex: 1,
+  },
+  footerActionGroupMobile: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  closeFooterBtnMobile: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
   },
   footerAddMoreBtn: {
     flexDirection: 'row',
