@@ -342,6 +342,9 @@ container: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    minWidth: 0,
+    marginRight: 8,
   },
   catDot: {
     width: 8,
@@ -353,10 +356,20 @@ container: {
     fontWeight: '700',
     color: '#1e293b',
   },
+  catRightCol: {
+    alignItems: 'flex-end',
+    flexShrink: 0,
+  },
   catAmountText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#475569',
+  },
+  catClickHint: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#7e37d8',
+    marginTop: 1,
   },
   catBarTrack: {
     height: 6,
@@ -547,11 +560,12 @@ container: {
   },
   txAmountCol: {
     alignItems: 'flex-end',
+    flexShrink: 0,
   },
   txAmountText: {
-    fontSize: 15,
-    fontWeight: '800',
-    marginBottom: 4,
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
   },
   textIncome: { color: '#059669' },
   textExpense: { color: '#dc2626' },

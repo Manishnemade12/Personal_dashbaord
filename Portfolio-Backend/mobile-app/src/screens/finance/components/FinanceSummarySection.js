@@ -139,9 +139,9 @@ export default function FinanceSummarySection({ summary, isMobile, onOpenInvestm
             {/* Left: Monthly Spending Budget Meter */}
             <View style={styles.budgetMeterCard}>
               <View style={styles.meterHeader}>
-                <View>
-                  <Text style={styles.meterTitle}>Monthly Expense Budget</Text>
-                  <Text style={styles.meterSubtitle}>
+                <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                  <Text style={styles.meterTitle} numberOfLines={1}>Monthly Expense Budget</Text>
+                  <Text style={styles.meterSubtitle} numberOfLines={2}>
                     {summary?.spendingLimit > 0
                       ? `₹${(summary?.totalSpent || 0).toLocaleString('en-IN')} spent of ₹${(summary?.spendingLimit || 0).toLocaleString('en-IN')} allocated limit`
                       : `₹${(summary?.totalSpent || 0).toLocaleString('en-IN')} spent this month • No limit configured`}
@@ -150,6 +150,7 @@ export default function FinanceSummarySection({ summary, isMobile, onOpenInvestm
                 <View
                   style={[
                     styles.meterPercentBadge,
+                    { flexShrink: 0 },
                     summary?.spendingLimit > 0
                       ? summary?.budgetSpentPercent > 90
                         ? styles.badgeDanger
@@ -207,9 +208,9 @@ export default function FinanceSummarySection({ summary, isMobile, onOpenInvestm
             {/* Right: Monthly Wealth & Investment Target Meter (Coupled!) */}
             <View style={styles.investmentMeterCard}>
               <View style={styles.meterHeader}>
-                <View>
-                  <Text style={styles.meterTitle}>Monthly Investment Target</Text>
-                  <Text style={styles.meterSubtitle}>
+                <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                  <Text style={styles.meterTitle} numberOfLines={1}>Monthly Investment Target</Text>
+                  <Text style={styles.meterSubtitle} numberOfLines={2}>
                     {summary?.investmentTarget > 0
                       ? `₹${(summary?.monthlyInvested || 0).toLocaleString('en-IN')} invested of ₹${(summary?.investmentTarget || 0).toLocaleString('en-IN')} target`
                       : `₹${(summary?.monthlyInvested || 0).toLocaleString('en-IN')} invested • Tap Set Budget to set target`}
@@ -218,6 +219,7 @@ export default function FinanceSummarySection({ summary, isMobile, onOpenInvestm
                 <View
                   style={[
                     styles.meterPercentBadge,
+                    { flexShrink: 0 },
                     summary?.investmentTarget > 0
                       ? summary?.investmentTargetProgress >= 100
                         ? styles.badgeSuccess
@@ -274,41 +276,41 @@ export default function FinanceSummarySection({ summary, isMobile, onOpenInvestm
             </View>
           </View>
 
-          {/* 3B. Current Month Wealth Deployments & Investments Breakdown (Kisme kitna invest kiya) */}
+          {/* 3B. Current Month Wealth Deployments & Investments Breakdown */}
           {((summary?.monthlyInvested || 0) > 0 || (summary?.investedByInstrument?.length || 0) > 0) && (
             <View style={styles.investmentsOverviewCard}>
-              <View style={[styles.invCardHeader, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 10 }]}>
+              <View style={[styles.invCardHeader, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 8 }]}>
                 <View style={[styles.invCardTitleWrap, isMobile && { width: '100%' }]}>
-                  <View style={styles.invIconBadge}>
-                    <Ionicons name="trending-up" size={18} color="#7e37d8" />
+                  <View style={[styles.invIconBadge, isMobile && { width: 32, height: 32, borderRadius: 8 }]}>
+                    <Ionicons name="trending-up" size={isMobile ? 16 : 18} color="#7e37d8" />
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.invCardTitle} numberOfLines={1}>Current Month Wealth</Text>
-                    <Text style={styles.invCardSubtitle} numberOfLines={isMobile ? 2 : 1}>
-                      Kisme kitna paisa invest kiya • ₹{(summary?.monthlyInvested || 0).toLocaleString('en-IN')} deployed across {summary?.investedByInstrument?.length || 0} assets
+                    <Text style={[styles.invCardTitle, isMobile && { fontSize: 14 }]} numberOfLines={1}>Current Month Wealth</Text>
+                    <Text style={[styles.invCardSubtitle, isMobile && { fontSize: 11 }]} numberOfLines={isMobile ? 2 : 1}>
+                      Monthly Deployments • ₹{(summary?.monthlyInvested || 0).toLocaleString('en-IN')} across {summary?.investedByInstrument?.length || 0} assets
                     </Text>
                   </View>
                 </View>
 
-                <View style={[styles.invCardActions, isMobile && { width: '100%', justifyContent: 'flex-start', flexWrap: 'wrap', gap: 8 }]}>
+                <View style={[styles.invCardActions, isMobile && { width: '100%', justifyContent: 'flex-start', flexWrap: 'wrap', gap: 6 }]}>
                   <TouchableOpacity
-                    style={[styles.invViewAllBtn, isMobile && { flex: 1, justifyContent: 'center' }]}
+                    style={[styles.invViewAllBtn, isMobile && { flex: 1, justifyContent: 'center', paddingHorizontal: 9, paddingVertical: 5, minHeight: 28 }]}
                     onPress={onOpenInvestmentDetail}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="list" size={14} color="#7e37d8" />
-                    <Text style={styles.invViewAllText}>
-                      View All ({summary?.investmentTransactionsThisMonth?.length || 0})
+                    <Ionicons name="list" size={13} color="#7e37d8" />
+                    <Text style={[styles.invViewAllText, isMobile && { fontSize: 11 }]}>
+                      View ({summary?.investmentTransactionsThisMonth?.length || 0})
                     </Text>
                   </TouchableOpacity>
 
                   {onNavigate && (
                     <TouchableOpacity
-                      style={[styles.invPortfolioLinkBtn, isMobile && { flex: 1, justifyContent: 'center', alignItems: 'center' }]}
+                      style={[styles.invPortfolioLinkBtn, isMobile && { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 9, paddingVertical: 5, minHeight: 28 }]}
                       onPress={() => onNavigate('Investments')}
                       activeOpacity={0.8}
                     >
-                      <Text style={styles.invPortfolioLinkText}>Go to Tracker ↗</Text>
+                      <Text style={[styles.invPortfolioLinkText, isMobile && { fontSize: 11 }]}>Track ↗</Text>
                     </TouchableOpacity>
                   )}
                 </View>

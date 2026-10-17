@@ -47,8 +47,12 @@ export default function FinanceModals(props) {
                         <Text style={styles.catDrillSubtitle} numberOfLines={1}>Itemized Breakdown</Text>
                       </View>
                     </View>
-                    <TouchableOpacity onPress={() => setCategoryDetailModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                      <Ionicons name="close" size={22} color="#64748b" />
+                    <TouchableOpacity
+                      style={styles.modalCloseBtn}
+                      onPress={() => setCategoryDetailModalVisible(false)}
+                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    >
+                      <Ionicons name="close" size={20} color="#475569" />
                     </TouchableOpacity>
                   </View>
 
@@ -161,14 +165,22 @@ export default function FinanceModals(props) {
                   </ScrollView>
 
                   {/* Modal Footer: Quick Add under this Category */}
-                  <View style={styles.catDrillFooter}>
+                  <View style={[styles.catDrillFooter, { flexDirection: 'row', gap: 8 }]}>
                     <TouchableOpacity
-                      style={styles.drillAddBtn}
-                      onPress={() => openAddTxForCategory(detailCategoryName)}
+                      style={[styles.modalCancelBtn, { flex: 1, paddingVertical: 10 }]}
+                      onPress={() => setCategoryDetailModalVisible(false)}
+                      activeOpacity={0.8}
                     >
-                      <Ionicons name="add-circle-outline" size={18} color="#ffffff" />
-                      <Text style={styles.drillAddBtnText}>
-                        + Add Expense under {detailCategoryName}
+                      <Text style={styles.modalCancelBtnText}>Close</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.drillAddBtn, { flex: 2, paddingVertical: 10, marginTop: 0 }]}
+                      onPress={() => openAddTxForCategory(detailCategoryName)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="add-circle-outline" size={16} color="#ffffff" />
+                      <Text style={[styles.drillAddBtnText, { fontSize: 12 }]}>
+                        + Add Expense
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -197,8 +209,12 @@ export default function FinanceModals(props) {
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => setInvestmentDetailModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="close" size={22} color="#64748b" />
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setInvestmentDetailModalVisible(false)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="close" size={20} color="#475569" />
               </TouchableOpacity>
             </View>
 
@@ -291,18 +307,26 @@ export default function FinanceModals(props) {
             </ScrollView>
 
             {/* Modal Footer */}
-            <View style={styles.invDrillFooter}>
+            <View style={[styles.invDrillFooter, { flexDirection: 'row', gap: 8 }]}>
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, { flex: 1, paddingVertical: 10 }]}
+                onPress={() => setInvestmentDetailModalVisible(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalCancelBtnText}>Close</Text>
+              </TouchableOpacity>
               {onNavigate && (
                 <TouchableOpacity
-                  style={styles.invGoToPortfolioBtn}
+                  style={[styles.invGoToPortfolioBtn, { flex: 2, paddingVertical: 10, marginTop: 0 }]}
                   onPress={() => {
                     setInvestmentDetailModalVisible(false);
                     onNavigate('Investments');
                   }}
+                  activeOpacity={0.8}
                 >
-                  <Ionicons name="pie-chart" size={16} color="#ffffff" />
-                  <Text style={styles.invGoToPortfolioBtnText}>
-                    Open Wealth & Portfolio Tracker
+                  <Ionicons name="pie-chart" size={15} color="#ffffff" />
+                  <Text style={[styles.invGoToPortfolioBtnText, { fontSize: 12 }]}>
+                    Open Portfolio
                   </Text>
                 </TouchableOpacity>
               )}

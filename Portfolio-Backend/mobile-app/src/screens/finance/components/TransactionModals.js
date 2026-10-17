@@ -27,16 +27,20 @@ export default function FinanceModals(props) {
       {/* ========================================================= */}
       <Modal visible={txModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, isMobile && { padding: 12, borderRadius: 14, maxHeight: '94%', width: '96%' }]}>
             <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>
+              <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                <Text style={[styles.modalTitle, isMobile && { fontSize: 15 }]} numberOfLines={1}>
                   {editingTx ? 'Edit Transaction' : 'Record Transaction'}
                 </Text>
-                <Text style={styles.modalSubtitle}>Track expenses with itemized sub-details</Text>
+                <Text style={[styles.modalSubtitle, isMobile && { fontSize: 11 }]} numberOfLines={1}>Track expenses with itemized sub-details</Text>
               </View>
-              <TouchableOpacity onPress={() => setTxModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#64748b" />
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setTxModalVisible(false)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="close" size={20} color="#475569" />
               </TouchableOpacity>
             </View>
 
@@ -258,15 +262,25 @@ export default function FinanceModals(props) {
               </View>
             </ScrollView>
 
-            <TouchableOpacity
-              style={styles.saveBtn}
-              onPress={handleSaveTransaction}
-              disabled={savingTx}
-            >
-              <Text style={styles.saveBtnText}>
-                {savingTx ? 'Saving...' : editingTx ? 'Update Transaction' : 'Save Transaction'}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.modalFooterActions}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setTxModalVisible(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, { flex: 2, marginTop: 0 }]}
+                onPress={handleSaveTransaction}
+                disabled={savingTx}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.saveBtnText}>
+                  {savingTx ? 'Saving...' : editingTx ? 'Update Transaction' : 'Save Transaction'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -276,18 +290,22 @@ export default function FinanceModals(props) {
       {/* ========================================================= */}
       <Modal visible={budgetModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, isMobile && { padding: 12, borderRadius: 14, maxHeight: '94%', width: '96%' }]}>
             <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>Monthly Budget & Goals</Text>
-                <Text style={styles.modalSubtitle}>Targets for {monthName}</Text>
+              <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                <Text style={[styles.modalTitle, isMobile && { fontSize: 15 }]} numberOfLines={1}>Monthly Budget & Goals</Text>
+                <Text style={[styles.modalSubtitle, isMobile && { fontSize: 11 }]} numberOfLines={1}>Targets for {monthName}</Text>
               </View>
-              <TouchableOpacity onPress={() => setBudgetModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#64748b" />
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setBudgetModalVisible(false)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="close" size={20} color="#475569" />
               </TouchableOpacity>
             </View>
 
-            <View style={{ paddingVertical: 14 }}>
+            <View style={{ paddingVertical: 10 }}>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Expected Monthly Salary / Income (₹)</Text>
                 <TextInput
@@ -322,15 +340,25 @@ export default function FinanceModals(props) {
               </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.saveBtn}
-              onPress={handleSaveBudget}
-              disabled={savingBudget}
-            >
-              <Text style={styles.saveBtnText}>
-                {savingBudget ? 'Saving...' : 'Save Budget Targets'}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.modalFooterActions}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setBudgetModalVisible(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, { flex: 2, marginTop: 0 }]}
+                onPress={handleSaveBudget}
+                disabled={savingBudget}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.saveBtnText}>
+                  {savingBudget ? 'Saving...' : 'Save Targets'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -340,16 +368,20 @@ export default function FinanceModals(props) {
       {/* ========================================================= */}
       <Modal visible={bulkRemoveModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.bulkRemoveCard}>
+          <View style={[styles.bulkRemoveCard, isMobile && { padding: 12, borderRadius: 14, maxHeight: '94%', width: '96%' }]}>
             <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalHeading}>Remove Transactions</Text>
-                <Text style={styles.modalSubheading}>
+              <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                <Text style={[styles.modalHeading, isMobile && { fontSize: 15 }]} numberOfLines={1}>Remove Transactions</Text>
+                <Text style={[styles.modalSubheading, isMobile && { fontSize: 11 }]} numberOfLines={1}>
                   Select transactions to delete, or use Select All
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setBulkRemoveModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#64748b" />
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setBulkRemoveModalVisible(false)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="close" size={20} color="#475569" />
               </TouchableOpacity>
             </View>
 

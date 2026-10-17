@@ -388,11 +388,11 @@ export default function FinanceScreen({ onNavigate }) {
           {/* 4. Category Breakdown & Spending Trends Grid */}
           <View style={[styles.breakdownRow, isMobile && { flexDirection: 'column' }]}>
             {/* Left: Category Breakdown Bars (Click to open full end-to-end breakdown!) */}
-            <View style={[styles.categoryCard, isMobile && { minWidth: '100%', width: '100%' }]}>
+            <View style={[styles.categoryCard, isMobile && { minWidth: '100%', width: '100%', padding: 12 }]}>
               <View style={styles.cardHeaderRow}>
                 <View>
-                  <Text style={styles.sectionHeaderTitle}>Spending by Category</Text>
-                  <Text style={styles.sectionHeaderSub}>Tap any category to view end-to-end itemized breakdown ("kab, kitna, kya")</Text>
+                  <Text style={[styles.sectionHeaderTitle, isMobile && { fontSize: 15 }]}>Spending by Category</Text>
+                  <Text style={styles.sectionHeaderSub}>Tap any category to view itemized breakdown</Text>
                 </View>
               </View>
               {summary?.categoryBreakdown?.length === 0 ? (
@@ -416,7 +416,7 @@ export default function FinanceScreen({ onNavigate }) {
                               { backgroundColor: meta.color || '#64748b' },
                             ]}
                           />
-                          <Text style={styles.catNameText}>{cat.category}</Text>
+                          <Text style={styles.catNameText} numberOfLines={1}>{cat.category}</Text>
                           {cat.count > 0 && (
                             <View style={styles.catCountBadge}>
                               <Text style={styles.catCountText}>{cat.count}</Text>
@@ -489,21 +489,21 @@ export default function FinanceScreen({ onNavigate }) {
           </View>
 
           {/* 5. Transaction History & Filter Section */}
-          <View style={styles.txListCard}>
-            <View style={[styles.txListHeader, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 10 }]}>
-              <View>
-                <Text style={styles.sectionHeaderTitle}>Transactions & Itemized Records</Text>
-                <Text style={styles.sectionHeaderSub}>
+          <View style={[styles.txListCard, isMobile && { padding: 12 }]}>
+            <View style={[styles.txListHeader, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 8 }]}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[styles.sectionHeaderTitle, isMobile && { fontSize: 15 }]}>Transactions & Itemized Records</Text>
+                <Text style={[styles.sectionHeaderSub, isMobile && { fontSize: 11 }]}>
                   Showing {filteredTransactions.length} of {transactions.length} entries
                 </Text>
               </View>
-              <View style={[styles.txFilterRow, isMobile && { width: '100%', justifyContent: 'space-between' }]}>
+              <View style={[styles.txFilterRow, isMobile && { width: '100%', justifyContent: 'space-between', padding: 2 }]}>
                 {['all', 'expense', 'income'].map((type) => (
                   <TouchableOpacity
                     key={type}
                     style={[
                       styles.txFilterPill,
-                      isMobile && { flex: 1, alignItems: 'center', justifyContent: 'center' },
+                      isMobile && { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 5 },
                       typeFilter === type && styles.txFilterPillActive,
                     ]}
                     onPress={() => setTypeFilter(type)}
@@ -511,6 +511,7 @@ export default function FinanceScreen({ onNavigate }) {
                     <Text
                       style={[
                         styles.txFilterPillText,
+                        isMobile && { fontSize: 11 },
                         typeFilter === type && styles.txFilterPillTextActive,
                       ]}
                     >
@@ -522,28 +523,28 @@ export default function FinanceScreen({ onNavigate }) {
             </View>
 
             {/* Search and Active Filter Indicator */}
-            <View style={styles.txSearchRow}>
-              <View style={styles.searchInputWrap}>
-                <Ionicons name="search-outline" size={16} color="#94a3b8" />
+            <View style={[styles.txSearchRow, isMobile && { gap: 6, marginBottom: 10 }]}>
+              <View style={[styles.searchInputWrap, isMobile && { height: 36, paddingHorizontal: 10 }]}>
+                <Ionicons name="search-outline" size={15} color="#94a3b8" />
                 <TextInput
-                  style={styles.searchField}
-                  placeholder="Search item name, notes, or category (e.g. Pizza, Fuel)..."
+                  style={[styles.searchField, isMobile && { fontSize: 12, height: 34 }]}
+                  placeholder="Search item name, notes, or category..."
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                 />
                 {searchQuery ? (
                   <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <Ionicons name="close-circle" size={16} color="#94a3b8" />
+                    <Ionicons name="close-circle" size={15} color="#94a3b8" />
                   </TouchableOpacity>
                 ) : null}
               </View>
 
               {selectedCategoryFilter !== 'all' && (
                 <TouchableOpacity
-                  style={styles.categoryFilterClearTag}
+                  style={[styles.categoryFilterClearTag, isMobile && { paddingVertical: 6, paddingHorizontal: 8 }]}
                   onPress={() => setSelectedCategoryFilter('all')}
                 >
-                  <Text style={styles.categoryFilterClearText}>
+                  <Text style={[styles.categoryFilterClearText, isMobile && { fontSize: 10 }]}>
                     Filter: {selectedCategoryFilter} ✕
                   </Text>
                 </TouchableOpacity>
@@ -574,73 +575,77 @@ export default function FinanceScreen({ onNavigate }) {
                         style={[
                           styles.txCatIcon,
                           { backgroundColor: `${meta.color || '#64748b'}18` },
+                          isMobile && { width: 34, height: 34, borderRadius: 8, marginRight: 8 },
                         ]}
                       >
                         <Ionicons
                           name={meta.icon || 'pricetag-outline'}
-                          size={20}
+                          size={isMobile ? 16 : 20}
                           color={meta.color || '#64748b'}
                         />
                       </View>
 
-                      <View style={styles.txInfoCol}>
+                      <View style={[styles.txInfoCol, { flex: 1, minWidth: 0, marginRight: 8 }]}>
                         <View style={styles.txTitleRow}>
-                          <Text style={styles.txCategoryName}>{tx.category}</Text>
+                          <Text style={[styles.txCategoryName, isMobile && { fontSize: 13 }]} numberOfLines={1}>{tx.category}</Text>
                           <View style={styles.paymentBadge}>
-                            <Text style={styles.paymentBadgeText}>{tx.paymentMode || 'UPI'}</Text>
+                            <Text style={[styles.paymentBadgeText, isMobile && { fontSize: 9 }]}>{tx.paymentMode || 'UPI'}</Text>
                           </View>
                           {hasSubItems && (
                             <TouchableOpacity
-                              style={styles.subItemBadge}
+                              style={[styles.subItemBadge, isMobile && { paddingHorizontal: 6, paddingVertical: 1 }]}
                               onPress={() => setExpandedTxId(isExpanded ? null : tx._id)}
                             >
-                              <Ionicons name="list-outline" size={12} color="#7e37d8" />
-                              <Text style={styles.subItemBadgeText}>
+                              <Ionicons name="list-outline" size={11} color="#7e37d8" />
+                              <Text style={[styles.subItemBadgeText, isMobile && { fontSize: 9 }]}>
                                 {tx.subItems.length} items {isExpanded ? '▲' : '▼'}
                               </Text>
                             </TouchableOpacity>
                           )}
                         </View>
-                        <Text style={styles.txNotes} numberOfLines={2}>
+                        <Text style={[styles.txNotes, isMobile && { fontSize: 11 }]} numberOfLines={1}>
                           {tx.notes ? `${tx.notes} • ` : ''}
                           {formatDateTime(tx.date)}
                         </Text>
                       </View>
 
-                      <View style={styles.txAmountCol}>
+                      <View style={[styles.txAmountCol, { alignItems: 'flex-end', flexShrink: 0 }]}>
                         <Text
                           style={[
                             styles.txAmountText,
                             isIncome ? styles.textIncome : styles.textExpense,
+                            isMobile && { fontSize: 13, marginBottom: 2 },
                           ]}
                         >
                           {isIncome ? '+' : '-'}₹{(tx.amount || 0).toLocaleString('en-IN')}
                         </Text>
-                        <View style={styles.txActionBtns}>
+                        <View style={[styles.txActionBtns, isMobile && { gap: 6 }]}>
                           <TouchableOpacity
                             style={styles.actionIconBtn}
                             onPress={() => openTxModal(tx)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           >
-                            <Feather name="edit-2" size={14} color="#64748b" />
+                            <Feather name="edit-2" size={13} color="#64748b" />
                           </TouchableOpacity>
                           <TouchableOpacity
                             style={styles.actionIconBtn}
                             onPress={() =>
                               handleDeleteTransaction(tx._id, tx.category, tx.amount)
                             }
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           >
-                            <Feather name="trash-2" size={14} color="#ef4444" />
+                            <Feather name="trash-2" size={13} color="#ef4444" />
                           </TouchableOpacity>
                         </View>
                       </View>
                     </TouchableOpacity>
 
-                    {/* Expandable Sub-items Breakdown (Kya aur kitna) */}
+                    {/* Expandable Sub-items Breakdown */}
                     {hasSubItems && (isExpanded || subItems.length > 0) && (
-                      <View style={styles.subItemsBreakdownCard}>
+                      <View style={[styles.subItemsBreakdownCard, isMobile && { marginLeft: 0, marginTop: 8, padding: 8 }]}>
                         <View style={styles.subItemBreakdownHeader}>
                           <Ionicons name="receipt-outline" size={13} color="#7e37d8" />
-                          <Text style={styles.subItemBreakdownTitle}>Itemized Details & Bill Breakdown:</Text>
+                          <Text style={[styles.subItemBreakdownTitle, isMobile && { fontSize: 11 }]}>Itemized Details & Bill Breakdown:</Text>
                         </View>
                         <View style={styles.subItemChipsWrap}>
                           {tx.subItems.map((sub, idx) => (

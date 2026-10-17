@@ -9,29 +9,29 @@ export default function FinanceHeader({ isMobile, monthName, changeMonth, onOpen
       <View style={styles.headerToolbarMobile}>
         {/* Row 1: Title + Primary Action (+ Entry) */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-            <View style={styles.titleIconBadge}>
-              <Ionicons name="wallet" size={20} color="#7e37d8" />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+            <View style={[styles.titleIconBadge, { width: 34, height: 34, borderRadius: 8 }]}>
+              <Ionicons name="wallet" size={17} color="#7e37d8" />
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={[styles.pageTitle, { fontSize: 17 }]} numberOfLines={1}>Finance & Expenses</Text>
-              <Text style={styles.pageSubtitle} numberOfLines={1}>Budget Tracking & Expenses</Text>
+              <Text style={[styles.pageTitle, { fontSize: 15 }]} numberOfLines={1}>Finance & Budget</Text>
+              <Text style={[styles.pageSubtitle, { fontSize: 11 }]} numberOfLines={1}>Monthly Overview</Text>
             </View>
           </View>
 
           <TouchableOpacity
-            style={[styles.addTxBtn, { paddingHorizontal: 12, paddingVertical: 8 }]}
+            style={[styles.addTxBtn, { paddingHorizontal: 10, paddingVertical: 6, height: 32, borderRadius: 8 }]}
             onPress={() => onAddTransaction()}
             activeOpacity={0.8}
           >
-            <Ionicons name="add" size={18} color="#ffffff" />
-            <Text style={styles.addTxBtnText}>+ Entry</Text>
+            <Ionicons name="add" size={15} color="#ffffff" />
+            <Text style={[styles.addTxBtnText, { fontSize: 12 }]}>Add</Text>
           </TouchableOpacity>
         </View>
 
         {/* Row 2: Month Navigation + Secondary Action Buttons */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8, marginTop: 4 }}>
-          <View style={[styles.monthNav, { flex: 1.2, justifyContent: 'space-between' }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 6, marginTop: 4 }}>
+          <View style={[styles.monthNav, { flex: 1.2, justifyContent: 'space-between', height: 32, paddingVertical: 0 }]}>
             <TouchableOpacity style={styles.arrowBtn} onPress={() => changeMonth(-1)}>
               <Ionicons name="chevron-back" size={14} color="#64748b" />
             </TouchableOpacity>
@@ -44,20 +44,20 @@ export default function FinanceHeader({ isMobile, monthName, changeMonth, onOpen
           </View>
 
           <TouchableOpacity
-            style={[styles.budgetBtn, { paddingHorizontal: 10, paddingVertical: 7 }]}
+            style={[styles.budgetBtn, { paddingHorizontal: 9, paddingVertical: 5, height: 32, borderRadius: 8 }]}
             onPress={onOpenBudget}
             activeOpacity={0.8}
           >
-            <Ionicons name="options-outline" size={14} color="#7e37d8" />
+            <Ionicons name="options-outline" size={13} color="#7e37d8" />
             <Text style={[styles.budgetBtnText, { fontSize: 11 }]}>Budget</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.manageRemoveBtn, { paddingHorizontal: 10, paddingVertical: 7 }]}
+            style={[styles.manageRemoveBtn, { paddingHorizontal: 9, paddingVertical: 5, height: 32, borderRadius: 8 }]}
             onPress={onOpenBulkRemove}
             activeOpacity={0.8}
           >
-            <Feather name="trash-2" size={13} color="#ef4444" />
+            <Feather name="trash-2" size={12} color="#ef4444" />
             <Text style={[styles.manageRemoveBtnText, { fontSize: 11 }]}>Remove</Text>
           </TouchableOpacity>
         </View>
@@ -115,7 +115,7 @@ export default function FinanceHeader({ isMobile, monthName, changeMonth, onOpen
           activeOpacity={0.8}
         >
           <Ionicons name="add" size={18} color="#ffffff" />
-          <Text style={styles.addTxBtnText}>+ Entry</Text>
+          <Text style={styles.addTxBtnText}>Add Entry</Text>
         </TouchableOpacity>
       </View>
     </View>
