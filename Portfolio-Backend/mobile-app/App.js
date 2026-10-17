@@ -254,10 +254,15 @@ const styles = StyleSheet.create({
   },
   appContainer: {
     flex: 1,
+    width: '100%',
+    maxWidth: '100%',
     backgroundColor: 'rgb(248, 250, 252)',
+    overflow: 'hidden',
   },
   screenWrapper: {
     flex: 1,
+    width: '100%',
+    maxWidth: '100%',
     overflow: 'hidden',
   },
 });

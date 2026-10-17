@@ -67,7 +67,7 @@ export default function InvestmentScreen({ onNavigate }) {
         </View>
       ) : (
         <ScrollView
-          style={[styles.contentScroll, isMobile && { padding: 12 }]}
+          style={[styles.contentScroll, isMobile && { paddingHorizontal: 8, paddingVertical: 10 }]}
           showsVerticalScrollIndicator={false}
         >
           {/* 2. Portfolio KPI Summary */}
@@ -355,58 +355,109 @@ export default function InvestmentScreen({ onNavigate }) {
                       </View>
                     </View>
 
-                    {/* Bottom Action Strip: History, Buy More, Sell, Edit, Remove (Zero Overflow!) */}
-                    <View style={styles.holdingFooter}>
-                      <View style={styles.holdingActionBtns}>
-                        {/* 1. History Modal Button */}
+                    {/* Bottom Action Strip: History on Row 1; Buy, Sell, Edit, Delete on Row 2 for mobile */}
+                    {isMobile ? (
+                      <View style={styles.holdingFooterMobile}>
+                        {/* Row 1: First sirf History button (Full Width) */}
                         <TouchableOpacity
-                          style={styles.historyToggleBtn}
+                          style={styles.mobileHistoryBtnFull}
                           onPress={() => openHistoryModal(h)}
                           activeOpacity={0.7}
                         >
-                          <Ionicons name="time-outline" size={13} color="#2563eb" />
-                          <Text style={styles.historyToggleText}>History</Text>
+                          <Ionicons name="time-outline" size={14} color="#2563eb" />
+                          <Text style={styles.mobileHistoryBtnFullText}>Transaction History</Text>
                         </TouchableOpacity>
 
-                        {/* 2. Buy More Units Button */}
-                        <TouchableOpacity
-                          style={styles.addMoreHoldingBtn}
-                          onPress={() => openAddMoreModal(h)}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons name="add" size={14} color="#10b981" />
-                          <Text style={styles.addMoreHoldingBtnText}>Buy</Text>
-                        </TouchableOpacity>
+                        {/* Row 2: Oske niche Buy, Sell, Edit, Delete */}
+                        <View style={styles.mobileActionsSecondRow}>
+                          <TouchableOpacity
+                            style={styles.mobileBuyBtn}
+                            onPress={() => openAddMoreModal(h)}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="add" size={15} color="#059669" />
+                            <Text style={styles.mobileBuyBtnText}>Buy</Text>
+                          </TouchableOpacity>
 
-                        {/* 3. Sell Units Button */}
-                        <TouchableOpacity
-                          style={styles.sellHoldingBtn}
-                          onPress={() => openSellModal(h)}
-                          activeOpacity={0.7}
-                        >
-                          <Feather name="trending-down" size={12} color="#d97706" />
-                          <Text style={styles.sellHoldingBtnText}>Sell</Text>
-                        </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.mobileSellBtn}
+                            onPress={() => openSellModal(h)}
+                            activeOpacity={0.7}
+                          >
+                            <Feather name="trending-down" size={13} color="#d97706" />
+                            <Text style={styles.mobileSellBtnText}>Sell</Text>
+                          </TouchableOpacity>
 
-                        {/* 4. Edit Holding Button */}
-                        <TouchableOpacity
-                          style={styles.editHoldingBtn}
-                          onPress={() => openEditModal(h)}
-                          activeOpacity={0.7}
-                        >
-                          <Feather name="edit-2" size={13} color="#3b82f6" />
-                        </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.mobileEditBtn}
+                            onPress={() => openEditModal(h)}
+                            activeOpacity={0.7}
+                          >
+                            <Feather name="edit-2" size={13} color="#3b82f6" />
+                          </TouchableOpacity>
 
-                        {/* 5. Remove Holding Button */}
-                        <TouchableOpacity
-                          style={styles.deleteHoldingIconBtn}
-                          onPress={() => handleDeleteHolding(h)}
-                          activeOpacity={0.7}
-                        >
-                          <Feather name="trash-2" size={13} color="#ef4444" />
-                        </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.mobileDeleteBtn}
+                            onPress={() => handleDeleteHolding(h)}
+                            activeOpacity={0.7}
+                          >
+                            <Feather name="trash-2" size={13} color="#ef4444" />
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                    </View>
+                    ) : (
+                      <View style={styles.holdingFooter}>
+                        <View style={styles.holdingActionBtns}>
+                          {/* 1. History Modal Button */}
+                          <TouchableOpacity
+                            style={styles.historyToggleBtn}
+                            onPress={() => openHistoryModal(h)}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="time-outline" size={13} color="#2563eb" />
+                            <Text style={styles.historyToggleText}>History</Text>
+                          </TouchableOpacity>
+
+                          {/* 2. Buy More Units Button */}
+                          <TouchableOpacity
+                            style={styles.addMoreHoldingBtn}
+                            onPress={() => openAddMoreModal(h)}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="add" size={14} color="#10b981" />
+                            <Text style={styles.addMoreHoldingBtnText}>Buy</Text>
+                          </TouchableOpacity>
+
+                          {/* 3. Sell Units Button */}
+                          <TouchableOpacity
+                            style={styles.sellHoldingBtn}
+                            onPress={() => openSellModal(h)}
+                            activeOpacity={0.7}
+                          >
+                            <Feather name="trending-down" size={12} color="#d97706" />
+                            <Text style={styles.sellHoldingBtnText}>Sell</Text>
+                          </TouchableOpacity>
+
+                          {/* 4. Edit Holding Button */}
+                          <TouchableOpacity
+                            style={styles.editHoldingBtn}
+                            onPress={() => openEditModal(h)}
+                            activeOpacity={0.7}
+                          >
+                            <Feather name="edit-2" size={13} color="#3b82f6" />
+                          </TouchableOpacity>
+
+                          {/* 5. Remove Holding Button */}
+                          <TouchableOpacity
+                            style={styles.deleteHoldingIconBtn}
+                            onPress={() => handleDeleteHolding(h)}
+                            activeOpacity={0.7}
+                          >
+                            <Feather name="trash-2" size={13} color="#ef4444" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
                   </View>
                 );
               })

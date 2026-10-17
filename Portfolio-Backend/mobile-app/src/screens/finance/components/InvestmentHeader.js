@@ -10,14 +10,16 @@ export default function InvestmentHeader({ isMobile, refreshing, onNavigate, onR
         {/* Row 1: Header Title & Main Primary Action Button */}
         <View style={styles.headerMobileTopRow}>
           <View style={styles.leftTitleRowMobile}>
-            <View style={styles.titleIconBadge}>
-              <Ionicons name="trending-up" size={18} color="#3b82f6" />
+            <View style={styles.titleIconBadgeMobile || styles.titleIconBadge}>
+              <Ionicons name="trending-up" size={16} color="#3b82f6" />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.pageTitleMobile}>Investments & Wealth</Text>
+            <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
+              <Text style={styles.pageTitleMobile} numberOfLines={1} ellipsizeMode="tail">
+                Investments & Wealth
+              </Text>
               <View style={styles.liveBadgeRow}>
                 <View style={styles.livePulseDot} />
-                <Text style={styles.liveBadgeText}>NSE/BSE & AMFI Live</Text>
+                <Text style={styles.liveBadgeText}>NSE/BSE & AMFI • Live</Text>
               </View>
             </View>
           </View>
@@ -27,8 +29,8 @@ export default function InvestmentHeader({ isMobile, refreshing, onNavigate, onR
             onPress={onAddHolding}
             activeOpacity={0.8}
           >
-            <Ionicons name="add" size={18} color="#ffffff" />
-            <Text style={styles.addAssetBtnTextMobile}>Holding</Text>
+            <Ionicons name="add" size={15} color="#ffffff" />
+            <Text style={styles.addAssetBtnTextMobile}>Add</Text>
           </TouchableOpacity>
         </View>
 

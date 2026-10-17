@@ -134,9 +134,9 @@ export default function Header({
           )}
         </TouchableOpacity>
 
-        {onLogout && (
+        {!isMobile && onLogout && (
           <TouchableOpacity
-            style={[styles.logoutIconBtn, isMobile && styles.logoutIconBtnMobile]}
+            style={styles.logoutIconBtn}
             onPress={onLogout}
             activeOpacity={0.7}
           >
@@ -164,6 +164,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     zIndex: 10,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   leftGroup: {
     flexDirection: 'row',
