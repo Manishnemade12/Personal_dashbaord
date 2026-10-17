@@ -762,9 +762,9 @@ class MarketDataService {
       console.log(`[MarketDataService] MFAPI fetch failed for ${schemeCode}:`, e.message);
     }
 
-    // Fallback to curated base price if live API is temporarily unreachable
+    // Fallback if live API is temporarily unreachable
     const curated = CURATED_INSTRUMENTS.find((i) => i.symbolOrCode === schemeCode);
-    const fallbackPrice = curated ? curated.basePrice : 100.0;
+    const fallbackPrice = curated ? curated.basePrice : 0;
     return {
       symbolOrCode: schemeCode,
       instrumentName: curated?.instrumentName || schemeCode,
@@ -772,7 +772,7 @@ class MarketDataService {
       date: new Date().toISOString().split('T')[0],
       change: 0,
       changePercent: 0,
-      history: [{ date: 'Today', price: fallbackPrice }],
+      history: [],
       isMarketOpen: false,
       timestamp: Date.now(),
     };
@@ -843,11 +843,11 @@ class MarketDataService {
       console.log(`[MarketDataService] Yahoo quote failed for ${cleanSymbol}:`, e.message);
     }
 
-    // Fallback to curated base price if market closed or offline
+    // Fallback: Never invent fake numbers like 500!
     const curated = CURATED_INSTRUMENTS.find(
       (i) => i.symbolOrCode === cleanSymbol || i.symbolOrCode.replace('.NS', '') === symbol
     );
-    const fallbackPrice = curated ? curated.basePrice : 500.0;
+    const fallbackPrice = curated ? curated.basePrice : 0;
     return {
       symbolOrCode: cleanSymbol,
       instrumentName: curated?.instrumentName || cleanSymbol,
@@ -855,7 +855,7 @@ class MarketDataService {
       date: new Date().toISOString(),
       change: 0,
       changePercent: 0,
-      history: [{ date: 'Today', price: fallbackPrice }],
+      history: [],
       isMarketOpen: false,
       timestamp: Date.now(),
     };
@@ -882,54 +882,74 @@ class MarketDataService {
   async enrichHoldingsWithLiveData(holdings, forceRefresh = false) {
     if (!Array.isArray(holdings) || holdings.length === 0) return [];
 
-    const enriched = await Promise.all(
-      holdings.map(async (holding) => {
-        const h = holding.toObject ? holding.toObject() : { ...holding };
-        try {
-          const isFresh =
-            !forceRefresh &&
-            h.latestPrice > 0 &&
-            h.latestPriceDate &&
-            Date.now() - new Date(h.latestPriceDate).getTime() < CACHE_TTL_MS;
+    // Process in batches of 5 to avoid network congestion / Yahoo timeouts
+    const batchSize = 5;
+    const enriched = [];
 
-          let livePrice = h.latestPrice;
-          let quote = null;
+    for (let b = 0; b < holdings.length; b += batchSize) {
+      const batch = holdings.slice(b, b + batchSize);
+      const batchEnriched = await Promise.all(
+        batch.map(async (holding) => {
+          const h = holding.toObject ? holding.toObject() : { ...holding };
+          try {
+            const isFresh =
+              !forceRefresh &&
+              h.latestPrice > 0 &&
+              h.latestPrice !== 500 &&
+              h.latestPriceDate &&
+              Date.now() - new Date(h.latestPriceDate).getTime() < CACHE_TTL_MS;
 
-          if (!isFresh) {
-            quote = await this.getLiveQuote(h.symbolOrCode, h.assetClass);
-            livePrice = quote.price > 0 ? quote.price : h.latestPrice || h.averageBuyPrice;
-            h.latestPrice = livePrice;
-            h.latestPriceDate = quote.date || new Date();
-            h.dayChange = quote.change || 0;
-            h.dayChangePercent = quote.changePercent || 0;
-            h.history = quote.history || [];
-          } else {
-            h.dayChange = h.dayChange || 0;
-            h.dayChangePercent = h.dayChangePercent || 0;
-            h.history = h.history || [];
+            let livePrice = h.latestPrice;
+            let quote = null;
+
+            if (!isFresh || h.latestPrice === 500) {
+              quote = await this.getLiveQuote(h.symbolOrCode, h.assetClass);
+              if (quote && quote.price > 0 && quote.isMarketOpen) {
+                livePrice = quote.price;
+                h.latestPrice = livePrice;
+                h.latestPriceDate = quote.date || new Date();
+                h.dayChange = quote.change || 0;
+                h.dayChangePercent = quote.changePercent || 0;
+                h.history = quote.history || [];
+              } else {
+                // If live quote fails, use real averageBuyPrice or previous valid price (never 500!)
+                livePrice = (h.latestPrice > 0 && h.latestPrice !== 500) ? h.latestPrice : h.averageBuyPrice;
+                h.latestPrice = livePrice;
+                h.dayChange = 0;
+                h.dayChangePercent = 0;
+                h.history = [];
+              }
+            } else {
+              h.dayChange = h.dayChange || 0;
+              h.dayChangePercent = h.dayChangePercent || 0;
+              h.history = h.history || [];
+            }
+
+            // Calculated Metrics from real values
+            const currentVal = h.quantity * livePrice;
+            const investedVal = h.quantity * (h.averageBuyPrice || livePrice);
+            const pnl = currentVal - investedVal;
+            const pnlPercent = investedVal > 0 ? (pnl / investedVal) * 100 : 0;
+
+            h.currentValue = Number(currentVal.toFixed(2));
+            h.investedValue = Number(investedVal.toFixed(2));
+            h.pnl = Number(pnl.toFixed(2));
+            h.pnlPercent = Number(pnlPercent.toFixed(2));
+          } catch (err) {
+            const safePrice = (h.latestPrice > 0 && h.latestPrice !== 500) ? h.latestPrice : h.averageBuyPrice;
+            const currentVal = h.quantity * safePrice;
+            const investedVal = h.quantity * h.averageBuyPrice;
+            h.latestPrice = safePrice;
+            h.currentValue = Number(currentVal.toFixed(2));
+            h.investedValue = Number(investedVal.toFixed(2));
+            h.pnl = Number((currentVal - investedVal).toFixed(2));
+            h.pnlPercent = investedVal > 0 ? Number(((h.pnl / investedVal) * 100).toFixed(2)) : 0;
           }
-
-          // Calculated Metrics
-          const currentVal = h.quantity * livePrice;
-          const investedVal = h.quantity * (h.averageBuyPrice || livePrice);
-          const pnl = currentVal - investedVal;
-          const pnlPercent = investedVal > 0 ? (pnl / investedVal) * 100 : 0;
-
-          h.currentValue = Number(currentVal.toFixed(2));
-          h.investedValue = Number(investedVal.toFixed(2));
-          h.pnl = Number(pnl.toFixed(2));
-          h.pnlPercent = Number(pnlPercent.toFixed(2));
-        } catch (err) {
-          const currentVal = h.quantity * (h.latestPrice || h.averageBuyPrice);
-          const investedVal = h.quantity * h.averageBuyPrice;
-          h.currentValue = Number(currentVal.toFixed(2));
-          h.investedValue = Number(investedVal.toFixed(2));
-          h.pnl = Number((currentVal - investedVal).toFixed(2));
-          h.pnlPercent = investedVal > 0 ? Number(((h.pnl / investedVal) * 100).toFixed(2)) : 0;
-        }
-        return h;
-      })
-    );
+          return h;
+        })
+      );
+      enriched.push(...batchEnriched);
+    }
 
     // Compute portfolio allocation percentage
     const totalPortfolioVal = enriched.reduce((sum, item) => sum + (item.currentValue || 0), 0);

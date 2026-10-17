@@ -156,7 +156,7 @@ export default function InvestmentHeader({ isMobile, refreshing, onNavigate, onR
           activeOpacity={0.8}
         >
           <Ionicons name="add" size={18} color="#ffffff" />
-          <Text style={styles.addAssetBtnText}>+ Holding</Text>
+          <Text style={styles.addAssetBtnText}>Holding</Text>
         </TouchableOpacity>
       </View>
     </View>
