@@ -280,25 +280,25 @@ export default function InvestmentScreen({ onNavigate }) {
 
                 return (
                   <View key={h._id} style={styles.holdingCard}>
-                    {/* Top Row: Clickable Header to Open Transaction History & Details Modal */}
+                    {/* Top Row: Symbol, Category, Units, Live Valuation & P&L */}
                     <TouchableOpacity
                       activeOpacity={0.7}
                       onPress={() => openHistoryModal(h)}
                       style={styles.holdingHeader}
                     >
                       <View style={[styles.assetIconBox, { backgroundColor: meta.bg }]}>
-                        <Ionicons name={meta.icon} size={20} color={meta.color} />
+                        <Ionicons name={meta.icon} size={17} color={meta.color} />
                       </View>
 
                       <View style={styles.holdingNameCol}>
                         <View style={styles.holdingSymbolRow}>
-                          <Text style={styles.holdingSymbol}>{h.symbolOrCode}</Text>
+                          <Text style={styles.holdingSymbol} numberOfLines={1}>{h.symbolOrCode}</Text>
                           <View style={styles.subCatBadge}>
                             <Text style={styles.subCatBadgeText}>{h.subCategory || h.assetClass}</Text>
                           </View>
                         </View>
                         <Text style={styles.instrumentFullName} numberOfLines={1}>
-                          {h.instrumentName}
+                          {h.instrumentName} • {h.quantity} {meta.unit}
                         </Text>
                       </View>
 
@@ -306,142 +306,104 @@ export default function InvestmentScreen({ onNavigate }) {
                         <Text style={styles.holdingCurVal}>
                           ₹{(h.currentValue || 0).toLocaleString('en-IN', { maximumFractionDigits: 1 })}
                         </Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-                          <Text style={styles.holdingUnitsText}>
-                            {h.quantity} {meta.unit}
-                          </Text>
-                          <Ionicons
-                            name="time-outline"
-                            size={13}
-                            color="#3b82f6"
-                          />
-                        </View>
+                        <Text style={[styles.holdingPnlText, { color: isProfit ? '#059669' : '#dc2626' }]}>
+                          {isProfit ? '▲ +' : '▼ '}₹{Math.abs(h.pnl || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })} ({isProfit ? '+' : ''}{h.pnlPercent || 0}%)
+                        </Text>
                       </View>
                     </TouchableOpacity>
 
-                    {/* Middle Metrics Grid: Buy Price, Live Price, Invested, Profit/Loss */}
+                    {/* Middle Metrics: Clean 2x2 Grid (Avg Buy, Live LTP, Invested, Return) */}
                     <View style={styles.holdingMetricsGrid}>
-                      {/* Your Buy Price */}
+                      {/* Box 1: Avg Buy Price */}
                       <View style={styles.metricBox}>
-                        <Text style={styles.metricLabel}>Your Buy Price</Text>
+                        <Text style={styles.metricLabel}>AVG BUY</Text>
                         <Text style={styles.metricVal}>
                           ₹{(h.averageBuyPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </Text>
-                        <Text style={styles.metricHint}>Entered purchase cost</Text>
                       </View>
 
-                      {/* Live Market Price / NAV */}
+                      {/* Box 2: Current Live Price */}
                       <View style={styles.metricBox}>
-                        <Text style={styles.metricLabel}>Current Live Price</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Text style={styles.metricLabel}>LIVE LTP</Text>
+                          <View style={styles.liveTagRow}>
+                            <View style={styles.liveDotSmall} />
+                            <Text style={styles.liveTagText}>Live</Text>
+                          </View>
+                        </View>
                         <Text style={[styles.metricVal, { color: '#0f172a' }]}>
                           ₹{(h.latestPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </Text>
-                        <View style={styles.liveTagRow}>
-                          <View style={styles.liveDotSmall} />
-                          <Text style={styles.liveTagText}>Market Feed</Text>
-                        </View>
                       </View>
 
-                      {/* Invested Amount */}
+                      {/* Box 3: Total Invested */}
                       <View style={styles.metricBox}>
-                        <Text style={styles.metricLabel}>Total Invested</Text>
+                        <Text style={styles.metricLabel}>INVESTED</Text>
                         <Text style={styles.metricVal}>
                           ₹{(h.investedValue || h.quantity * h.averageBuyPrice || 0).toLocaleString('en-IN', {
                             maximumFractionDigits: 0,
                           })}
                         </Text>
-                        <Text style={styles.metricHint}>{h.allocationPercent || 0}% of portfolio</Text>
                       </View>
 
-                      {/* Profit / Loss */}
+                      {/* Box 4: Current Return */}
                       <View style={styles.metricBox}>
-                        <Text style={styles.metricLabel}>Profit / Loss</Text>
-                        <Text
-                          style={[
-                            styles.metricVal,
-                            { color: isProfit ? '#059669' : '#dc2626' },
-                          ]}
-                        >
-                          {isProfit ? '+' : ''}₹{(h.pnl || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                        <Text style={styles.metricLabel}>PORTFOLIO SHARE</Text>
+                        <Text style={[styles.metricVal, { color: '#3b82f6' }]}>
+                          {h.allocationPercent || 0}%
                         </Text>
-                        <View
-                          style={[
-                            styles.pnlTagPill,
-                            { backgroundColor: isProfit ? '#ecfdf5' : '#fef2f2' },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.pnlTagText,
-                              { color: isProfit ? '#059669' : '#dc2626' },
-                            ]}
-                          >
-                            {isProfit ? '▲ +' : '▼ '}
-                            {h.pnlPercent || 0}%
-                          </Text>
-                        </View>
                       </View>
                     </View>
 
-                    {/* Bottom Action Strip: History, Buy More, Sell Units, Edit, Remove */}
+                    {/* Bottom Action Strip: History, Buy More, Sell, Edit, Remove (Zero Overflow!) */}
                     <View style={styles.holdingFooter}>
-                      <View style={styles.footerNoteRow}>
-                        <Ionicons name="information-circle-outline" size={13} color="#94a3b8" />
-                        <Text style={styles.footerNoteText}>
-                          Updated {new Date(h.latestPriceDate || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Text>
-                      </View>
-
                       <View style={styles.holdingActionBtns}>
-                        {/* History Modal Trigger Button */}
+                        {/* 1. History Modal Button */}
                         <TouchableOpacity
                           style={styles.historyToggleBtn}
                           onPress={() => openHistoryModal(h)}
+                          activeOpacity={0.7}
                         >
-                          <Ionicons
-                            name="time-outline"
-                            size={14}
-                            color="#2563eb"
-                          />
-                          <Text style={[styles.historyToggleText, { color: '#2563eb' }]}>
-                            History
-                          </Text>
+                          <Ionicons name="time-outline" size={13} color="#2563eb" />
+                          <Text style={styles.historyToggleText}>History</Text>
                         </TouchableOpacity>
 
-                        {/* Buy More Units Button */}
+                        {/* 2. Buy More Units Button */}
                         <TouchableOpacity
                           style={styles.addMoreHoldingBtn}
                           onPress={() => openAddMoreModal(h)}
+                          activeOpacity={0.7}
                         >
-                          <Ionicons name="add-circle-outline" size={14} color="#10b981" />
-                          <Text style={styles.addMoreHoldingBtnText}>Add More</Text>
+                          <Ionicons name="add" size={14} color="#10b981" />
+                          <Text style={styles.addMoreHoldingBtnText}>Buy</Text>
                         </TouchableOpacity>
 
-                        {/* Sell Units Button */}
+                        {/* 3. Sell Units Button */}
                         <TouchableOpacity
                           style={styles.sellHoldingBtn}
                           onPress={() => openSellModal(h)}
+                          activeOpacity={0.7}
                         >
-                          <Feather name="trending-down" size={13} color="#d97706" />
+                          <Feather name="trending-down" size={12} color="#d97706" />
                           <Text style={styles.sellHoldingBtnText}>Sell</Text>
                         </TouchableOpacity>
 
-                        {/* Edit Holding Button */}
+                        {/* 4. Edit Holding Button */}
                         <TouchableOpacity
                           style={styles.editHoldingBtn}
                           onPress={() => openEditModal(h)}
+                          activeOpacity={0.7}
                         >
                           <Feather name="edit-2" size={13} color="#3b82f6" />
-                          <Text style={styles.editHoldingBtnText}>Edit</Text>
                         </TouchableOpacity>
 
-                        {/* Remove Holding Button */}
+                        {/* 5. Remove Holding Button */}
                         <TouchableOpacity
                           style={styles.deleteHoldingIconBtn}
                           onPress={() => handleDeleteHolding(h)}
+                          activeOpacity={0.7}
                         >
                           <Feather name="trash-2" size={13} color="#ef4444" />
-                          <Text style={styles.deleteHoldingBtnText}>Remove</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
