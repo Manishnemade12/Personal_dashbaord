@@ -137,42 +137,51 @@ export default function EducationScreen({ onNavigate }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Education & Academics"
-        subtitle="Manage degrees, colleges, certifications & academic credentials"
-        category="PORTFOLIO HUB"
-        iconName="school-outline"
-        onBack={() => onNavigate && onNavigate('Dashboard')}
-        backText="Dashboard"
-        rightAction={
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.refreshBtn}
-              onPress={fetchEducation}
-              activeOpacity={0.7}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            >
-              <Ionicons name="refresh" size={16} color={colors.primary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.addBtn}
-              onPress={handleOpenAdd}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="add" size={16} color={colors.textLight} />
-              <Text style={styles.addBtnText}>Add Record</Text>
-            </TouchableOpacity>
-          </View>
-        }
-      />
-
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={{ flex: 1 }}>
+          <ScreenHeader
+            title="Education & Academics"
+            subtitle="Manage degrees, colleges, certifications & academic credentials"
+            category="PORTFOLIO HUB"
+            iconName="school-outline"
+            onBack={() => onNavigate && onNavigate('Dashboard')}
+            backText="Dashboard"
+          />
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
         </View>
       ) : (
         <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollInner}>
+          <ScreenHeader
+            title="Education & Academics"
+            subtitle="Manage degrees, colleges, certifications & academic credentials"
+            category="PORTFOLIO HUB"
+            iconName="school-outline"
+            onBack={() => onNavigate && onNavigate('Dashboard')}
+            backText="Dashboard"
+            rightAction={
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  style={styles.refreshBtn}
+                  onPress={fetchEducation}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Ionicons name="refresh" size={16} color={colors.primary} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.addBtn}
+                  onPress={handleOpenAdd}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="add" size={16} color={colors.textLight} />
+                  <Text style={styles.addBtnText}>Add Record</Text>
+                </TouchableOpacity>
+              </View>
+            }
+          />
           {educationList.length === 0 ? (
             <EmptyState
               icon="school-outline"

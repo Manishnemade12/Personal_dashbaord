@@ -75,28 +75,29 @@ const styles = StyleSheet.create({
   tabPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: colors.border,
+    minHeight: 28,
   },
   tabPillActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   tabLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '600',
     color: colors.textSecondary,
   },
   tabLabelActive: {
     color: colors.textLight,
   },
   countBadge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: radii.pill,
     backgroundColor: colors.surfaceAlt,
@@ -105,8 +106,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
   },
   countText: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 9.5,
+    fontWeight: '700',
     color: colors.textSecondary,
   },
   countTextActive: {

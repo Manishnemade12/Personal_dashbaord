@@ -174,29 +174,20 @@ export default function ProjectsScreen({ onNavigate, initialFilter = 'publish' }
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Project Showcases"
-        subtitle="Manage portfolio work, live demos & repositories"
-        category="PORTFOLIO HUB"
-        iconName="briefcase-outline"
-        onBack={() => onNavigate && onNavigate('Dashboard')}
-        backText="Dashboard"
-        rightAction={
-          <TouchableOpacity
-            style={styles.createBtn}
-            onPress={() => onNavigate && onNavigate('ProjectForm')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add" size={16} color={colors.textLight} />
-            <Text style={styles.createBtnText}>New Project</Text>
-          </TouchableOpacity>
-        }
-      />
-
       {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading projects...</Text>
+        <View style={{ flex: 1 }}>
+          <ScreenHeader
+            title="Project Showcases"
+            subtitle="Manage portfolio work, live demos & repositories"
+            category="PORTFOLIO HUB"
+            iconName="briefcase-outline"
+            onBack={() => onNavigate && onNavigate('Dashboard')}
+            backText="Dashboard"
+          />
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading projects...</Text>
+          </View>
         </View>
       ) : (
         <FlatList
@@ -215,17 +206,37 @@ export default function ProjectsScreen({ onNavigate, initialFilter = 'publish' }
             />
           }
           ListHeaderComponent={
-            <View style={styles.filterSection}>
-              <SearchInput
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search projects by title, client or tech..."
+            <View>
+              <ScreenHeader
+                title="Project Showcases"
+                subtitle="Manage portfolio work, live demos & repositories"
+                category="PORTFOLIO HUB"
+                iconName="briefcase-outline"
+                onBack={() => onNavigate && onNavigate('Dashboard')}
+                backText="Dashboard"
+                rightAction={
+                  <TouchableOpacity
+                    style={styles.createBtn}
+                    onPress={() => onNavigate && onNavigate('ProjectForm')}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="add" size={13} color={colors.textLight} />
+                    <Text style={styles.createBtnText}>New Project</Text>
+                  </TouchableOpacity>
+                }
               />
-              <FilterTabs
-                tabs={filterTabs}
-                activeTab={filter}
-                onSelectTab={setFilter}
-              />
+              <View style={styles.filterSection}>
+                <SearchInput
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search projects by title, client or tech..."
+                />
+                <FilterTabs
+                  tabs={filterTabs}
+                  activeTab={filter}
+                  onSelectTab={setFilter}
+                />
+              </View>
             </View>
           }
           ListEmptyComponent={

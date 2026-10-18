@@ -75,23 +75,19 @@ export default function ContactsScreen({ onNavigate }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Contact Inquiries"
-        subtitle="Manage client inquiries, project proposals & messages"
-        category="COMMUNICATION"
-        iconName="mail-outline"
-        onBack={() => onNavigate && onNavigate('Dashboard')}
-        backText="Dashboard"
-        rightAction={
-          <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>{contacts.length} Total</Text>
-          </View>
-        }
-      />
-
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={{ flex: 1 }}>
+          <ScreenHeader
+            title="Contact Inquiries"
+            subtitle="Manage client inquiries, project proposals & messages"
+            category="COMMUNICATION"
+            iconName="mail-outline"
+            onBack={() => onNavigate && onNavigate('Dashboard')}
+            backText="Dashboard"
+          />
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
         </View>
       ) : (
         <FlatList
@@ -108,6 +104,23 @@ export default function ContactsScreen({ onNavigate }) {
               }}
               colors={[colors.primary]}
             />
+          }
+          ListHeaderComponent={
+            <View style={{ marginBottom: 4 }}>
+              <ScreenHeader
+                title="Contact Inquiries"
+                subtitle="Manage client inquiries, project proposals & messages"
+                category="COMMUNICATION"
+                iconName="mail-outline"
+                onBack={() => onNavigate && onNavigate('Dashboard')}
+                backText="Dashboard"
+                rightAction={
+                  <View style={styles.countBadge}>
+                    <Text style={styles.countBadgeText}>{contacts.length} Total</Text>
+                  </View>
+                }
+              />
+            </View>
           }
           ListEmptyComponent={
             <EmptyState

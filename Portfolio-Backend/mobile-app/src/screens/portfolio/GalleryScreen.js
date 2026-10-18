@@ -126,28 +126,19 @@ export default function GalleryScreen({ onNavigate }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Photo Gallery"
-        subtitle="Visual portfolio, event captures & media gallery"
-        category="PORTFOLIO HUB"
-        iconName="images-outline"
-        onBack={() => onNavigate && onNavigate('Dashboard')}
-        backText="Dashboard"
-        rightAction={
-          <TouchableOpacity
-            style={styles.addBtn}
-            onPress={() => setModalVisible(true)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add" size={16} color={colors.textLight} />
-            <Text style={styles.addBtnText}>Add Photo</Text>
-          </TouchableOpacity>
-        }
-      />
-
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={{ flex: 1 }}>
+          <ScreenHeader
+            title="Photo Gallery"
+            subtitle="Visual portfolio, event captures & media gallery"
+            category="PORTFOLIO HUB"
+            iconName="images-outline"
+            onBack={() => onNavigate && onNavigate('Dashboard')}
+            backText="Dashboard"
+          />
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
         </View>
       ) : (
         <FlatList
@@ -167,6 +158,28 @@ export default function GalleryScreen({ onNavigate }) {
               }}
               colors={[colors.primary]}
             />
+          }
+          ListHeaderComponent={
+            <View style={{ marginBottom: 4 }}>
+              <ScreenHeader
+                title="Photo Gallery"
+                subtitle="Visual portfolio, event captures & media gallery"
+                category="PORTFOLIO HUB"
+                iconName="images-outline"
+                onBack={() => onNavigate && onNavigate('Dashboard')}
+                backText="Dashboard"
+                rightAction={
+                  <TouchableOpacity
+                    style={styles.addBtn}
+                    onPress={() => setModalVisible(true)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="add" size={13} color={colors.textLight} />
+                    <Text style={styles.addBtnText}>Add Photo</Text>
+                  </TouchableOpacity>
+                }
+              />
+            </View>
           }
           ListEmptyComponent={
             <EmptyState

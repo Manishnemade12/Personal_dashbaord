@@ -85,16 +85,16 @@ export default function ProjectFormScreen({ project, onBack, onSuccess }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title={isEditing ? 'Edit Project' : 'Add New Project'}
-        subtitle={isEditing ? `Modifying "${title || 'Untitled'}"` : 'Showcase a new application or client work'}
-        category="PORTFOLIO EDITOR"
-        iconName="briefcase-outline"
-        onBack={onBack}
-        backText="All Projects"
-      />
-
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScreenHeader
+          title={isEditing ? 'Edit Project' : 'Add New Project'}
+          subtitle={isEditing ? `Modifying "${title || 'Untitled'}"` : 'Showcase a new application or client work'}
+          category="PORTFOLIO EDITOR"
+          iconName="briefcase-outline"
+          onBack={onBack}
+          backText="All Projects"
+        />
+
         <View style={[styles.formCard, isMobile && styles.formCardMobile]}>
           <View style={styles.formGroup}>
             <Text style={styles.label}>Project Title *</Text>
@@ -258,55 +258,55 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '600',
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
   sublabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: colors.textMuted,
-    marginTop: 2,
+    marginTop: 1,
   },
   input: {
     backgroundColor: colors.surfaceAlt,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 7,
     borderWidth: 1,
     borderColor: colors.border,
-    fontSize: 13,
+    fontSize: 12,
     color: colors.textPrimary,
   },
   textArea: {
-    minHeight: 120,
+    minHeight: 90,
   },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: colors.surfaceAlt,
-    padding: spacing.md,
-    borderRadius: radii.md,
+    padding: 10,
+    borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: spacing.md,
-    gap: spacing.sm,
+    marginBottom: spacing.sm,
+    gap: spacing.xs,
   },
   submitBtn: {
     backgroundColor: colors.primary,
-    borderRadius: radii.md,
-    paddingVertical: 12,
+    borderRadius: radii.sm,
+    paddingVertical: 9,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginTop: spacing.sm,
-    minHeight: layout.minTouchTarget,
+    gap: 6,
+    marginTop: spacing.xs,
+    minHeight: 34,
   },
   submitBtnText: {
     color: colors.textLight,
-    fontWeight: '700',
-    fontSize: 14,
+    fontWeight: '600',
+    fontSize: 12,
   },
 });

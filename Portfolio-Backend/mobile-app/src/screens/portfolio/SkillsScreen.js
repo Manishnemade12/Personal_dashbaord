@@ -180,28 +180,19 @@ export default function SkillsScreen({ routeParams, onNavigate }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Technical Skills"
-        subtitle="Manage programming languages, frameworks & tech tools"
-        category="PORTFOLIO HUB"
-        iconName="code-slash-outline"
-        onBack={() => onNavigate && onNavigate('Dashboard')}
-        backText="Dashboard"
-        rightAction={
-          <TouchableOpacity
-            style={styles.addBtn}
-            onPress={() => openModal()}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add" size={16} color={colors.textLight} />
-            <Text style={styles.addBtnText}>Add Skill</Text>
-          </TouchableOpacity>
-        }
-      />
-
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={{ flex: 1 }}>
+          <ScreenHeader
+            title="Technical Skills"
+            subtitle="Manage programming languages, frameworks & tech tools"
+            category="PORTFOLIO HUB"
+            iconName="code-slash-outline"
+            onBack={() => onNavigate && onNavigate('Dashboard')}
+            backText="Dashboard"
+          />
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
         </View>
       ) : (
         <FlatList
@@ -220,12 +211,32 @@ export default function SkillsScreen({ routeParams, onNavigate }) {
             />
           }
           ListHeaderComponent={
-            <View style={{ marginBottom: 12 }}>
-              <SearchInput
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search tech stack or skill level..."
+            <View>
+              <ScreenHeader
+                title="Technical Skills"
+                subtitle="Manage programming languages, frameworks & tech tools"
+                category="PORTFOLIO HUB"
+                iconName="code-slash-outline"
+                onBack={() => onNavigate && onNavigate('Dashboard')}
+                backText="Dashboard"
+                rightAction={
+                  <TouchableOpacity
+                    style={styles.addBtn}
+                    onPress={() => openModal()}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="add" size={13} color={colors.textLight} />
+                    <Text style={styles.addBtnText}>Add Skill</Text>
+                  </TouchableOpacity>
+                }
               />
+              <View style={{ marginBottom: 8, paddingHorizontal: 2 }}>
+                <SearchInput
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search tech stack or skill level..."
+                />
+              </View>
             </View>
           }
           ListEmptyComponent={

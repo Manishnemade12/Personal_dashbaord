@@ -165,49 +165,59 @@ export default function SocialLinksScreen({ onNavigate }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Social Media & Links"
-        subtitle={`${filledCount} of ${PLATFORMS.length} profiles connected`}
-        category="PORTFOLIO HUB"
-        iconName="share-social-outline"
-        onBack={() => onNavigate && onNavigate('Dashboard')}
-        backText="Dashboard"
-        rightAction={
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.refreshBtn}
-              onPress={fetchSocialLinks}
-              activeOpacity={0.7}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            >
-              <Ionicons name="refresh" size={16} color={colors.primary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.saveBtnTop, saving && { opacity: 0.7 }]}
-              onPress={handleSave}
-              disabled={saving}
-              activeOpacity={0.8}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color={colors.textLight} />
-              ) : (
-                <>
-                  <Ionicons name="save-outline" size={16} color={colors.textLight} />
-                  <Text style={styles.saveBtnTopText}>Save Links</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        }
-      />
-
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={{ flex: 1 }}>
+          <ScreenHeader
+            title="Social Media & Links"
+            subtitle={`${filledCount} of ${PLATFORMS.length} profiles connected`}
+            category="PORTFOLIO HUB"
+            iconName="share-social-outline"
+            onBack={() => onNavigate && onNavigate('Dashboard')}
+            backText="Dashboard"
+          />
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
         </View>
       ) : (
         <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollInner}>
+          <ScreenHeader
+            title="Social Media & Links"
+            subtitle={`${filledCount} of ${PLATFORMS.length} profiles connected`}
+            category="PORTFOLIO HUB"
+            iconName="share-social-outline"
+            onBack={() => onNavigate && onNavigate('Dashboard')}
+            backText="Dashboard"
+            rightAction={
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  style={styles.refreshBtn}
+                  onPress={fetchSocialLinks}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Ionicons name="refresh" size={16} color={colors.primary} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.saveBtnTop, saving && { opacity: 0.7 }]}
+                  onPress={handleSave}
+                  disabled={saving}
+                  activeOpacity={0.8}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color={colors.textLight} />
+                  ) : (
+                    <>
+                      <Ionicons name="save-outline" size={16} color={colors.textLight} />
+                      <Text style={styles.saveBtnTopText}>Save Links</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            }
+          />
+
           {successNotice && (
             <View style={styles.successBanner}>
               <Ionicons name="checkmark-circle" size={16} color={colors.success} />

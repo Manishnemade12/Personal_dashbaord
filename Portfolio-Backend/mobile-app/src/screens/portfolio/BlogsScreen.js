@@ -161,29 +161,20 @@ export default function BlogsScreen({ onNavigate, initialFilter = 'publish' }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Blog Articles"
-        subtitle="Manage and organize published portfolio articles"
-        category="CONTENT HUB"
-        iconName="newspaper-outline"
-        onBack={() => onNavigate && onNavigate('Dashboard')}
-        backText="Dashboard"
-        rightAction={
-          <TouchableOpacity
-            style={styles.createBtn}
-            onPress={() => onNavigate && onNavigate('BlogForm')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add" size={16} color={colors.textLight} />
-            <Text style={styles.createBtnText}>New Article</Text>
-          </TouchableOpacity>
-        }
-      />
-
       {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading articles...</Text>
+        <View style={{ flex: 1 }}>
+          <ScreenHeader
+            title="Blog Articles"
+            subtitle="Manage and organize published portfolio articles"
+            category="CONTENT HUB"
+            iconName="newspaper-outline"
+            onBack={() => onNavigate && onNavigate('Dashboard')}
+            backText="Dashboard"
+          />
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading articles...</Text>
+          </View>
         </View>
       ) : (
         <FlatList
@@ -202,17 +193,37 @@ export default function BlogsScreen({ onNavigate, initialFilter = 'publish' }) {
             />
           }
           ListHeaderComponent={
-            <View style={styles.filterSection}>
-              <SearchInput
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search articles by title or keyword..."
+            <View>
+              <ScreenHeader
+                title="Blog Articles"
+                subtitle="Manage and organize published portfolio articles"
+                category="CONTENT HUB"
+                iconName="newspaper-outline"
+                onBack={() => onNavigate && onNavigate('Dashboard')}
+                backText="Dashboard"
+                rightAction={
+                  <TouchableOpacity
+                    style={styles.createBtn}
+                    onPress={() => onNavigate && onNavigate('BlogForm')}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="add" size={13} color={colors.textLight} />
+                    <Text style={styles.createBtnText}>New Article</Text>
+                  </TouchableOpacity>
+                }
               />
-              <FilterTabs
-                tabs={filterTabs}
-                activeTab={filter}
-                onSelectTab={setFilter}
-              />
+              <View style={styles.filterSection}>
+                <SearchInput
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search articles by title or keyword..."
+                />
+                <FilterTabs
+                  tabs={filterTabs}
+                  activeTab={filter}
+                  onSelectTab={setFilter}
+                />
+              </View>
             </View>
           }
           ListEmptyComponent={

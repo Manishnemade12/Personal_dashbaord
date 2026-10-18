@@ -30,17 +30,17 @@ export default function ScreenHeader({
             onPress={onBack}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={16} color={colors.textSecondary} />
-            <Text style={styles.backButtonText}>{backText}</Text>
+            <Ionicons name="arrow-back" size={isMobile ? 14 : 16} color={colors.textSecondary} />
+            <Text style={[styles.backButtonText, isMobile && styles.backButtonTextMobile]}>{backText}</Text>
           </TouchableOpacity>
         )}
 
         <View style={styles.titleWrap}>
-          {category ? <Text style={styles.categoryText}>{category}</Text> : null}
+          {category ? <Text style={[styles.categoryText, isMobile && styles.categoryTextMobile]}>{category}</Text> : null}
           <View style={styles.titleRow}>
             {iconName ? (
-              <View style={styles.iconBadge}>
-                <Ionicons name={iconName} size={18} color={colors.primary} />
+              <View style={[styles.iconBadge, isMobile && styles.iconBadgeMobile]}>
+                <Ionicons name={iconName} size={isMobile ? 14 : 18} color={colors.primary} />
               </View>
             ) : null}
             <Text style={[styles.titleText, isMobile && styles.titleTextMobile]} numberOfLines={1}>
@@ -48,7 +48,7 @@ export default function ScreenHeader({
             </Text>
           </View>
           {subtitle ? (
-            <Text style={styles.subtitleText} numberOfLines={2}>
+            <Text style={[styles.subtitleText, isMobile && styles.subtitleTextMobile]} numberOfLines={2}>
               {subtitle}
             </Text>
           ) : null}
@@ -78,9 +78,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   headerContainerMobile: {
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: spacing.sm,
-    gap: 6,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 8,
+    gap: 4,
   },
   leftCol: {
     flex: 1,
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginBottom: 4,
+    marginBottom: 2,
     alignSelf: 'flex-start',
     paddingVertical: 2,
   },
@@ -99,18 +99,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textSecondary,
   },
+  backButtonTextMobile: {
+    fontSize: 11,
+  },
   titleWrap: {
     justifyContent: 'center',
   },
   categoryText: {
-    ...typography.subtitle,
+    fontSize: 11,
+    fontWeight: '700',
     color: colors.primary,
+    letterSpacing: 0.6,
     marginBottom: 2,
+  },
+  categoryTextMobile: {
+    fontSize: 9.5,
+    marginBottom: 1,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 6,
   },
   iconBadge: {
     width: 32,
@@ -120,18 +129,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconBadgeMobile: {
+    width: 24,
+    height: 24,
+    borderRadius: radii.xs,
+  },
   titleText: {
     fontSize: 20,
     fontWeight: '800',
     color: colors.textPrimary,
   },
   titleTextMobile: {
-    fontSize: 17,
+    fontSize: 15,
+    fontWeight: '700',
   },
   subtitleText: {
-    ...typography.caption,
+    fontSize: 12,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  subtitleTextMobile: {
+    fontSize: 10.5,
+    lineHeight: 14,
+    marginTop: 1,
   },
   rightCol: {
     flexDirection: 'row',
@@ -139,8 +159,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   rightColMobile: {
-    width: '100%',
-    justifyContent: 'flex-start',
-    marginTop: spacing.xs,
+    alignSelf: 'flex-start',
+    marginTop: 4,
   },
 });
