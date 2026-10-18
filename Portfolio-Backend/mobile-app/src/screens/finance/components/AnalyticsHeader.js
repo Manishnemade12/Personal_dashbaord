@@ -6,44 +6,44 @@ import styles from '../styles/investmentAnalyticsStyles';
 export default function AnalyticsHeader({ isMobile, holdingsCount, onNavigateBack, onRefresh }) {
   if (isMobile) {
     return (
-      <View style={[styles.headerToolbar, { paddingHorizontal: 12, paddingVertical: 8, gap: 6, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }]}>
+      <View style={[styles.headerToolbar, { paddingHorizontal: 10, paddingVertical: 6, gap: 4, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }]}>
         {/* Top Control Row */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
           <TouchableOpacity
-            style={[styles.backBtn, { paddingHorizontal: 10, paddingVertical: 6 }]}
+            style={[styles.backBtn, { paddingHorizontal: 8, paddingVertical: 4, minHeight: 26, borderRadius: 6 }]}
             onPress={onNavigateBack}
             activeOpacity={0.8}
           >
-            <Ionicons name="arrow-back" size={15} color="#0f172a" />
-            <Text style={[styles.backBtnText, { fontSize: 12 }]}>Back</Text>
+            <Ionicons name="arrow-back" size={13} color="#0f172a" />
+            <Text style={[styles.backBtnText, { fontSize: 10.5, fontWeight: '600' }]}>Back</Text>
           </TouchableOpacity>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={[styles.liveHoldingsBadge, { paddingHorizontal: 8, paddingVertical: 5 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <View style={[styles.liveHoldingsBadge, { paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 }]}>
               <View style={styles.liveGreenDot} />
-              <Text style={[styles.liveHoldingsText, { fontSize: 11 }]}>
+              <Text style={[styles.liveHoldingsText, { fontSize: 10 }]}>
                 {holdingsCount} Positions
               </Text>
             </View>
 
             <TouchableOpacity
-              style={[styles.refreshBtn, { paddingHorizontal: 9, paddingVertical: 5 }]}
+              style={[styles.refreshBtn, { paddingHorizontal: 8, paddingVertical: 4, minHeight: 26, borderRadius: 6 }]}
               onPress={onRefresh}
               activeOpacity={0.8}
             >
-              <Ionicons name="refresh" size={14} color="#3b82f6" />
-              <Text style={[styles.refreshBtnText, { fontSize: 11 }]}>Sync</Text>
+              <Ionicons name="refresh" size={12} color="#3b82f6" />
+              <Text style={[styles.refreshBtnText, { fontSize: 10.5, fontWeight: '600' }]}>Sync</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Studio Title Row */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
-          <View style={[styles.titleBadge, { width: 28, height: 28, borderRadius: 7 }]}>
-            <Ionicons name="analytics" size={15} color="#3b82f6" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 1 }}>
+          <View style={[styles.titleBadge, { width: 24, height: 24, borderRadius: 6 }]}>
+            <Ionicons name="analytics" size={13} color="#3b82f6" />
           </View>
           <View>
-            <Text style={[styles.screenTitle, { fontSize: 16, letterSpacing: -0.2 }]}>Visualisation Studio</Text>
+            <Text style={[styles.screenTitle, { fontSize: 14, letterSpacing: -0.2 }]}>Visualisation Studio</Text>
           </View>
         </View>
       </View>

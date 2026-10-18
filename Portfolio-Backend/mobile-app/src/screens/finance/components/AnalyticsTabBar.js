@@ -21,7 +21,7 @@ export default function AnalyticsTabBar({ selectedTab, onSelect }) {
               >
                 <Ionicons
                   name={tab.icon}
-                  size={16}
+                  size={13}
                   color={isActive ? '#ffffff' : '#64748b'}
                 />
                 <Text style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>

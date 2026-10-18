@@ -359,25 +359,34 @@ export default function FinanceScreen({ onNavigate }) {
 
   return (
     <View style={styles.container}>
-      <FinanceHeader
-        isMobile={isMobile}
-        monthName={monthName}
-        changeMonth={changeMonth}
-        onOpenBudget={() => setBudgetModalVisible(true)}
-        onOpenBulkRemove={openBulkRemoveModal}
-        onAddTransaction={() => openTxModal()}
-      />
-
       {loading ? (
-        <View style={styles.loadingCenter}>
-          <ActivityIndicator size="large" color="#7e37d8" />
-          <Text style={styles.loadingText}>Loading financial overview...</Text>
+        <View style={{ flex: 1 }}>
+          <FinanceHeader
+            isMobile={isMobile}
+            monthName={monthName}
+            changeMonth={changeMonth}
+            onOpenBudget={() => setBudgetModalVisible(true)}
+            onOpenBulkRemove={openBulkRemoveModal}
+            onAddTransaction={() => openTxModal()}
+          />
+          <View style={styles.loadingCenter}>
+            <ActivityIndicator size="large" color="#7e37d8" />
+            <Text style={styles.loadingText}>Loading financial overview...</Text>
+          </View>
         </View>
       ) : (
         <ScrollView
-          style={[styles.contentScroll, isMobile && { padding: 12 }]}
+          style={[styles.contentScroll, isMobile && { padding: 8 }]}
           showsVerticalScrollIndicator={false}
         >
+          <FinanceHeader
+            isMobile={isMobile}
+            monthName={monthName}
+            changeMonth={changeMonth}
+            onOpenBudget={() => setBudgetModalVisible(true)}
+            onOpenBulkRemove={openBulkRemoveModal}
+            onAddTransaction={() => openTxModal()}
+          />
           <FinanceSummarySection
             summary={summary}
             isMobile={isMobile}

@@ -204,42 +204,51 @@ export default function ProjectApiScreen({ onNavigate }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Project API Services"
-        subtitle={`${projects.length} API Groups • Categorized service endpoints`}
-        category="API HUB"
-        iconName="layers-outline"
-        onBack={() => onNavigate && onNavigate('Dashboard')}
-        backText="Dashboard"
-        rightAction={
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.refreshBtn}
-              onPress={fetchProjects}
-              activeOpacity={0.7}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            >
-              <Ionicons name="refresh" size={16} color={colors.primary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.addBtn}
-              onPress={handleOpenAddProject}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="add" size={16} color={colors.textLight} />
-              <Text style={styles.addBtnText}>New Project</Text>
-            </TouchableOpacity>
-          </View>
-        }
-      />
-
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={{ flex: 1 }}>
+          <ScreenHeader
+            title="Project API Services"
+            subtitle={`${projects.length} API Groups • Categorized service endpoints`}
+            category="API HUB"
+            iconName="layers-outline"
+            onBack={() => onNavigate && onNavigate('Dashboard')}
+            backText="Dashboard"
+          />
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
         </View>
       ) : (
         <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollInner}>
+          <ScreenHeader
+            title="Project API Services"
+            subtitle={`${projects.length} API Groups • Categorized service endpoints`}
+            category="API HUB"
+            iconName="layers-outline"
+            onBack={() => onNavigate && onNavigate('Dashboard')}
+            backText="Dashboard"
+            rightAction={
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  style={styles.refreshBtn}
+                  onPress={fetchProjects}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Ionicons name="refresh" size={16} color={colors.primary} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.addBtn}
+                  onPress={handleOpenAddProject}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="add" size={16} color={colors.textLight} />
+                  <Text style={styles.addBtnText}>New Project</Text>
+                </TouchableOpacity>
+              </View>
+            }
+          />
           {projects.length === 0 ? (
             <EmptyState
               icon="layers-outline"

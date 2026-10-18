@@ -49,27 +49,36 @@ export default function InvestmentScreen({ onNavigate }) {
 
   return (
     <View style={styles.container}>
-      {/* 1. Header Toolbar */}
-      <InvestmentHeader
-        isMobile={isMobile}
-        refreshing={refreshing}
-        onNavigate={onNavigate}
-        onRefresh={handleRefreshPrices}
-        onBulkRemove={openBulkRemoveModal}
-        onAiImport={openAiImportModal}
-        onAddHolding={openAddHoldingModal}
-      />
-
       {loading ? (
-        <View style={styles.loadingCenter}>
-          <ActivityIndicator size="large" color="#3b82f6" />
-          <Text style={styles.loadingText}>Fetching live market quotes & portfolio values...</Text>
+        <View style={{ flex: 1 }}>
+          <InvestmentHeader
+            isMobile={isMobile}
+            refreshing={refreshing}
+            onNavigate={onNavigate}
+            onRefresh={handleRefreshPrices}
+            onBulkRemove={openBulkRemoveModal}
+            onAiImport={openAiImportModal}
+            onAddHolding={openAddHoldingModal}
+          />
+          <View style={styles.loadingCenter}>
+            <ActivityIndicator size="large" color="#3b82f6" />
+            <Text style={styles.loadingText}>Fetching live market quotes & portfolio values...</Text>
+          </View>
         </View>
       ) : (
         <ScrollView
-          style={[styles.contentScroll, isMobile && { paddingHorizontal: 8, paddingVertical: 10 }]}
+          style={[styles.contentScroll, isMobile && { paddingHorizontal: 6, paddingVertical: 8 }]}
           showsVerticalScrollIndicator={false}
         >
+          <InvestmentHeader
+            isMobile={isMobile}
+            refreshing={refreshing}
+            onNavigate={onNavigate}
+            onRefresh={handleRefreshPrices}
+            onBulkRemove={openBulkRemoveModal}
+            onAiImport={openAiImportModal}
+            onAddHolding={openAddHoldingModal}
+          />
           {/* 2. Portfolio KPI Summary */}
           <View style={[styles.kpiGrid, isMobile && styles.kpiGridMobile]}>
             {/* Total Portfolio Value (100% full width on mobile) */}

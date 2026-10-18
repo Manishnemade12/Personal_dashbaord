@@ -483,8 +483,8 @@ export default function CalendarScreen({ onNavigate }) {
     return isVisible && matchesSearch;
   });
 
-  return (
-    <View style={styles.container}>
+  const calendarHeader = (
+    <View>
       <CalendarToolbar
         dateLabel={headerDateLabel}
         onPrevious={() => changeDate(-1)}
@@ -510,12 +510,19 @@ export default function CalendarScreen({ onNavigate }) {
         search={searchQuery}
         onSearchChange={setSearchQuery}
       />
+    </View>
+  );
 
+  return (
+    <View style={styles.container}>
       <View style={styles.viewContainer}>
         {loading ? (
-          <View style={styles.loadingCenter}>
-            <ActivityIndicator size="large" color="#7e37d8" />
-            <Text style={styles.loadingText}>Syncing calendar & reminders...</Text>
+          <View style={{ flex: 1 }}>
+            {calendarHeader}
+            <View style={styles.loadingCenter}>
+              <ActivityIndicator size="large" color="#7e37d8" />
+              <Text style={styles.loadingText}>Syncing calendar & reminders...</Text>
+            </View>
           </View>
         ) : (
           <CalendarViews
@@ -526,6 +533,7 @@ export default function CalendarScreen({ onNavigate }) {
             visibleEvents={visibleEvents}
             openEventModal={openEventModal}
             viewMode={viewMode}
+            headerComponent={calendarHeader}
           />
         )}
       </View>

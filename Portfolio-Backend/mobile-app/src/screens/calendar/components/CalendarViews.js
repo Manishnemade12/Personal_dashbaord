@@ -4,7 +4,16 @@ import { Ionicons } from '@expo/vector-icons';
 import MobileDayAgenda from './MobileDayAgenda';
 import styles from '../styles/calendarStyles';
 
-export default function CalendarViews({ isMobile, currentDate, selectedDate, setSelectedDate, visibleEvents, openEventModal, viewMode }) {
+export default function CalendarViews({
+  isMobile,
+  currentDate,
+  selectedDate,
+  setSelectedDate,
+  visibleEvents,
+  openEventModal,
+  viewMode,
+  headerComponent,
+}) {
   // ==========================================
   // VIEW RENDERERS
   // ==========================================
@@ -65,6 +74,7 @@ export default function CalendarViews({ isMobile, currentDate, selectedDate, set
           contentContainerStyle={{ paddingBottom: 60 }}
           showsVerticalScrollIndicator={false}
         >
+          {headerComponent}
           <View style={[styles.monthContainer, { paddingHorizontal: 6, paddingTop: 6 }]}>
             {/* Day Name Headers */}
             <View style={styles.weekHeaderRow}>
@@ -153,6 +163,7 @@ export default function CalendarViews({ isMobile, currentDate, selectedDate, set
         contentContainerStyle={styles.monthScrollContent}
         showsVerticalScrollIndicator={true}
       >
+        {headerComponent}
         <View style={styles.monthContainer}>
           {/* Day Name Headers */}
           <View style={styles.weekHeaderRow}>
@@ -246,7 +257,9 @@ export default function CalendarViews({ isMobile, currentDate, selectedDate, set
     }
 
     return (
-      <ScrollView horizontal style={styles.weekScrollContainer} showsHorizontalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        {headerComponent}
+        <ScrollView horizontal style={styles.weekScrollContainer} showsHorizontalScrollIndicator={false}>
         <View style={styles.weekColsWrapper}>
           {weekDays.map(({ date, events: dayEvents }, idx) => {
             const isToday =
@@ -303,7 +316,8 @@ export default function CalendarViews({ isMobile, currentDate, selectedDate, set
           })}
         </View>
       </ScrollView>
-    );
+    </ScrollView>
+  );
   };
 
   // 3. Day View
@@ -315,21 +329,25 @@ export default function CalendarViews({ isMobile, currentDate, selectedDate, set
 
     return (
       <View style={styles.dayViewContainer}>
-        <View style={styles.dayHeaderBanner}>
-          <Text style={styles.dayHeaderDate}>
-            {currentDate.toLocaleDateString(undefined, {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </Text>
-          <Text style={styles.dayHeaderCount}>{dayEvents.length} events scheduled</Text>
-        </View>
-
         <FlatList
           data={dayEvents}
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.dayEventsList}
+          ListHeaderComponent={
+            <View>
+              {headerComponent}
+              <View style={styles.dayHeaderBanner}>
+                <Text style={styles.dayHeaderDate}>
+                  {currentDate.toLocaleDateString(undefined, {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </Text>
+                <Text style={styles.dayHeaderCount}>{dayEvents.length} events scheduled</Text>
+              </View>
+            </View>
+          }
           renderItem={({ item }) => {
             const calColor = item.color || item.calendarId?.color || '#7e37d8';
             const sTime = new Date(item.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -398,6 +416,7 @@ export default function CalendarViews({ isMobile, currentDate, selectedDate, set
         data={sorted}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.agendaList}
+        ListHeaderComponent={headerComponent}
         renderItem={({ item }) => {
           const calColor = item.color || item.calendarId?.color || '#7e37d8';
           const s = new Date(item.startAt);

@@ -39,17 +39,17 @@ export default function CalendarSwitcher({ calendars, events, activeId, onSelect
 }
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: '#fff', paddingTop: 10, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#edf0f5' },
-  pills: { paddingHorizontal: 14, gap: 8, alignItems: 'center' },
-  pill: { minHeight: 38, maxWidth: 190, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 11, borderRadius: 20, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fafbfc' },
+  container: { backgroundColor: '#fff', paddingTop: 6, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: '#edf0f5' },
+  pills: { paddingHorizontal: 10, gap: 6, alignItems: 'center' },
+  pill: { minHeight: 28, maxWidth: 180, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, borderRadius: 14, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fafbfc' },
   allActive: { backgroundColor: '#253047', borderColor: '#253047' },
-  pillText: { flexShrink: 1, fontSize: 12, fontWeight: '700', color: '#475569' },
+  pillText: { flexShrink: 1, fontSize: 11, fontWeight: '600', color: '#475569' },
   whiteText: { color: '#fff' },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  count: { overflow: 'hidden', color: '#64748b', fontSize: 10, fontWeight: '800', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 10, backgroundColor: '#e9edf3' },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  count: { overflow: 'hidden', color: '#64748b', fontSize: 9.5, fontWeight: '700', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 8, backgroundColor: '#e9edf3' },
   activeCount: { backgroundColor: 'rgba(255,255,255,0.22)', color: '#fff' },
-  addPill: { height: 38, flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 10, borderRadius: 20, borderWidth: 1, borderStyle: 'dashed', borderColor: '#d8c8ed' },
-  addText: { color: '#7e37d8', fontSize: 12, fontWeight: '700' },
-  context: { flexDirection: 'row', alignItems: 'center', gap: 7, marginHorizontal: 14, marginTop: 8 },
-  contextText: { flex: 1, color: '#64748b', fontSize: 11, lineHeight: 15 },
+  addPill: { height: 28, flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 8, borderRadius: 14, borderWidth: 1, borderStyle: 'dashed', borderColor: '#d8c8ed' },
+  addText: { color: '#7e37d8', fontSize: 11, fontWeight: '600' },
+  context: { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: 10, marginTop: 4 },
+  contextText: { flex: 1, color: '#64748b', fontSize: 10, lineHeight: 14 },
 });

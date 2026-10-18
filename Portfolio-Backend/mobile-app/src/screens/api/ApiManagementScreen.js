@@ -187,8 +187,8 @@ export default function ApiManagementScreen({ onNavigate }) {
     }
   };
 
-  return (
-    <View style={styles.container}>
+  const headerElements = (
+    <View>
       <ScreenHeader
         title="API Management"
         subtitle={`${apis.length} REST endpoints & integrations registered`}
@@ -244,13 +244,21 @@ export default function ApiManagementScreen({ onNavigate }) {
           })}
         </ScrollView>
       </View>
+    </View>
+  );
 
+  return (
+    <View style={styles.container}>
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={{ flex: 1 }}>
+          {headerElements}
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
         </View>
       ) : (
         <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollInner}>
+          {headerElements}
           {filteredApis.length === 0 ? (
             <EmptyState
               icon="server-outline"

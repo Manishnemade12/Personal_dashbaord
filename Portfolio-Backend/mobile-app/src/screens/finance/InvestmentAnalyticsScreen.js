@@ -658,33 +658,48 @@ export default function InvestmentAnalyticsScreen({ onNavigate }) {
 
   return (
     <View style={styles.container}>
-      <AnalyticsHeader
-        isMobile={isMobile}
-        holdingsCount={analytics?.holdingsCount || 0}
-        onNavigateBack={() => onNavigate && onNavigate('Investments')}
-        onRefresh={fetchAnalytics}
-      />
-
-      <AnalyticsTabBar
-        selectedTab={selectedTab}
-        onSelect={(tab) => {
-          setSelectedTab(tab);
-          setSelectedSlice(null);
-          setSelectedMonth(null);
-        }}
-      />
-
-      {/* 3. Main Visual Canvas */}
       {loading ? (
-        <View style={styles.loadingCenter}>
-          <ActivityIndicator size="large" color="#3b82f6" />
-          <Text style={styles.loadingText}>Rendering visual portfolio charts...</Text>
+        <View style={{ flex: 1 }}>
+          <AnalyticsHeader
+            isMobile={isMobile}
+            holdingsCount={analytics?.holdingsCount || 0}
+            onNavigateBack={() => onNavigate && onNavigate('Investments')}
+            onRefresh={fetchAnalytics}
+          />
+          <AnalyticsTabBar
+            selectedTab={selectedTab}
+            onSelect={(tab) => {
+              setSelectedTab(tab);
+              setSelectedSlice(null);
+              setSelectedMonth(null);
+            }}
+          />
+          <View style={styles.loadingCenter}>
+            <ActivityIndicator size="large" color="#3b82f6" />
+            <Text style={styles.loadingText}>Rendering visual portfolio charts...</Text>
+          </View>
         </View>
       ) : (
         <ScrollView
-          style={[styles.contentScroll, isMobile && { padding: 12 }]}
+          style={[styles.contentScroll, isMobile && { padding: 8 }]}
           showsVerticalScrollIndicator={false}
         >
+          <AnalyticsHeader
+            isMobile={isMobile}
+            holdingsCount={analytics?.holdingsCount || 0}
+            onNavigateBack={() => onNavigate && onNavigate('Investments')}
+            onRefresh={fetchAnalytics}
+          />
+
+          <AnalyticsTabBar
+            selectedTab={selectedTab}
+            onSelect={(tab) => {
+              setSelectedTab(tab);
+              setSelectedSlice(null);
+              setSelectedMonth(null);
+            }}
+          />
+
           {selectedTab === 'overview' ? (
             /* Multi-View Visual Studio */
             <View style={[styles.overviewGrid, isMobile && { flexDirection: 'column' }]}>

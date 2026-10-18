@@ -82,16 +82,15 @@ export default function ProfileScreen({ onBack }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Admin Profile"
-        subtitle="Manage personal portfolio profile and public bio"
-        category="SETTINGS"
-        iconName="person"
-        onBack={onBack}
-        backText="Dashboard"
-      />
-
       <ScrollView contentContainerStyle={styles.content}>
+        <ScreenHeader
+          title="Admin Profile"
+          subtitle="Manage personal portfolio profile and public bio"
+          category="SETTINGS"
+          iconName="person"
+          onBack={onBack}
+          backText="Dashboard"
+        />
         <View style={[styles.profileCard, isMobile && styles.profileCardMobile]}>
           <View style={styles.avatarWrap}>
             {image ? (
