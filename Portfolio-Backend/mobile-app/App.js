@@ -22,6 +22,7 @@ import InvestmentScreen from './src/screens/finance/InvestmentScreen';
 import InvestmentAnalyticsScreen from './src/screens/finance/InvestmentAnalyticsScreen';
 import ApiManagementScreen from './src/screens/api/ApiManagementScreen';
 import ProjectApiScreen from './src/screens/api/ProjectApiScreen';
+import AiColdEmailScreen from './src/screens/ai/AiColdEmailScreen';
 
 
 // React Native Web Polyfill: Enable native web confirm/alert dialogs and execute button callbacks
@@ -207,6 +208,9 @@ export default function App() {
 
       case 'ProjectApi':
         return <ProjectApiScreen onNavigate={navigate} />;
+
+      case 'AiColdEmail':
+        return <AiColdEmailScreen onNavigate={navigate} />;
 
       case 'Profile':
         return <ProfileScreen onBack={() => navigate('Dashboard')} />;

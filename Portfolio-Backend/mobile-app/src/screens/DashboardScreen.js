@@ -303,6 +303,28 @@ export default function DashboardScreen({ onNavigate }) {
               <Ionicons name="arrow-forward" size={12} color="#3b82f6" />
             </View>
           </TouchableOpacity>
+
+          {/* Grok AI Job Mailer */}
+          <TouchableOpacity
+            style={[styles.hubTile, isCompact && styles.hubTileFullWidth]}
+            activeOpacity={0.85}
+            onPress={() => onNavigate && onNavigate('AiColdEmail')}
+          >
+            <View style={styles.hubTileTop}>
+              <View style={[styles.hubIconWrap, { backgroundColor: '#7e37d8' }]}>
+                <Ionicons name="sparkles" size={18} color="#ffffff" />
+              </View>
+              <View style={[styles.hubBadgeNew, { backgroundColor: '#7e37d8' }]}>
+                <Text style={styles.hubBadgeNewText}>GROK AI</Text>
+              </View>
+            </View>
+            <Text style={styles.hubTileTitle}>AI Job Mailer</Text>
+            <Text style={styles.hubTileDesc}>Generate cold emails from JD & send in Gmail</Text>
+            <View style={styles.hubTileArrowRow}>
+              <Text style={[styles.hubTileActionText, { color: '#7e37d8' }]}>Launch Mailer</Text>
+              <Ionicons name="arrow-forward" size={12} color="#7e37d8" />
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
 

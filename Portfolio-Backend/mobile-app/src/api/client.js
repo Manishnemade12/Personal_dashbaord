@@ -200,6 +200,10 @@ export const api = {
 
   // Unified Portfolio Summary (/api/portfolio/summary)
   getPortfolioSummary: () => request('/portfolio/summary'),
+
+  // Grok AI Cold Email & OCR (/api/ai/*)
+  generateColdEmail: (data) => request('/ai/cold-email', { method: 'POST', body: data }),
+  extractTextFromImage: (data) => request('/ai/ocr', { method: 'POST', body: data }),
 };
 
 export default api;

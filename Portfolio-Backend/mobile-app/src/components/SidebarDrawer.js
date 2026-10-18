@@ -44,6 +44,7 @@ export default function SidebarDrawer({
   const isApiGroupActive = isApiManagementActive || isProjectApiActive;
 
   const isProfileActive = currentRoute === 'Profile';
+  const isAiColdEmailActive = currentRoute === 'AiColdEmail';
   const isDashboardActive = currentRoute === 'Dashboard';
 
   const [activeDropdown, setActiveDropdown] = useState(() => {
@@ -523,7 +524,47 @@ export default function SidebarDrawer({
               </View>
             )}
 
-            {/* 7. Profile */}
+            {/* 7. Grok AI Job Mailer */}
+            <TouchableOpacity
+              style={[styles.navItem, isAiColdEmailActive && styles.navActive]}
+              onPress={() => handleNav('AiColdEmail')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.navRow}>
+                <View style={[styles.iconContainer, isAiColdEmailActive && { backgroundColor: 'transparent' }]}>
+                  <Ionicons
+                    name="sparkles"
+                    size={20}
+                    color={isAiColdEmailActive ? '#ffffff' : '#7e37d8'}
+                  />
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                  <Text style={[styles.navText, isAiColdEmailActive && styles.navTextActive]}>
+                    AI Job Mailer
+                  </Text>
+                  <View
+                    style={{
+                      backgroundColor: isAiColdEmailActive ? 'rgba(255,255,255,0.25)' : '#7e37d8',
+                      paddingHorizontal: 5,
+                      paddingVertical: 1,
+                      borderRadius: 4,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: '800',
+                        color: '#ffffff',
+                      }}
+                    >
+                      GROK
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            {/* 8. Profile */}
             <TouchableOpacity
               style={[styles.navItem, isProfileActive && styles.navActive]}
               onPress={() => handleNav('Profile')}
