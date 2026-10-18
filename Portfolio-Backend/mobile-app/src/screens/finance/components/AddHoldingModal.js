@@ -6,6 +6,7 @@ import { ASSET_CLASSES, ASSET_META } from '../constants/assetOptions';
 
 export default function AddHoldingModal({
   data: {
+    isMobile,
     addModalVisible,
     setAddModalVisible,
     resetAddForm,
@@ -36,14 +37,18 @@ export default function AddHoldingModal({
   return (
 <Modal visible={addModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, isMobile && { padding: 12, borderRadius: 14, maxHeight: '94%', width: '96%' }]}>
             <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>Add Asset to Wealth Tracker</Text>
-                <Text style={styles.modalSubtitle}>Enter your buy price & track real-time P&L</Text>
+              <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                <Text style={[styles.modalTitle, isMobile && { fontSize: 15 }]} numberOfLines={1}>Add Asset</Text>
+                <Text style={[styles.modalSubtitle, isMobile && { fontSize: 11 }]} numberOfLines={1}>Track buy price & live P&L</Text>
               </View>
-              <TouchableOpacity onPress={() => setAddModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#64748b" />
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setAddModalVisible(false)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="close" size={20} color="#64748b" />
               </TouchableOpacity>
             </View>
 
@@ -173,9 +178,9 @@ export default function AddHoldingModal({
               {selectedInstrument && (
                 <View style={styles.selectedInstCard}>
                   <View style={styles.livePriceRow}>
-                    <View>
-                      <Text style={styles.selectedInstTitle}>{selectedInstrument.instrumentName}</Text>
-                      <Text style={styles.selectedInstCode}>
+                    <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                      <Text style={styles.selectedInstTitle} numberOfLines={1}>{selectedInstrument.instrumentName}</Text>
+                      <Text style={styles.selectedInstCode} numberOfLines={1}>
                         {selectedInstrument.symbolOrCode} ({selectedInstrument.subCategory})
                       </Text>
                     </View>
@@ -274,8 +279,8 @@ export default function AddHoldingModal({
               onPress={handleSaveNewHolding}
               disabled={savingNewHolding || !selectedInstrument || !newQuantity || !newBuyPrice}
             >
-              <Text style={styles.saveBtnText}>
-                {savingNewHolding ? 'Adding to Tracker...' : 'Save to Wealth Tracker'}
+              <Text style={styles.saveBtnText} numberOfLines={1}>
+                {savingNewHolding ? 'Saving...' : 'Save'}
               </Text>
             </TouchableOpacity>
           </View>

@@ -4,20 +4,24 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import styles from '../styles/investmentStyles';
 import { ASSET_CLASSES, ASSET_META } from '../constants/assetOptions';
 
-export default function BulkRemoveModal({ data: { bulkRemoveModalVisible, setBulkRemoveModalVisible, selectedHoldingIds, holdings, toggleSelectAllHoldings, toggleSelectHolding, handleConfirmBulkRemoveHoldings, isDeletingBulk } }) {
+export default function BulkRemoveModal({ data: { isMobile, bulkRemoveModalVisible, setBulkRemoveModalVisible, selectedHoldingIds, holdings, toggleSelectAllHoldings, toggleSelectHolding, handleConfirmBulkRemoveHoldings, isDeletingBulk } }) {
   return (
 <Modal visible={bulkRemoveModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.bulkRemoveCard}>
+          <View style={[styles.bulkRemoveCard, isMobile && { padding: 12, borderRadius: 14, maxHeight: '94%', width: '96%' }]}>
             <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalHeading}>Remove Holdings</Text>
-                <Text style={styles.modalSubheading}>
+              <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                <Text style={[styles.modalHeading, isMobile && { fontSize: 15 }]} numberOfLines={1}>Remove Holdings</Text>
+                <Text style={[styles.modalSubheading, isMobile && { fontSize: 11 }]} numberOfLines={1}>
                   Select assets to remove from your tracker, or use Select All
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setBulkRemoveModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#64748b" />
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setBulkRemoveModalVisible(false)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="close" size={20} color="#64748b" />
               </TouchableOpacity>
             </View>
 

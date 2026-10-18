@@ -5,6 +5,7 @@ import styles from '../styles/investmentStyles';
 
 export default function SellHoldingModal({
   data: {
+    isMobile,
     sellModalVisible,
     setSellModalVisible,
     sellHolding,
@@ -41,22 +42,26 @@ export default function SellHoldingModal({
   return (
     <Modal visible={sellModalVisible} transparent animationType="slide">
       <View style={styles.modalOverlay}>
-        <View style={styles.modalCard}>
+        <View style={[styles.modalCard, isMobile && { padding: 12, borderRadius: 14, maxHeight: '94%', width: '96%' }]}>
           {/* Header */}
           <View style={styles.modalHeader}>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={[styles.sellHeaderIconBadge, { backgroundColor: '#fef3c7' }]}>
-                  <Feather name="trending-down" size={16} color="#d97706" />
+                  <Feather name="trending-down" size={14} color="#d97706" />
                 </View>
-                <Text style={styles.modalTitle}>Sell Holding / Exit</Text>
+                <Text style={[styles.modalTitle, isMobile && { fontSize: 15 }]} numberOfLines={1}>Sell Holding</Text>
               </View>
-              <Text style={styles.modalSubtitle} numberOfLines={1}>
+              <Text style={[styles.modalSubtitle, isMobile && { fontSize: 11 }]} numberOfLines={1}>
                 {sellHolding?.instrumentName} ({sellHolding?.symbolOrCode})
               </Text>
             </View>
-            <TouchableOpacity onPress={() => setSellModalVisible(false)}>
-              <Ionicons name="close" size={24} color="#64748b" />
+            <TouchableOpacity
+              style={styles.modalCloseBtn}
+              onPress={() => setSellModalVisible(false)}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Ionicons name="close" size={20} color="#64748b" />
             </TouchableOpacity>
           </View>
 

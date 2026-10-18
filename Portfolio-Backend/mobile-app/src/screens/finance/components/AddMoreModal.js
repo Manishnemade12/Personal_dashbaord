@@ -4,20 +4,24 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import styles from '../styles/investmentStyles';
 import { ASSET_CLASSES, ASSET_META } from '../constants/assetOptions';
 
-export default function AddMoreModal({ data: { addMoreModalVisible, setAddMoreModalVisible, addMoreHolding, addMoreQty, setAddMoreQty, addMorePrice, setAddMorePrice, addMoreLivePrice, loadingAddMoreQuote, savingAddMore, handleSaveAddMore } }) {
+export default function AddMoreModal({ data: { isMobile, addMoreModalVisible, setAddMoreModalVisible, addMoreHolding, addMoreQty, setAddMoreQty, addMorePrice, setAddMorePrice, addMoreLivePrice, loadingAddMoreQuote, savingAddMore, handleSaveAddMore } }) {
   return (
 <Modal visible={addMoreModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, isMobile && { padding: 12, borderRadius: 14, maxHeight: '94%', width: '96%' }]}>
             <View style={styles.modalHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>Add More to Holding</Text>
-                <Text style={styles.modalSubtitle} numberOfLines={1}>
+              <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                <Text style={[styles.modalTitle, isMobile && { fontSize: 15 }]} numberOfLines={1}>Add More Units</Text>
+                <Text style={[styles.modalSubtitle, isMobile && { fontSize: 11 }]} numberOfLines={1}>
                   {addMoreHolding?.instrumentName} ({addMoreHolding?.symbolOrCode})
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setAddMoreModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#64748b" />
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setAddMoreModalVisible(false)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="close" size={20} color="#64748b" />
               </TouchableOpacity>
             </View>
 
@@ -148,9 +152,9 @@ export default function AddMoreModal({ data: { addMoreModalVisible, setAddMoreMo
               onPress={handleSaveAddMore}
               disabled={savingAddMore || !addMoreQty || !addMorePrice}
             >
-              <Ionicons name="add-circle" size={18} color="#fff" />
-              <Text style={styles.saveBtnText}>
-                {savingAddMore ? 'Adding...' : 'Add to Holding & Update Average'}
+              <Ionicons name="add-circle" size={16} color="#fff" />
+              <Text style={styles.saveBtnText} numberOfLines={1}>
+                {savingAddMore ? 'Adding...' : 'Add More'}
               </Text>
             </TouchableOpacity>
           </View>

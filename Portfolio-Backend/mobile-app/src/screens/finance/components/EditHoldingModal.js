@@ -4,18 +4,22 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import styles from '../styles/investmentStyles';
 import { ASSET_CLASSES, ASSET_META } from '../constants/assetOptions';
 
-export default function EditHoldingModal({ data: { editModalVisible, setEditModalVisible, editingHolding, editQuantity, setEditQuantity, editBuyPrice, setEditBuyPrice, editSubCategory, setEditSubCategory, savingEdit, handleSaveEditHolding, handleDeleteHolding } }) {
+export default function EditHoldingModal({ data: { isMobile, editModalVisible, setEditModalVisible, editingHolding, editQuantity, setEditQuantity, editBuyPrice, setEditBuyPrice, editSubCategory, setEditSubCategory, savingEdit, handleSaveEditHolding, handleDeleteHolding } }) {
   return (
 <Modal visible={editModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, isMobile && { padding: 12, borderRadius: 14, maxHeight: '94%', width: '96%' }]}>
             <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>Edit Holding</Text>
-                <Text style={styles.modalSubtitle}>{editingHolding?.instrumentName}</Text>
+              <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                <Text style={[styles.modalTitle, isMobile && { fontSize: 15 }]} numberOfLines={1}>Edit Holding</Text>
+                <Text style={[styles.modalSubtitle, isMobile && { fontSize: 11 }]} numberOfLines={1}>{editingHolding?.instrumentName}</Text>
               </View>
-              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#64748b" />
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setEditModalVisible(false)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="close" size={20} color="#64748b" />
               </TouchableOpacity>
             </View>
 
@@ -75,8 +79,8 @@ export default function EditHoldingModal({ data: { editModalVisible, setEditModa
               onPress={handleSaveEditHolding}
               disabled={savingEdit}
             >
-              <Text style={styles.saveBtnText}>
-                {savingEdit ? 'Saving...' : 'Update Holding'}
+              <Text style={styles.saveBtnText} numberOfLines={1}>
+                {savingEdit ? 'Saving...' : 'Save'}
               </Text>
             </TouchableOpacity>
           </View>

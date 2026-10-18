@@ -29,22 +29,24 @@ export default function FinanceHeader({ isMobile, monthName, changeMonth, onOpen
           </TouchableOpacity>
         </View>
 
-        {/* Row 2: Month Navigation + Secondary Action Buttons */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 4, marginTop: 2 }}>
-          <View style={[styles.monthNav, { flex: 1.2, justifyContent: 'space-between', height: 26, paddingVertical: 0 }]}>
-            <TouchableOpacity style={styles.arrowBtn} onPress={() => changeMonth(-1)}>
-              <Ionicons name="chevron-back" size={13} color="#64748b" />
-            </TouchableOpacity>
-            <View style={styles.monthLabelBox}>
-              <Text style={[styles.monthLabelText, { fontSize: 11 }]}>{monthName}</Text>
-            </View>
-            <TouchableOpacity style={styles.arrowBtn} onPress={() => changeMonth(1)}>
-              <Ionicons name="chevron-forward" size={13} color="#64748b" />
-            </TouchableOpacity>
+        {/* Row 2: Month Navigation (Dedicated Row - Never overlaps) */}
+        <View style={[styles.monthNav, { width: '100%', justifyContent: 'space-between', height: 28, paddingVertical: 0 }]}>
+          <TouchableOpacity style={styles.arrowBtn} onPress={() => changeMonth(-1)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="chevron-back" size={13} color="#64748b" />
+          </TouchableOpacity>
+          <View style={styles.monthLabelBox}>
+            <Ionicons name="calendar-outline" size={12} color="#7e37d8" style={{ marginRight: 5 }} />
+            <Text style={[styles.monthLabelText, { fontSize: 11 }]}>{monthName}</Text>
           </View>
+          <TouchableOpacity style={styles.arrowBtn} onPress={() => changeMonth(1)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="chevron-forward" size={13} color="#64748b" />
+          </TouchableOpacity>
+        </View>
 
+        {/* Row 3: Secondary Action Buttons (Placed Below Month Navigation as requested) */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', gap: 6 }}>
           <TouchableOpacity
-            style={[styles.budgetBtn, { paddingHorizontal: 8, paddingVertical: 4, minHeight: 26, height: 26, borderRadius: 6 }]}
+            style={[styles.budgetBtn, { flex: 1, justifyContent: 'center', paddingHorizontal: 6, paddingVertical: 5, minHeight: 28, height: 28, borderRadius: 7 }]}
             onPress={onOpenBudget}
             activeOpacity={0.8}
           >
@@ -53,7 +55,7 @@ export default function FinanceHeader({ isMobile, monthName, changeMonth, onOpen
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.manageRemoveBtn, { paddingHorizontal: 8, paddingVertical: 4, minHeight: 26, height: 26, borderRadius: 6 }]}
+            style={[styles.manageRemoveBtn, { flex: 1, justifyContent: 'center', paddingHorizontal: 6, paddingVertical: 5, minHeight: 28, height: 28, borderRadius: 7 }]}
             onPress={onOpenBulkRemove}
             activeOpacity={0.8}
           >

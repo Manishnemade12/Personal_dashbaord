@@ -271,13 +271,13 @@ export default function FinanceModals(props) {
                 <Text style={styles.modalCancelBtnText} numberOfLines={1}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveBtn, { flex: 2, marginTop: 0 }]}
+                style={[styles.saveBtn, { flex: 1.5, marginTop: 0 }]}
                 onPress={handleSaveTransaction}
                 disabled={savingTx}
                 activeOpacity={0.8}
               >
                 <Text style={styles.saveBtnText} numberOfLines={1} ellipsizeMode="tail">
-                  {savingTx ? 'Saving...' : editingTx ? 'Update Transaction' : 'Save Transaction'}
+                  {savingTx ? 'Saving...' : 'Save'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -349,13 +349,13 @@ export default function FinanceModals(props) {
                 <Text style={styles.modalCancelBtnText} numberOfLines={1}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveBtn, { flex: 2, marginTop: 0 }]}
+                style={[styles.saveBtn, { flex: 1.5, marginTop: 0 }]}
                 onPress={handleSaveBudget}
                 disabled={savingBudget}
                 activeOpacity={0.8}
               >
                 <Text style={styles.saveBtnText} numberOfLines={1} ellipsizeMode="tail">
-                  {savingBudget ? 'Saving...' : 'Save Targets'}
+                  {savingBudget ? 'Saving...' : 'Save'}
                 </Text>
               </TouchableOpacity>
             </View>
