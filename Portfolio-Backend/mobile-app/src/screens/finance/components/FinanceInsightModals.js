@@ -39,12 +39,12 @@ export default function FinanceModals(props) {
                   {/* Modal Header */}
                   <View style={styles.modalHeader}>
                     <View style={[styles.catDrillHeaderLeft, { flex: 1, minWidth: 0, marginRight: 8 }]}>
-                      <View style={[styles.catDrillIconBadge, { backgroundColor: `${catMeta.color || '#64748b'}20` }, isMobile && { width: 36, height: 36, borderRadius: 10 }]}>
-                        <Ionicons name={catMeta.icon || 'pricetag'} size={isMobile ? 18 : 24} color={catMeta.color || '#64748b'} />
+                      <View style={[styles.catDrillIconBadge, { backgroundColor: `${catMeta.color || '#64748b'}20` }, isMobile && { width: 32, height: 32, borderRadius: 8 }]}>
+                        <Ionicons name={catMeta.icon || 'pricetag'} size={isMobile ? 16 : 22} color={catMeta.color || '#64748b'} />
                       </View>
                       <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={[styles.catDrillTitle, isMobile && { fontSize: 16 }]} numberOfLines={1}>{detailCategoryName}</Text>
-                        <Text style={styles.catDrillSubtitle} numberOfLines={1}>Itemized Breakdown</Text>
+                        <Text style={[styles.catDrillTitle, isMobile && { fontSize: 14 }]} numberOfLines={1}>{detailCategoryName}</Text>
+                        <Text style={[styles.catDrillSubtitle, isMobile && { fontSize: 10.5 }]} numberOfLines={1}>Itemized Breakdown</Text>
                       </View>
                     </View>
                     <TouchableOpacity
@@ -57,25 +57,25 @@ export default function FinanceModals(props) {
                   </View>
 
                   {/* Category Summary Stats Banner */}
-                  <View style={[styles.catDrillStatsBanner, isMobile && { paddingVertical: 8, paddingHorizontal: 6, marginVertical: 8 }]}>
+                  <View style={[styles.catDrillStatsBanner, isMobile && { paddingVertical: 6, paddingHorizontal: 4, marginVertical: 8 }]}>
                     <View style={styles.catDrillStatItem}>
-                      <Text style={[styles.catDrillStatLabel, isMobile && { fontSize: 9 }]}>Total Spent</Text>
-                      <Text style={[styles.catDrillStatVal, { color: catMeta.color || '#0f172a' }, isMobile && { fontSize: 13 }]}>
+                      <Text style={styles.catDrillStatLabel} numberOfLines={1}>{isMobile ? 'Spent' : 'Total Spent'}</Text>
+                      <Text style={[styles.catDrillStatVal, { color: catMeta.color || '#0f172a' }]} numberOfLines={1}>
                         ₹{totalCatAmount.toLocaleString('en-IN')}
                       </Text>
                     </View>
                     <View style={styles.catDrillStatDivider} />
                     <View style={styles.catDrillStatItem}>
-                      <Text style={styles.catDrillStatLabel}>Share of Expenses</Text>
-                      <Text style={styles.catDrillStatVal}>
+                      <Text style={styles.catDrillStatLabel} numberOfLines={1}>{isMobile ? 'Share' : 'Share of Exp.'}</Text>
+                      <Text style={styles.catDrillStatVal} numberOfLines={1}>
                         {catSummary?.percent || 0}%
                       </Text>
                     </View>
                     <View style={styles.catDrillStatDivider} />
                     <View style={styles.catDrillStatItem}>
-                      <Text style={styles.catDrillStatLabel}>Transactions</Text>
-                      <Text style={styles.catDrillStatVal}>
-                        {categoryTxs.length} entries
+                      <Text style={styles.catDrillStatLabel} numberOfLines={1}>{isMobile ? 'Count' : 'Transactions'}</Text>
+                      <Text style={styles.catDrillStatVal} numberOfLines={1}>
+                        {categoryTxs.length} {isMobile ? 'txs' : 'entries'}
                       </Text>
                     </View>
                   </View>
@@ -95,16 +95,18 @@ export default function FinanceModals(props) {
                           <View key={tx._id} style={styles.drillTxCard}>
                             {/* Header: Kab (When) + Kitna (How much) */}
                             <View style={styles.drillTxTopRow}>
-                              <View style={styles.drillTxWhenRow}>
-                                <Ionicons name="time-outline" size={14} color="#64748b" />
-                                <Text style={styles.drillTxDateText}>
-                                  {formatDateTime(tx.date)}
-                                </Text>
-                                <View style={styles.drillPaymentTag}>
-                                  <Text style={styles.drillPaymentTagText}>{tx.paymentMode || 'UPI'}</Text>
+                              <View style={{ flex: 1, minWidth: 0, marginRight: 6 }}>
+                                <View style={styles.drillTxWhenRow}>
+                                  <Ionicons name="time-outline" size={13} color="#64748b" />
+                                  <Text style={styles.drillTxDateText} numberOfLines={1}>
+                                    {formatDateTime(tx.date)}
+                                  </Text>
+                                  <View style={styles.drillPaymentTag}>
+                                    <Text style={styles.drillPaymentTagText}>{tx.paymentMode || 'UPI'}</Text>
+                                  </View>
                                 </View>
                               </View>
-                              <Text style={styles.drillTxAmount}>
+                              <Text style={styles.drillTxAmount} numberOfLines={1}>
                                 ₹{(tx.amount || 0).toLocaleString('en-IN')}
                               </Text>
                             </View>
@@ -165,22 +167,22 @@ export default function FinanceModals(props) {
                   </ScrollView>
 
                   {/* Modal Footer: Quick Add under this Category */}
-                  <View style={[styles.catDrillFooter, { flexDirection: 'row', gap: 8 }]}>
+                  <View style={[styles.catDrillFooter, { flexDirection: 'row', gap: 6 }]}>
                     <TouchableOpacity
-                      style={[styles.modalCancelBtn, { flex: 1, paddingVertical: 10 }]}
+                      style={[styles.modalCancelBtn, { flex: 1, minHeight: 30, paddingVertical: 6, borderRadius: 8 }]}
                       onPress={() => setCategoryDetailModalVisible(false)}
                       activeOpacity={0.8}
                     >
-                      <Text style={styles.modalCancelBtnText}>Close</Text>
+                      <Text style={[styles.modalCancelBtnText, { fontSize: 11 }]} numberOfLines={1}>Close</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.drillAddBtn, { flex: 2, paddingVertical: 10, marginTop: 0 }]}
+                      style={[styles.drillAddBtn, { flex: 1.5, minHeight: 30, paddingVertical: 6, borderRadius: 8, marginTop: 0 }]}
                       onPress={() => openAddTxForCategory(detailCategoryName)}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="add-circle-outline" size={16} color="#ffffff" />
-                      <Text style={[styles.drillAddBtnText, { fontSize: 12 }]}>
-                        + Add Expense
+                      <Ionicons name="add" size={14} color="#ffffff" />
+                      <Text style={[styles.drillAddBtnText, { fontSize: 11 }]} numberOfLines={1}>
+                        Add Expense
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -219,24 +221,24 @@ export default function FinanceModals(props) {
             </View>
 
             {/* Investment Target vs Real Deployment Banner */}
-            <View style={[styles.invDrillStatsBanner, isMobile && { paddingVertical: 8, paddingHorizontal: 6, marginVertical: 8 }]}>
+            <View style={[styles.invDrillStatsBanner, isMobile && { paddingVertical: 6, paddingHorizontal: 4, marginVertical: 8 }]}>
               <View style={styles.invDrillStatItem}>
-                <Text style={[styles.invDrillStatLabel, isMobile && { fontSize: 9 }]}>Invested</Text>
-                <Text style={[styles.invDrillStatVal, { color: '#7e37d8' }, isMobile && { fontSize: 13 }]}>
+                <Text style={styles.invDrillStatLabel} numberOfLines={1}>Invested</Text>
+                <Text style={[styles.invDrillStatVal, { color: '#7e37d8' }]} numberOfLines={1}>
                   ₹{(summary?.monthlyInvested || 0).toLocaleString('en-IN')}
                 </Text>
               </View>
               <View style={styles.invDrillStatDivider} />
               <View style={styles.invDrillStatItem}>
-                <Text style={[styles.invDrillStatLabel, isMobile && { fontSize: 9 }]}>Target</Text>
-                <Text style={[styles.invDrillStatVal, isMobile && { fontSize: 13 }]}>
+                <Text style={styles.invDrillStatLabel} numberOfLines={1}>Target</Text>
+                <Text style={styles.invDrillStatVal} numberOfLines={1}>
                   ₹{(summary?.investmentTarget || 0).toLocaleString('en-IN')}
                 </Text>
               </View>
               <View style={styles.invDrillStatDivider} />
               <View style={styles.invDrillStatItem}>
-                <Text style={[styles.invDrillStatLabel, isMobile && { fontSize: 9 }]}>Progress</Text>
-                <Text style={[styles.invDrillStatVal, { color: summary?.investmentTargetProgress >= 100 ? '#10b981' : '#7e37d8' }, isMobile && { fontSize: 13 }]}>
+                <Text style={styles.invDrillStatLabel} numberOfLines={1}>Progress</Text>
+                <Text style={[styles.invDrillStatVal, { color: summary?.investmentTargetProgress >= 100 ? '#10b981' : '#7e37d8' }]} numberOfLines={1}>
                   {summary?.investmentTargetProgress || 0}%
                 </Text>
               </View>
@@ -307,26 +309,26 @@ export default function FinanceModals(props) {
             </ScrollView>
 
             {/* Modal Footer */}
-            <View style={[styles.invDrillFooter, { flexDirection: 'row', gap: 8 }]}>
+            <View style={[styles.invDrillFooter, { flexDirection: 'row', gap: 6 }]}>
               <TouchableOpacity
-                style={[styles.modalCancelBtn, { flex: 1, paddingVertical: 10 }]}
+                style={[styles.modalCancelBtn, { flex: 1, minHeight: 30, paddingVertical: 6, borderRadius: 8 }]}
                 onPress={() => setInvestmentDetailModalVisible(false)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.modalCancelBtnText}>Close</Text>
+                <Text style={[styles.modalCancelBtnText, { fontSize: 11 }]} numberOfLines={1}>Close</Text>
               </TouchableOpacity>
               {onNavigate && (
                 <TouchableOpacity
-                  style={[styles.invGoToPortfolioBtn, { flex: 2, paddingVertical: 10, marginTop: 0 }]}
+                  style={[styles.invGoToPortfolioBtn, { flex: 1.5, minHeight: 30, paddingVertical: 6, borderRadius: 8, marginTop: 0 }]}
                   onPress={() => {
                     setInvestmentDetailModalVisible(false);
                     onNavigate('Investments');
                   }}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="pie-chart" size={15} color="#ffffff" />
-                  <Text style={[styles.invGoToPortfolioBtnText, { fontSize: 12 }]}>
-                    Open Portfolio
+                  <Ionicons name="pie-chart" size={14} color="#ffffff" />
+                  <Text style={[styles.invGoToPortfolioBtnText, { fontSize: 11 }]} numberOfLines={1}>
+                    Portfolio
                   </Text>
                 </TouchableOpacity>
               )}
