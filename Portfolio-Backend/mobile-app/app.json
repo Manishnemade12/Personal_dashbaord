@@ -10,6 +10,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.manish.portfolioadmin",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -17,6 +18,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "permissions": [
+        "INTERNET",
         "RECEIVE_BOOT_COMPLETED",
         "SCHEDULE_EXACT_ALARM",
         "POST_NOTIFICATIONS",
