@@ -184,6 +184,7 @@ export const api = {
   updateProjectApi: (id, data) => request(`/projectapi/${id}`, { method: 'PUT', body: data }),
   deleteProjectApi: (id) => request(`/projectapi/${id}`, { method: 'DELETE' }),
   addProjectApiEndpoint: (id, data) => request(`/projectapi/${id}/apis`, { method: 'POST', body: data }),
+  updateProjectApiEndpoint: (id, apiId, data) => request(`/projectapi/${id}/apis/${apiId}`, { method: 'PUT', body: data }),
   deleteProjectApiEndpoint: (id, apiId) => request(`/projectapi/${id}/apis/${apiId}`, { method: 'DELETE' }),
 
   // Education Details (/api/education)

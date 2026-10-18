@@ -21,8 +21,56 @@ export default function ScreenHeader({
   const { width } = useWindowDimensions();
   const isMobile = width < 680;
 
+  if (isMobile) {
+    return (
+      <View style={styles.headerContainerMobile}>
+        {(onBack || rightAction) && (
+          <View style={styles.topBarMobile}>
+            {onBack ? (
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={onBack}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="arrow-back" size={14} color={colors.textSecondary} />
+                <Text style={styles.backButtonTextMobile}>{backText}</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={{ flex: 1 }} />
+            )}
+
+            {rightAction ? (
+              <View style={styles.rightActionMobileWrap}>
+                {rightAction}
+              </View>
+            ) : null}
+          </View>
+        )}
+
+        <View style={styles.titleWrap}>
+          {category ? <Text style={styles.categoryTextMobile}>{category}</Text> : null}
+          <View style={styles.titleRow}>
+            {iconName ? (
+              <View style={styles.iconBadgeMobile}>
+                <Ionicons name={iconName} size={14} color={colors.primary} />
+              </View>
+            ) : null}
+            <Text style={styles.titleTextMobile} numberOfLines={1}>
+              {title}
+            </Text>
+          </View>
+          {subtitle ? (
+            <Text style={styles.subtitleTextMobile} numberOfLines={2}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.headerContainer, isMobile && styles.headerContainerMobile]}>
+    <View style={styles.headerContainer}>
       <View style={styles.leftCol}>
         {onBack && (
           <TouchableOpacity
@@ -30,25 +78,25 @@ export default function ScreenHeader({
             onPress={onBack}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={isMobile ? 14 : 16} color={colors.textSecondary} />
-            <Text style={[styles.backButtonText, isMobile && styles.backButtonTextMobile]}>{backText}</Text>
+            <Ionicons name="arrow-back" size={16} color={colors.textSecondary} />
+            <Text style={styles.backButtonText}>{backText}</Text>
           </TouchableOpacity>
         )}
 
         <View style={styles.titleWrap}>
-          {category ? <Text style={[styles.categoryText, isMobile && styles.categoryTextMobile]}>{category}</Text> : null}
+          {category ? <Text style={styles.categoryText}>{category}</Text> : null}
           <View style={styles.titleRow}>
             {iconName ? (
-              <View style={[styles.iconBadge, isMobile && styles.iconBadgeMobile]}>
-                <Ionicons name={iconName} size={isMobile ? 14 : 18} color={colors.primary} />
+              <View style={styles.iconBadge}>
+                <Ionicons name={iconName} size={18} color={colors.primary} />
               </View>
             ) : null}
-            <Text style={[styles.titleText, isMobile && styles.titleTextMobile]} numberOfLines={1}>
+            <Text style={styles.titleText} numberOfLines={1}>
               {title}
             </Text>
           </View>
           {subtitle ? (
-            <Text style={[styles.subtitleText, isMobile && styles.subtitleTextMobile]} numberOfLines={2}>
+            <Text style={styles.subtitleText} numberOfLines={2}>
               {subtitle}
             </Text>
           ) : null}
@@ -56,7 +104,7 @@ export default function ScreenHeader({
       </View>
 
       {rightAction && (
-        <View style={[styles.rightCol, isMobile && styles.rightColMobile]}>
+        <View style={styles.rightCol}>
           {rightAction}
         </View>
       )}
@@ -78,9 +126,24 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   headerContainerMobile: {
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: 8,
-    gap: 4,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm + 4,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+    gap: 6,
+  },
+  topBarMobile: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 4,
+  },
+  rightActionMobileWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   leftCol: {
     flex: 1,

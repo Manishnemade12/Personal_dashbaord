@@ -81,6 +81,28 @@ router.post('/:id/apis', async (req, res) => {
   }
 });
 
+// PUT update endpoint in project
+router.put('/:id/apis/:apiId', async (req, res) => {
+  try {
+    const { name, endpoint, method, description } = req.body;
+    const project = await ProjectApi.findById(req.params.id);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    const targetApi = project.apis.id(req.params.apiId);
+    if (!targetApi) return res.status(404).json({ error: 'Endpoint not found' });
+
+    if (name !== undefined) targetApi.name = name;
+    if (endpoint !== undefined) targetApi.endpoint = endpoint;
+    if (method !== undefined) targetApi.method = method;
+    if (description !== undefined) targetApi.description = description;
+
+    await project.save();
+    res.json(project);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // DELETE endpoint from project
 router.delete('/:id/apis/:apiId', async (req, res) => {
   try {
