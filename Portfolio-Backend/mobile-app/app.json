@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Portfolio Admin",
-    "slug": "portfolio-admin",
+    "slug": "personal-dashbaord",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
