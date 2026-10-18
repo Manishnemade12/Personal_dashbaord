@@ -41,7 +41,9 @@ export default function ProjectFormScreen({ project, onBack, onSuccess }) {
   );
   const [description, setDescription] = useState(project?.description || '');
   const [images, setImages] = useState(
-    Array.isArray(project?.images) ? project.images.join(', ') : project?.images || ''
+    Array.isArray(project?.images)
+      ? project.images
+      : project?.images ? project.images.split(',').map((img) => img.trim()).filter(Boolean) : []
   );
   const [isPublish, setIsPublish] = useState(project?.status === 'publish');
   const [saving, setSaving] = useState(false);
@@ -62,7 +64,9 @@ export default function ProjectFormScreen({ project, onBack, onSuccess }) {
         tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
         livepreview: livepreview.trim(),
         description,
-        images: images ? images.split(',').map((img) => img.trim()).filter(Boolean) : [],
+        images: Array.isArray(images)
+          ? images.filter(Boolean)
+          : (images ? images.split(',').map((img) => img.trim()).filter(Boolean) : []),
         status: isPublish ? 'publish' : 'draft',
       };
 
@@ -165,9 +169,10 @@ export default function ProjectFormScreen({ project, onBack, onSuccess }) {
           </View>
 
           <ImageUploader
-            label="Cover Image"
+            label="Project Media & Cover Image"
             value={images}
             onChange={setImages}
+            multiple={true}
             folder="portfolio/projects"
             aspectRatio="wide"
             placeholder="https://res.cloudinary.com/..."

@@ -96,6 +96,12 @@ export default function BlogsScreen({ onNavigate, initialFilter = 'publish' }) {
                 <Ionicons name="document-text-outline" size={20} color={colors.textMuted} />
               </View>
             )}
+            {Array.isArray(item.images) && item.images.length > 1 && (
+              <View style={styles.multiImgBadge}>
+                <Ionicons name="images" size={8} color="#fff" />
+                <Text style={styles.multiImgText}>{item.images.length}</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.cardBody}>

@@ -74,6 +74,22 @@ export default StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  multiImgBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderRadius: 3,
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  multiImgText: {
+    fontSize: 8.5,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
   cardBody: {
     flex: 1,
     minWidth: 0,

@@ -98,6 +98,12 @@ export default function ProjectsScreen({ onNavigate, initialFilter = 'publish' }
                 <Ionicons name="briefcase-outline" size={20} color={colors.textMuted} />
               </View>
             )}
+            {Array.isArray(item.images) && item.images.length > 1 && (
+              <View style={styles.multiImgBadge}>
+                <Ionicons name="images" size={8} color="#fff" />
+                <Text style={styles.multiImgText}>{item.images.length}</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.cardBody}>

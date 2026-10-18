@@ -33,7 +33,9 @@ export default function BlogFormScreen({ blog, onBack, onSuccess }) {
   );
   const [description, setDescription] = useState(blog?.description || '');
   const [images, setImages] = useState(
-    Array.isArray(blog?.images) ? blog.images.join(', ') : blog?.images || ''
+    Array.isArray(blog?.images)
+      ? blog.images
+      : blog?.images ? blog.images.split(',').map((img) => img.trim()).filter(Boolean) : []
   );
   const [isPublish, setIsPublish] = useState(blog?.status === 'publish');
   const [saving, setSaving] = useState(false);
@@ -52,7 +54,9 @@ export default function BlogFormScreen({ blog, onBack, onSuccess }) {
         blogcategory: category ? category.split(',').map((c) => c.trim()).filter(Boolean) : [],
         tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
         description,
-        images: images ? images.split(',').map((img) => img.trim()).filter(Boolean) : [],
+        images: Array.isArray(images)
+          ? images.filter(Boolean)
+          : (images ? images.split(',').map((img) => img.trim()).filter(Boolean) : []),
         status: isPublish ? 'publish' : 'draft',
       };
 
@@ -136,9 +140,10 @@ export default function BlogFormScreen({ blog, onBack, onSuccess }) {
           </View>
 
           <ImageUploader
-            label="Cover Image"
+            label="Article Media & Cover Image"
             value={images}
             onChange={setImages}
+            multiple={true}
             folder="portfolio/blogs"
             aspectRatio="wide"
             placeholder="https://res.cloudinary.com/..."
