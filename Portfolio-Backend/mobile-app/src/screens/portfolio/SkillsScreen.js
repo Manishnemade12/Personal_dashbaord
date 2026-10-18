@@ -15,7 +15,7 @@ import {
 import { colors } from '../../styles/theme';
 import { api } from '../../api/client';
 import { Ionicons } from '@expo/vector-icons';
-import { ScreenHeader, SearchInput, EmptyState } from '../../components/common';
+import { ScreenHeader, SearchInput, EmptyState, ImageUploader } from '../../components/common';
 import styles from './styles/skillsStyles';
 
 export default function SkillsScreen({ routeParams, onNavigate }) {
@@ -275,16 +275,14 @@ export default function SkillsScreen({ routeParams, onNavigate }) {
               />
             </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Icon / Image URL</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="https://cdn.jsdelivr.net/..."
-                placeholderTextColor={colors.textMuted}
-                value={images}
-                onChangeText={setImages}
-              />
-            </View>
+            <ImageUploader
+              label="Icon / Image"
+              value={images}
+              onChange={setImages}
+              folder="portfolio/skills"
+              aspectRatio="square"
+              placeholder="https://res.cloudinary.com/..."
+            />
 
             <TouchableOpacity
               style={styles.saveModalBtn}

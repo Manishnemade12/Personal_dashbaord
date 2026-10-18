@@ -15,7 +15,7 @@ import {
 import { colors } from '../../styles/theme';
 import { api } from '../../api/client';
 import { Ionicons } from '@expo/vector-icons';
-import { ScreenHeader, EmptyState } from '../../components/common';
+import { ScreenHeader, EmptyState, ImageUploader } from '../../components/common';
 import styles from './styles/galleryStyles';
 
 export default function GalleryScreen({ onNavigate }) {
@@ -202,17 +202,14 @@ export default function GalleryScreen({ onNavigate }) {
               />
             </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Image URL *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="https://images.unsplash.com/..."
-                value={images}
-                onChangeText={setImages}
-                placeholderTextColor={colors.textMuted}
-                autoCapitalize="none"
-              />
-            </View>
+            <ImageUploader
+              label="Photo Image"
+              value={images}
+              onChange={setImages}
+              folder="portfolio/gallery"
+              aspectRatio="wide"
+              placeholder="https://res.cloudinary.com/..."
+            />
 
             <TouchableOpacity style={styles.submitBtn} onPress={handleSave} disabled={saving} activeOpacity={0.8}>
               <Text style={styles.submitBtnText}>

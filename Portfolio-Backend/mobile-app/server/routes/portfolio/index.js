@@ -21,6 +21,7 @@ router.use('/education', educationRouter);
 router.use('/sociallinks', socialLinksRouter);
 router.use('/prof', profRouter);
 router.use('/projectapi', projectApisRouter);
+router.use('/upload', require('../upload'));
 
 // Unified portfolio summary overview
 router.get('/summary', async (req, res) => {

@@ -7,8 +7,8 @@ export default StyleSheet.create({
     backgroundColor: colors.background,
   },
   listContent: {
-    padding: spacing.md,
-    paddingBottom: spacing.xxl + 20,
+    padding: spacing.sm,
+    paddingBottom: spacing.xxl + 25,
     maxWidth: 960,
     width: '100%',
     alignSelf: 'center',
@@ -16,16 +16,16 @@ export default StyleSheet.create({
   createBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 6,
     borderRadius: radii.md,
-    minHeight: 36,
+    minHeight: 32,
   },
   createBtnText: {
     color: colors.textLight,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
   filterSection: {

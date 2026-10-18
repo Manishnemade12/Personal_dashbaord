@@ -14,7 +14,7 @@ import {
 import { colors, spacing, radii, typography, layout } from '../styles/theme';
 import { api } from '../api/client';
 import { Ionicons } from '@expo/vector-icons';
-import { ScreenHeader } from '../components/common';
+import { ScreenHeader, ImageUploader } from '../components/common';
 
 export default function ProfileScreen({ onBack }) {
   const { width } = useWindowDimensions();
@@ -143,16 +143,14 @@ export default function ProfileScreen({ onBack }) {
             />
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Profile Image URL</Text>
-            <TextInput
-              style={styles.input}
-              value={image}
-              onChangeText={setImage}
-              placeholder="https://example.com/avatar.jpg"
-              placeholderTextColor={colors.textMuted}
-            />
-          </View>
+          <ImageUploader
+            label="Profile Picture / Avatar"
+            value={image}
+            onChange={setImage}
+            folder="portfolio/profile"
+            aspectRatio="square"
+            placeholder="https://res.cloudinary.com/..."
+          />
 
           <View style={styles.formGroup}>
             <Text style={styles.label}>Bio / Description</Text>
@@ -195,8 +193,9 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.md,
-    paddingBottom: spacing.xxl + 10,
+    paddingBottom: spacing.xxl + 20,
     alignItems: 'center',
+    width: '100%',
   },
   centerContainer: {
     flex: 1,
@@ -205,7 +204,7 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     width: '100%',
-    maxWidth: 600,
+    maxWidth: 580,
     backgroundColor: colors.surface,
     borderRadius: radii.xl,
     padding: spacing.xl,
@@ -219,7 +218,8 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   profileCardMobile: {
-    padding: spacing.md,
+    padding: spacing.sm + 4,
+    borderRadius: radii.lg,
   },
   avatarWrap: {
     width: 80,

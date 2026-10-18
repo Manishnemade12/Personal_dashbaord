@@ -40,6 +40,7 @@ app.use('/api/contacts', require('./routes/portfolio/contacts'));
 app.use('/api/education', require('./routes/portfolio/education'));
 app.use('/api/sociallinks', require('./routes/portfolio/socialLinks'));
 app.use('/api/prof', require('./routes/portfolio/prof'));
+app.use('/api/upload', require('./routes/upload'));
 
 // System, Calendar, Finance & API Management Routes
 app.use('/api/calendars', require('./routes/calendars'));

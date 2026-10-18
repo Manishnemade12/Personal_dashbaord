@@ -14,7 +14,7 @@ import {
 import { colors, spacing, radii, typography, layout } from '../../styles/theme';
 import { api } from '../../api/client';
 import { Ionicons } from '@expo/vector-icons';
-import { ScreenHeader } from '../../components/common';
+import { ScreenHeader, ImageUploader } from '../../components/common';
 
 export default function ProjectFormScreen({ project, onBack, onSuccess }) {
   const { width } = useWindowDimensions();
@@ -164,16 +164,14 @@ export default function ProjectFormScreen({ project, onBack, onSuccess }) {
             />
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Cover Image URL</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="https://images.unsplash.com/photo-..."
-              value={images}
-              onChangeText={setImages}
-              placeholderTextColor={colors.textMuted}
-            />
-          </View>
+          <ImageUploader
+            label="Cover Image"
+            value={images}
+            onChange={setImages}
+            folder="portfolio/projects"
+            aspectRatio="wide"
+            placeholder="https://res.cloudinary.com/..."
+          />
 
           <View style={styles.switchRow}>
             <View style={{ flex: 1 }}>
@@ -233,9 +231,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scrollContent: {
-    padding: spacing.md,
-    paddingBottom: spacing.xxl + 20,
+    padding: spacing.sm,
+    paddingBottom: spacing.xxl + 25,
     alignItems: 'center',
+    width: '100%',
   },
   formCard: {
     width: '100%',
@@ -252,7 +251,8 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
   },
   formCardMobile: {
-    padding: spacing.md,
+    padding: spacing.sm + 4,
+    borderRadius: radii.lg,
   },
   formGroup: {
     marginBottom: spacing.md,

@@ -7,8 +7,8 @@ export default StyleSheet.create({
     backgroundColor: colors.background,
   },
   listContent: {
-    padding: spacing.md,
-    paddingBottom: spacing.xxl + 20,
+    padding: spacing.sm,
+    paddingBottom: spacing.xxl + 25,
     maxWidth: 800,
     width: '100%',
     alignSelf: 'center',
@@ -108,9 +108,9 @@ export default StyleSheet.create({
   modalCard: {
     backgroundColor: colors.surface,
     borderRadius: radii.xl,
-    padding: spacing.lg,
-    width: '100%',
-    maxWidth: 480,
+    padding: spacing.md,
+    width: '94%',
+    maxWidth: 440,
     elevation: 8,
   },
   modalHeader: {

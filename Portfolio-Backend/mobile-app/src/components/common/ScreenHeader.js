@@ -78,13 +78,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   headerContainerMobile: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    gap: spacing.xs,
+    paddingHorizontal: spacing.sm + 4,
+    paddingVertical: spacing.sm,
+    gap: 6,
   },
   leftCol: {
     flex: 1,
-    minWidth: 200,
+    minWidth: 0,
   },
   backButton: {
     flexDirection: 'row',

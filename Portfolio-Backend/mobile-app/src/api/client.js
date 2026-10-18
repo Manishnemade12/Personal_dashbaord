@@ -62,6 +62,13 @@ export const api = {
       body: { email, password },
     }),
 
+  // Cloudinary Direct Image Upload (/api/upload)
+  uploadImage: (image, folder = 'portfolio') =>
+    request('/upload', {
+      method: 'POST',
+      body: { image, folder },
+    }),
+
   // Profile (/api/prof)
   getProfile: () => request('/prof'),
   updateProfile: (data) => request('/prof', { method: 'POST', body: data }),
