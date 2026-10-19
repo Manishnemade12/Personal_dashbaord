@@ -18,6 +18,9 @@ export default function SidebarDrawer({
   onLogout,
 }) {
   const isCalendarActive = currentRoute === 'Calendar';
+  const isWorkoutDietActive = currentRoute === 'WorkoutDiet';
+  const isCalendarGroupActive = isCalendarActive || isWorkoutDietActive;
+
   const isFinanceActive = currentRoute === 'Finance';
   const isInvestmentsActive = currentRoute === 'Investments';
   const isInvestmentAnalyticsActive = currentRoute === 'InvestmentAnalytics';
@@ -48,6 +51,7 @@ export default function SidebarDrawer({
   const isDashboardActive = currentRoute === 'Dashboard';
 
   const [activeDropdown, setActiveDropdown] = useState(() => {
+    if (isCalendarGroupActive) return 'calendar';
     if (isPortfolioActive) return 'portfolio';
     if (isInvestmentsGroupActive) return 'investments';
     if (isApiGroupActive) return 'api';
@@ -55,7 +59,9 @@ export default function SidebarDrawer({
   });
 
   useEffect(() => {
-    if (isPortfolioActive) {
+    if (isCalendarGroupActive) {
+      setActiveDropdown('calendar');
+    } else if (isPortfolioActive) {
       setActiveDropdown('portfolio');
     } else if (isInvestmentsGroupActive) {
       setActiveDropdown('investments');
@@ -111,10 +117,14 @@ export default function SidebarDrawer({
               </View>
             </TouchableOpacity>
 
-            {/* 2. Calendar */}
+            {/* 2. Calendar & Routine (Parent Accordion) */}
             <TouchableOpacity
-              style={[styles.navItem, isCalendarActive && styles.navActive]}
-              onPress={() => handleNav('Calendar')}
+              style={[
+                styles.navItem,
+                isCalendarGroupActive && !activeDropdown && styles.navActive,
+                activeDropdown === 'calendar' && styles.navDropdownOpen,
+              ]}
+              onPress={() => toggleDropdown('calendar')}
               activeOpacity={0.7}
             >
               <View style={styles.navRow}>
@@ -122,14 +132,97 @@ export default function SidebarDrawer({
                   <Ionicons
                     name="calendar-outline"
                     size={20}
-                    color={isCalendarActive ? '#ffffff' : '#334155'}
+                    color={
+                      isCalendarGroupActive && !activeDropdown
+                        ? '#ffffff'
+                        : activeDropdown === 'calendar'
+                        ? '#7e37d8'
+                        : '#334155'
+                    }
                   />
                 </View>
-                <Text style={[styles.navText, isCalendarActive && styles.navTextActive]}>
-                  Calendar
+                <Text
+                  style={[
+                    styles.navText,
+                    isCalendarGroupActive && !activeDropdown && styles.navTextActive,
+                    activeDropdown === 'calendar' && styles.navTextDropdown,
+                  ]}
+                >
+                  Calendar & Routine
                 </Text>
               </View>
+              <Ionicons
+                name={activeDropdown === 'calendar' ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color={
+                  isCalendarGroupActive && !activeDropdown
+                    ? '#ffffff'
+                    : activeDropdown === 'calendar'
+                    ? '#7e37d8'
+                    : '#94a3b8'
+                }
+              />
             </TouchableOpacity>
+            {activeDropdown === 'calendar' && (
+              <View style={styles.subMenu}>
+                {/* Child 1: Schedule & Events */}
+                <TouchableOpacity
+                  style={[styles.subMenuItem, isCalendarActive && styles.subMenuItemActive]}
+                  onPress={() => handleNav('Calendar')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.subMenuIconWrap}>
+                    <Ionicons
+                      name="calendar"
+                      size={16}
+                      color={isCalendarActive ? '#7e37d8' : '#64748b'}
+                    />
+                  </View>
+                  <Text style={[styles.subMenuText, isCalendarActive && styles.subMenuTextActive]}>
+                    Schedule & Events
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Child 2: Workout & Diet */}
+                <TouchableOpacity
+                  style={[styles.subMenuItem, isWorkoutDietActive && styles.subMenuItemActive]}
+                  onPress={() => handleNav('WorkoutDiet')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.subMenuIconWrap}>
+                    <Ionicons
+                      name="fitness-outline"
+                      size={16}
+                      color={isWorkoutDietActive ? '#10b981' : '#64748b'}
+                    />
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.subMenuText,
+                        isWorkoutDietActive && styles.subMenuTextActive,
+                      ]}
+                    >
+                      Workout & Diet
+                    </Text>
+                    <View
+                      style={{
+                        backgroundColor: '#ecfdf5',
+                        borderWidth: 1,
+                        borderColor: '#a7f3d0',
+                        paddingHorizontal: 4,
+                        paddingVertical: 1,
+                        borderRadius: 3,
+                      }}
+                    >
+                      <Text style={{ fontSize: 8, fontWeight: '800', color: '#059669' }}>
+                        NEW
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* 3. Finance & Expenses */}
             <TouchableOpacity

@@ -204,6 +204,18 @@ export const api = {
   // Grok AI Cold Email & OCR (/api/ai/*)
   generateColdEmail: (data) => request('/ai/cold-email', { method: 'POST', body: data }),
   extractTextFromImage: (data) => request('/ai/ocr', { method: 'POST', body: data }),
+
+  // Workout & Diet Management (/api/diet/*)
+  ensureDietCalendar: () => request('/diet/ensure-calendar'),
+  getDailyDietPlan: (date) => request(`/diet/daily-plan${date ? `?date=${date}` : ''}`),
+  toggleMealStatus: (eventId) => request(`/diet/toggle-status/${eventId}`, { method: 'POST' }),
+  scheduleDietMeal: (data) => request('/diet/schedule-meal', { method: 'POST', body: data }),
+  removeDietMeal: (eventId) => request(`/diet/remove-meal/${eventId}`, { method: 'DELETE' }),
+  getDietItems: () => request('/diet/items'),
+  createDietItem: (data) => request('/diet/items', { method: 'POST', body: data }),
+  updateDietItem: (id, data) => request(`/diet/items/${id}`, { method: 'PUT', body: data }),
+  deleteDietItem: (id) => request(`/diet/items/${id}`, { method: 'DELETE' }),
+  calculateDietMacros: (data) => request('/diet/calculate-macros', { method: 'POST', body: data }),
 };
 
 export default api;

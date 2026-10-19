@@ -51,6 +51,7 @@ app.use('/api/investments', require('./routes/investments'));
 app.use('/api/apis', require('./routes/apis'));
 app.use('/api/projectapi', require('./routes/portfolio/projectApis'));
 app.use('/api/ai', require('./routes/ai'));
+app.use('/api/diet', require('./routes/diet'));
 
 
 // Health check

@@ -17,6 +17,7 @@ import {
 } from './src/screens/portfolio';
 import ProfileScreen from './src/screens/ProfileScreen';
 import CalendarScreen from './src/screens/calendar/CalendarScreen';
+import WorkoutDietScreen from './src/screens/workout/WorkoutDietScreen';
 import FinanceScreen from './src/screens/finance/FinanceScreen';
 import InvestmentScreen from './src/screens/finance/InvestmentScreen';
 import InvestmentAnalyticsScreen from './src/screens/finance/InvestmentAnalyticsScreen';
@@ -143,6 +144,9 @@ export default function App() {
 
       case 'Calendar':
         return <CalendarScreen onNavigate={navigate} />;
+
+      case 'WorkoutDiet':
+        return <WorkoutDietScreen onNavigate={navigate} />;
 
       case 'Finance':
         return <FinanceScreen onNavigate={navigate} />;

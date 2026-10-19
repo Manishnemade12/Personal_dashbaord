@@ -6,7 +6,9 @@ import {
   ActivityIndicator,
   Platform,
   useWindowDimensions,
+  TouchableOpacity,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../api/client';
 import { notificationService } from '../../services/notificationService';
 import CalendarToolbar from './components/CalendarToolbar';
@@ -503,6 +505,39 @@ export default function CalendarScreen({ onNavigate }) {
         onSelect={setActiveCalendarFilter}
         onAdd={() => openCalendarModal()}
       />
+
+      {/* Quick Access Banner to Workout & Diet Tracker */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 6, backgroundColor: '#ffffff' }}>
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: '#ecfdf5',
+            borderWidth: 1,
+            borderColor: '#a7f3d0',
+            borderRadius: 8,
+            paddingHorizontal: 10,
+            paddingVertical: 7,
+          }}
+          onPress={() => onNavigate && onNavigate('WorkoutDiet')}
+          activeOpacity={0.7}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+            <Ionicons name="fitness" size={15} color="#059669" />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#047857' }}>
+              Workout & Diet Tracker
+            </Text>
+            <Text style={{ fontSize: 10, color: '#065f46' }}>
+              • Daily Meals & Grok Macros
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+            <Text style={{ fontSize: 10, fontWeight: '700', color: '#059669' }}>Open</Text>
+            <Ionicons name="chevron-forward" size={12} color="#059669" />
+          </View>
+        </TouchableOpacity>
+      </View>
 
       <CalendarViewControls
         mode={viewMode}
