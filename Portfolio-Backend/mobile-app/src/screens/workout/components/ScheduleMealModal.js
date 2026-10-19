@@ -12,6 +12,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import styles from '../styles/workoutStyles';
 import api from '../../../api/client';
+import GenericDateTimePicker from '../../../components/common/GenericDateTimePicker';
+import { notificationService } from '../../../services/notificationService';
 
 const TIME_PRESETS = [
   { label: 'Breakfast', time: '08:00' },
@@ -71,7 +73,7 @@ export default function ScheduleMealModal({
 
     setScheduling(true);
     try {
-      await api.scheduleDietMeal({
+      const res = await api.scheduleDietMeal({
         title: finalTitle,
         dateStr,
         timeStr,
@@ -79,6 +81,22 @@ export default function ScheduleMealModal({
         calories: selectedItem?.nutrients?.calories || 0,
         protein: selectedItem?.nutrients?.protein || 0,
       });
+
+      if (res && res.event) {
+        try {
+          const s = new Date(res.event.startAt);
+          if (s.getTime() > Date.now()) {
+            await notificationService.scheduleLocalReminder(
+              `🥗 Meal Time: ${finalTitle}`,
+              `Time for your scheduled meal (${timeStr})!`,
+              s,
+              res.event
+            );
+          }
+        } catch (notifErr) {
+          console.log('Meal notification schedule notice:', notifErr);
+        }
+      }
 
       onScheduleSuccess();
       onClose();
@@ -150,54 +168,14 @@ export default function ScheduleMealModal({
               />
             </View>
 
-            {/* Date Input */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Scheduled Date (YYYY-MM-DD)</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#94a3b8"
-                value={dateStr}
-                onChangeText={setDateStr}
-              />
-            </View>
-
-            {/* Time Slot Presets & Custom Time */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Meal Time</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                {TIME_PRESETS.map((preset) => {
-                  const isMatch = timeStr === preset.time;
-                  return (
-                    <TouchableOpacity
-                      key={preset.time}
-                      style={[
-                        styles.macroPill,
-                        isMatch && { backgroundColor: '#10b981', borderColor: '#10b981' },
-                      ]}
-                      onPress={() => setTimeStr(preset.time)}
-                    >
-                      <Text
-                        style={[
-                          styles.macroPillText,
-                          isMatch && { color: '#ffffff', fontWeight: '700' },
-                        ]}
-                      >
-                        {preset.label} ({preset.time})
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              <TextInput
-                style={styles.formInput}
-                placeholder="HH:mm (24-hour format, e.g. 08:30)"
-                placeholderTextColor="#94a3b8"
-                value={timeStr}
-                onChangeText={setTimeStr}
-              />
-            </View>
+            {/* Generic Date & Time Picker */}
+            <GenericDateTimePicker
+              dateStr={dateStr}
+              onChangeDate={setDateStr}
+              startTimeStr={timeStr}
+              onChangeStartTime={setTimeStr}
+              isAllDay={false}
+            />
 
             {/* Selected Meal Macro Preview */}
             {selectedItem && (

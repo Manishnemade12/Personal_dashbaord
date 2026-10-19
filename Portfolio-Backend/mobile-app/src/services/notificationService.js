@@ -31,12 +31,16 @@ class NotificationService {
     if (Platform.OS === 'android') {
       try {
         await Notifications.setNotificationChannelAsync('calendar-reminders', {
-          name: 'Event Reminders',
-          importance: Notifications.AndroidImportance.HIGH,
-          vibrationPattern: [0, 250, 250, 250],
+          name: 'Event & Meal Reminders',
+          description: 'High-priority notifications for calendar events and diet plan alarms',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 300, 200, 300],
           lightColor: '#7e37d8',
           enableLights: true,
           enableVibrate: true,
+          sound: 'default',
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+          bypassDnd: true,
         });
       } catch (e) {
         console.log('[NotificationService] Android channel error:', e);
@@ -52,7 +56,13 @@ class NotificationService {
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
         if (existingStatus !== 'granted') {
-          const { status } = await Notifications.requestPermissionsAsync();
+          const { status } = await Notifications.requestPermissionsAsync({
+            ios: {
+              allowAlert: true,
+              allowBadge: true,
+              allowSound: true,
+            },
+          });
           finalStatus = status;
         }
         this.hasPermission = finalStatus === 'granted';
@@ -79,7 +89,8 @@ class NotificationService {
   async scheduleLocalReminder(title, body, scheduledDate, eventData = {}) {
     if (!scheduledDate) return null;
 
-    const targetTime = new Date(scheduledDate).getTime();
+    const targetDateObj = new Date(scheduledDate);
+    const targetTime = targetDateObj.getTime();
     const now = Date.now();
     const diffSeconds = Math.round((targetTime - now) / 1000);
 
@@ -88,18 +99,18 @@ class NotificationService {
     // Mobile native scheduling via expo-notifications
     if (Platform.OS !== 'web') {
       try {
+        await this.initNativeChannel();
         const notifId = await Notifications.scheduleNotificationAsync({
           content: {
             title,
             body,
             data: { eventId: eventData._id || '' },
-            sound: true,
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: scheduledDate,
+            sound: 'default',
+            priority: Notifications.AndroidNotificationPriority.MAX,
+            vibrate: [0, 300, 200, 300],
             channelId: 'calendar-reminders',
           },
+          trigger: targetDateObj,
         });
         return notifId;
       } catch (e) {

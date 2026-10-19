@@ -84,9 +84,9 @@ export default function CalendarScreen({ onNavigate }) {
   useEffect(() => {
     loadData();
     notificationService.startReminderWatcher();
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'Notification' in window) {
-      setHasNotifPermission(window.Notification.permission === 'granted');
-    }
+    notificationService.requestPermission().then((granted) => {
+      setHasNotifPermission(granted);
+    });
 
     const unsubscribe = notificationService.addListener((rem) => {
       // In-app alert notification

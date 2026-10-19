@@ -5,6 +5,7 @@ import { api } from '../../../api/client';
 import styles from '../styles/calendarStyles';
 import { COLOR_PALETTE } from '../constants/calendarOptions';
 import { REMINDER_OPTIONS } from '../constants/calendarOptions';
+import GenericDateTimePicker from '../../../components/common/GenericDateTimePicker';
 
 export default function CalendarModals(props) {
   const {
@@ -82,9 +83,10 @@ export default function CalendarModals(props) {
               </View>
 
               {/* Date & All Day */}
+              {/* Generic Intuitive Date & Time Picker */}
               <View style={styles.inputGroup}>
                 <View style={styles.flexRowSb}>
-                  <Text style={styles.inputLabel}>Event Date (YYYY-MM-DD)</Text>
+                  <Text style={styles.inputLabel}>Event Schedule</Text>
                   <TouchableOpacity
                     style={styles.allDayToggle}
                     onPress={() => setIsAllDay(!isAllDay)}
@@ -97,37 +99,17 @@ export default function CalendarModals(props) {
                     <Text style={styles.allDayText}>All-Day Event</Text>
                   </TouchableOpacity>
                 </View>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="2026-10-15"
-                  value={eventDateStr}
-                  onChangeText={setEventDateStr}
+
+                <GenericDateTimePicker
+                  dateStr={eventDateStr}
+                  onChangeDate={setEventDateStr}
+                  startTimeStr={eventStartTimeStr}
+                  onChangeStartTime={setEventStartTimeStr}
+                  endTimeStr={eventEndTimeStr}
+                  onChangeEndTime={setEventEndTimeStr}
+                  isAllDay={isAllDay}
                 />
               </View>
-
-              {/* Start & End Times */}
-              {!isAllDay && (
-                <View style={styles.timeRow}>
-                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                    <Text style={styles.inputLabel}>Start Time (HH:mm)</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="10:00"
-                      value={eventStartTimeStr}
-                      onChangeText={setEventStartTimeStr}
-                    />
-                  </View>
-                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                    <Text style={styles.inputLabel}>End Time (HH:mm)</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="11:00"
-                      value={eventEndTimeStr}
-                      onChangeText={setEventEndTimeStr}
-                    />
-                  </View>
-                </View>
-              )}
 
               {/* Smart Reminders Picker */}
               <View style={styles.inputGroup}>

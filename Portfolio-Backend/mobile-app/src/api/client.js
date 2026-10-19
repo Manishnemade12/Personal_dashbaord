@@ -1,35 +1,67 @@
-// Dynamic API base URL resolution
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Default development IP for mobile APK
+const LAPTOP_IP = '192.168.43.236';
+
 const getInitialBaseUrl = () => {
   if (typeof window !== 'undefined' && window.location) {
     const { protocol, hostname, port } = window.location;
-    // If frontend is served directly on port 5000, call /api on same origin
     if (port === '5000') {
       return `${protocol}//${hostname}:${port}/api`;
     }
-    // If frontend is running on Expo web (e.g. 8081), call backend on port 5000
-    if (hostname) {
+    if (hostname && hostname !== 'localhost') {
       return `${protocol}//${hostname}:5000/api`;
     }
+  }
+  // For mobile devices, localhost points to the phone, so use laptop Wi-Fi IP
+  if (Platform.OS !== 'web') {
+    return `http://${LAPTOP_IP}:5000/api`;
   }
   return 'http://localhost:5000/api';
 };
 
 let API_BASE_URL = getInitialBaseUrl();
 
-export const setApiBaseUrl = (url) => {
+// Initialize from AsyncStorage if saved
+export const initApiBaseUrl = async () => {
+  try {
+    const savedUrl = await AsyncStorage.getItem('CUSTOM_API_BASE_URL');
+    if (savedUrl && savedUrl.trim()) {
+      API_BASE_URL = savedUrl.replace(/\/+$/, '');
+      return API_BASE_URL;
+    }
+  } catch (e) {}
+  return API_BASE_URL;
+};
+
+// Immediately invoke
+initApiBaseUrl();
+
+export const setApiBaseUrl = async (url) => {
+  if (!url) return;
   API_BASE_URL = url.replace(/\/+$/, '');
+  try {
+    await AsyncStorage.setItem('CUSTOM_API_BASE_URL', API_BASE_URL);
+  } catch (e) {}
 };
 
 export const getApiBaseUrl = () => API_BASE_URL;
 
 const request = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
+  const timeoutMs = options.timeout || 12000; // 12 seconds timeout to prevent infinite loading
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   try {
     const config = {
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
+      signal: controller.signal,
       ...options,
     };
 
@@ -38,16 +70,25 @@ const request = async (endpoint, options = {}) => {
     }
 
     const response = await fetch(url, config);
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
       const errorText = await response.text();
       let errJson;
       try {
         errJson = JSON.parse(errorText);
       } catch (e) {}
-      throw new Error(errJson?.error || errJson?.message || `API error (${response.status})`);
+      throw new Error(errJson?.error || errJson?.message || `Server Error (${response.status})`);
     }
     return await response.json();
   } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error(`Connection timed out (${timeoutMs / 1000}s). Could not connect to ${API_BASE_URL}. Check Wi-Fi or Server URL.`);
+    }
+    if (error.message && error.message.includes('Network request failed')) {
+      throw new Error(`Cannot reach server at ${API_BASE_URL}. Make sure phone & laptop are on same Wi-Fi, or configure Server URL.`);
+    }
     console.error(`[API Request Error] ${endpoint}:`, error.message);
     throw error;
   }

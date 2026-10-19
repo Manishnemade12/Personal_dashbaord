@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
-import { api } from '../../api/client';
+import { api, getApiBaseUrl, setApiBaseUrl } from '../../api/client';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../styles/theme';
@@ -23,6 +24,64 @@ export default function AuthScreen({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Server IP / URL configuration
+  const [serverUrl, setServerUrl] = useState(getApiBaseUrl());
+  const [showServerConfig, setShowServerConfig] = useState(false);
+  const [testingServer, setTestingServer] = useState(false);
+  const [testResult, setTestResult] = useState(null); // { success: boolean, msg: string }
+
+  useEffect(() => {
+    setServerUrl(getApiBaseUrl());
+  }, []);
+
+  const handleTestConnection = async () => {
+    if (!serverUrl.trim()) {
+      setTestResult({ success: false, msg: 'Please enter a server URL.' });
+      return;
+    }
+    setTestingServer(true);
+    setTestResult(null);
+    try {
+      const cleanUrl = serverUrl.trim().replace(/\/+$/, '');
+      const healthUrl = cleanUrl.endsWith('/api')
+        ? `${cleanUrl}/health`
+        : `${cleanUrl}/api/health`;
+
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 6000);
+
+      const res = await fetch(healthUrl, { signal: controller.signal });
+      clearTimeout(tid);
+
+      if (res.ok) {
+        await setApiBaseUrl(cleanUrl);
+        setTestResult({
+          success: true,
+          msg: '✓ Connected! Backend server is reachable.',
+        });
+      } else {
+        setTestResult({
+          success: false,
+          msg: `Server responded with error status ${res.status}`,
+        });
+      }
+    } catch (err) {
+      setTestResult({
+        success: false,
+        msg: `Cannot reach server: ${err.message}. Ensure laptop & phone are on same Wi-Fi.`,
+      });
+    } finally {
+      setTestingServer(false);
+    }
+  };
+
+  const handleSaveServerUrl = async () => {
+    if (!serverUrl.trim()) return;
+    const cleanUrl = serverUrl.trim().replace(/\/+$/, '');
+    await setApiBaseUrl(cleanUrl);
+    Alert.alert('Saved', `Server URL set to:\n${cleanUrl}`);
+  };
+
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
       setError('Please enter both email and password');
@@ -34,7 +93,7 @@ export default function AuthScreen({ onLoginSuccess }) {
 
     try {
       if (isSignUp) {
-        const res = await fetch('http://localhost:5000/api/auth/signup', {
+        const res = await fetch(`${getApiBaseUrl()}/auth/signup`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: email.trim(), password: password.trim() }),
@@ -50,11 +109,11 @@ export default function AuthScreen({ onLoginSuccess }) {
         if (res && res.success) {
           onLoginSuccess(res.user);
         } else {
-          setError('Invalid email or password');
+          setError(res?.error || 'Invalid email or password');
         }
       }
     } catch (err) {
-      setError(err.message || 'Sign-in failed, please try again later');
+      setError(err.message || 'Sign-in failed. Please check your credentials or server connection.');
     } finally {
       setLoading(false);
     }
@@ -146,6 +205,106 @@ export default function AuthScreen({ onLoginSuccess }) {
                   : 'New admin? Create an Account'}
               </Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Collapsible Server Connection Config */}
+          <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', width: '100%' }}>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              onPress={() => setShowServerConfig(!showServerConfig)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="settings-outline" size={14} color="#64748b" />
+              <Text style={{ fontSize: 11, fontWeight: '600', color: '#64748b' }}>
+                Server Connection ({showServerConfig ? 'Hide' : 'Configure'})
+              </Text>
+              <Ionicons
+                name={showServerConfig ? 'chevron-up' : 'chevron-down'}
+                size={13}
+                color="#64748b"
+              />
+            </TouchableOpacity>
+
+            {showServerConfig && (
+              <View style={{ marginTop: 10, backgroundColor: '#f8fafc', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: '#475569', marginBottom: 4 }}>
+                  Backend Server URL (Mobile IP / Cloud)
+                </Text>
+                <TextInput
+                  style={{
+                    backgroundColor: '#ffffff',
+                    borderWidth: 1,
+                    borderColor: '#cbd5e1',
+                    borderRadius: 6,
+                    paddingHorizontal: 8,
+                    paddingVertical: 6,
+                    fontSize: 11,
+                    color: '#0f172a',
+                    marginBottom: 8,
+                  }}
+                  placeholder="http://192.168.43.236:5000/api"
+                  value={serverUrl}
+                  onChangeText={setServerUrl}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      backgroundColor: '#3b82f6',
+                      paddingVertical: 6,
+                      borderRadius: 6,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexDirection: 'row',
+                      gap: 4,
+                    }}
+                    onPress={handleTestConnection}
+                    disabled={testingServer}
+                  >
+                    {testingServer ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <>
+                        <Ionicons name="wifi" size={12} color="#ffffff" />
+                        <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>
+                          Test Connection
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: '#10b981',
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 6,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    onPress={handleSaveServerUrl}
+                  >
+                    <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>Save</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {testResult && (
+                  <Text
+                    style={{
+                      fontSize: 10,
+                      fontWeight: '600',
+                      marginTop: 6,
+                      color: testResult.success ? '#059669' : '#dc2626',
+                    }}
+                  >
+                    {testResult.msg}
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
 
           <TouchableOpacity onPress={openAdminLink} style={styles.agreement} activeOpacity={0.7}>
