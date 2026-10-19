@@ -51,24 +51,25 @@ export default function SidebarDrawer({
   const isDashboardActive = currentRoute === 'Dashboard';
 
   const [activeDropdown, setActiveDropdown] = useState(() => {
-    if (isCalendarGroupActive) return 'calendar';
     if (isPortfolioActive) return 'portfolio';
     if (isInvestmentsGroupActive) return 'investments';
     if (isApiGroupActive) return 'api';
-    return null;
+    return 'calendar'; // Open Calendar by default so Workout & Diet child buttons are immediately visible
   });
 
   useEffect(() => {
-    if (isCalendarGroupActive) {
-      setActiveDropdown('calendar');
-    } else if (isPortfolioActive) {
-      setActiveDropdown('portfolio');
-    } else if (isInvestmentsGroupActive) {
-      setActiveDropdown('investments');
-    } else if (isApiGroupActive) {
-      setActiveDropdown('api');
+    if (visible) {
+      if (isPortfolioActive) {
+        setActiveDropdown('portfolio');
+      } else if (isInvestmentsGroupActive) {
+        setActiveDropdown('investments');
+      } else if (isApiGroupActive) {
+        setActiveDropdown('api');
+      } else {
+        setActiveDropdown('calendar');
+      }
     }
-  }, [currentRoute]);
+  }, [visible, currentRoute]);
 
   const toggleDropdown = (section) => {
     setActiveDropdown((prev) => (prev === section ? null : section));
@@ -117,7 +118,7 @@ export default function SidebarDrawer({
               </View>
             </TouchableOpacity>
 
-            {/* 2. Calendar & Routine (Parent Accordion) */}
+            {/* 2. Calendar (Parent Accordion with Workout & Diet Children) */}
             <TouchableOpacity
               style={[
                 styles.navItem,
@@ -141,15 +142,31 @@ export default function SidebarDrawer({
                     }
                   />
                 </View>
-                <Text
-                  style={[
-                    styles.navText,
-                    isCalendarGroupActive && !activeDropdown && styles.navTextActive,
-                    activeDropdown === 'calendar' && styles.navTextDropdown,
-                  ]}
-                >
-                  Calendar & Routine
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                  <Text
+                    style={[
+                      styles.navText,
+                      isCalendarGroupActive && !activeDropdown && styles.navTextActive,
+                      activeDropdown === 'calendar' && styles.navTextDropdown,
+                    ]}
+                  >
+                    Calendar
+                  </Text>
+                  <View
+                    style={{
+                      backgroundColor: '#ecfdf5',
+                      borderWidth: 1,
+                      borderColor: '#a7f3d0',
+                      paddingHorizontal: 5,
+                      paddingVertical: 1,
+                      borderRadius: 4,
+                    }}
+                  >
+                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#059669' }}>
+                      WORKOUT
+                    </Text>
+                  </View>
+                </View>
               </View>
               <Ionicons
                 name={activeDropdown === 'calendar' ? 'chevron-up' : 'chevron-down'}
@@ -178,47 +195,107 @@ export default function SidebarDrawer({
                       color={isCalendarActive ? '#7e37d8' : '#64748b'}
                     />
                   </View>
-                  <Text style={[styles.subMenuText, isCalendarActive && styles.subMenuTextActive]}>
-                    Schedule & Events
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.subMenuText, isCalendarActive && styles.subMenuTextActive]}>
+                      Schedule & Events
+                    </Text>
+                    <Text style={{ fontSize: 10, color: '#94a3b8' }}>
+                      Events, reminders & calendar views
+                    </Text>
+                  </View>
                 </TouchableOpacity>
 
-                {/* Child 2: Workout & Diet */}
+                {/* Child 2: Today's Diet Plan */}
                 <TouchableOpacity
-                  style={[styles.subMenuItem, isWorkoutDietActive && styles.subMenuItemActive]}
-                  onPress={() => handleNav('WorkoutDiet')}
+                  style={[
+                    styles.subMenuItem,
+                    isWorkoutDietActive && styles.subMenuItemActive,
+                  ]}
+                  onPress={() => handleNav('WorkoutDiet', { tab: 'plan' })}
                   activeOpacity={0.7}
                 >
                   <View style={styles.subMenuIconWrap}>
                     <Ionicons
-                      name="fitness-outline"
+                      name="checkbox-outline"
                       size={16}
-                      color={isWorkoutDietActive ? '#10b981' : '#64748b'}
+                      color={isWorkoutDietActive ? '#10b981' : '#059669'}
                     />
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-                    <Text
-                      style={[
-                        styles.subMenuText,
-                        isWorkoutDietActive && styles.subMenuTextActive,
-                      ]}
-                    >
-                      Workout & Diet
-                    </Text>
-                    <View
-                      style={{
-                        backgroundColor: '#ecfdf5',
-                        borderWidth: 1,
-                        borderColor: '#a7f3d0',
-                        paddingHorizontal: 4,
-                        paddingVertical: 1,
-                        borderRadius: 3,
-                      }}
-                    >
-                      <Text style={{ fontSize: 8, fontWeight: '800', color: '#059669' }}>
-                        NEW
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text
+                        style={[
+                          styles.subMenuText,
+                          isWorkoutDietActive && styles.subMenuTextActive,
+                        ]}
+                      >
+                        Today's Diet Plan
                       </Text>
+                      <View
+                        style={{
+                          backgroundColor: '#ecfdf5',
+                          borderWidth: 1,
+                          borderColor: '#a7f3d0',
+                          paddingHorizontal: 4,
+                          paddingVertical: 1,
+                          borderRadius: 3,
+                        }}
+                      >
+                        <Text style={{ fontSize: 8, fontWeight: '800', color: '#059669' }}>
+                          CHECKLIST
+                        </Text>
+                      </View>
                     </View>
+                    <Text style={{ fontSize: 10, color: '#059669', fontWeight: '500' }}>
+                      Daily routine, meal times & tracking
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Child 3: Diet Items & Recipes */}
+                <TouchableOpacity
+                  style={[
+                    styles.subMenuItem,
+                    isWorkoutDietActive && styles.subMenuItemActive,
+                  ]}
+                  onPress={() => handleNav('WorkoutDiet', { tab: 'library' })}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.subMenuIconWrap}>
+                    <Ionicons
+                      name="nutrition-outline"
+                      size={16}
+                      color={isWorkoutDietActive ? '#10b981' : '#059669'}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text
+                        style={[
+                          styles.subMenuText,
+                          isWorkoutDietActive && styles.subMenuTextActive,
+                        ]}
+                      >
+                        Diet Items & Recipes
+                      </Text>
+                      <View
+                        style={{
+                          backgroundColor: '#f5f3ff',
+                          borderWidth: 1,
+                          borderColor: '#ddd6fe',
+                          paddingHorizontal: 4,
+                          paddingVertical: 1,
+                          borderRadius: 3,
+                        }}
+                      >
+                        <Text style={{ fontSize: 8, fontWeight: '800', color: '#7e37d8' }}>
+                          GROK AI
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={{ fontSize: 10, color: '#64748b' }}>
+                      Ingredients, calories & protein auto-calc
+                    </Text>
                   </View>
                 </TouchableOpacity>
               </View>

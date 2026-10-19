@@ -160,6 +160,30 @@ export default function DashboardScreen({ onNavigate }) {
             </View>
           </TouchableOpacity>
 
+          {/* Workout & Diet Tracker (New) */}
+          <TouchableOpacity
+            style={[styles.hubTile, styles.hubTileFeatured, { borderColor: '#a7f3d0' }]}
+            activeOpacity={0.85}
+            onPress={() => onNavigate && onNavigate('WorkoutDiet')}
+          >
+            <View style={styles.hubTileTop}>
+              <View style={[styles.hubIconWrap, { backgroundColor: '#10b981' }]}>
+                <Ionicons name="fitness" size={18} color="#ffffff" />
+              </View>
+              <View style={[styles.hubBadgeNew, { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' }]}>
+                <Text style={[styles.hubBadgeNewText, { color: '#059669' }]}>NEW</Text>
+              </View>
+            </View>
+            <Text style={styles.hubTileTitle}>Workout & Diet Tracker</Text>
+            <Text style={styles.hubTileDesc}>
+              Daily meal checklist, meal times & Grok macro AI
+            </Text>
+            <View style={styles.hubTileArrowRow}>
+              <Text style={[styles.hubTileActionText, { color: '#059669' }]}>Open Workout & Diet</Text>
+              <Ionicons name="arrow-forward" size={12} color="#059669" />
+            </View>
+          </TouchableOpacity>
+
           {/* Blogs */}
           <TouchableOpacity
             style={[styles.hubTile, isCompact && styles.hubTileFullWidth]}

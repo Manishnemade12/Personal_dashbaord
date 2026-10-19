@@ -146,7 +146,7 @@ export default function App() {
         return <CalendarScreen onNavigate={navigate} />;
 
       case 'WorkoutDiet':
-        return <WorkoutDietScreen onNavigate={navigate} />;
+        return <WorkoutDietScreen onNavigate={navigate} routeParams={routeParams} />;
 
       case 'Finance':
         return <FinanceScreen onNavigate={navigate} />;

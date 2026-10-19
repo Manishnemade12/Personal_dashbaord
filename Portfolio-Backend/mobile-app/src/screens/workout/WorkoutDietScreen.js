@@ -15,9 +15,15 @@ import api from '../../api/client';
 
 const getTodayDateStr = () => new Date().toISOString().slice(0, 10);
 
-export default function WorkoutDietScreen({ onNavigate }) {
+export default function WorkoutDietScreen({ onNavigate, routeParams }) {
   // Active Tab: 'plan' (Today's Diet Plan) or 'library' (Diet Library & Recipes)
-  const [activeTab, setActiveTab] = useState('plan');
+  const [activeTab, setActiveTab] = useState(routeParams?.tab || 'plan');
+
+  useEffect(() => {
+    if (routeParams?.tab) {
+      setActiveTab(routeParams.tab);
+    }
+  }, [routeParams?.tab]);
 
   // Selected date for Today's Diet Plan (YYYY-MM-DD)
   const [selectedDateStr, setSelectedDateStr] = useState(getTodayDateStr());
