@@ -99,3 +99,5 @@ app.listen(PORT, () => {
   console.log(`[Frontend UI] Open in browser at http://localhost:${PORT}`);
   console.log(`[API Endpoints] Ready at http://localhost:${PORT}/api/*`);
 });
+
+module.exports = app;
