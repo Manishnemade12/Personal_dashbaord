@@ -106,7 +106,6 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
     try {
       const res = await api.toggleMealStatus(eventId);
       if (res && res.success) {
-        // Optimistically update local state for instant responsiveness
         setDailyPlan((prev) => {
           if (!prev) return prev;
           const updatedMeals = (prev.meals || []).map((m) =>
@@ -186,75 +185,70 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
 
   return (
     <View style={styles.container}>
-      {/* Top Header Bar */}
-      <View style={styles.headerBar}>
-        <View style={styles.headerLeft}>
+      {/* ─── Single Compact Header (Non-Sticky in scroll) ─── */}
+      <View style={styles.compactHeader}>
+        {/* Row 1: Back + Title + Refresh */}
+        <View style={styles.compactHeaderRow}>
           <TouchableOpacity
-            style={styles.backBtn}
+            style={styles.compactBackBtn}
             onPress={() => onNavigate('Calendar')}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={18} color="#0f172a" />
+            <Ionicons name="arrow-back" size={16} color="#0f172a" />
           </TouchableOpacity>
-          <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitle}>Workout & Diet</Text>
-            <Text style={styles.headerSubtitle}>
-              Meal timing checklist, accuracy & Grok macros
-            </Text>
-          </View>
-        </View>
 
-        <View style={styles.headerRight}>
+          <View style={styles.compactTitleBlock}>
+            <Text style={styles.compactTitle}>Workout & Diet</Text>
+          </View>
+
           <TouchableOpacity
-            style={styles.headerIconBtn}
+            style={styles.compactRefreshBtn}
             onPress={() => {
               loadDailyPlan(selectedDateStr);
               loadDietItems();
             }}
             activeOpacity={0.7}
           >
-            <Ionicons name="reload" size={16} color="#7e37d8" />
+            <Ionicons name="reload" size={14} color="#7e37d8" />
           </TouchableOpacity>
         </View>
-      </View>
 
-      {/* Top Segmented Tab Switcher */}
-      <View style={styles.tabSegmentWrapper}>
-        <View style={styles.tabSegment}>
+        {/* Row 2: Inline Tab Switcher */}
+        <View style={styles.inlineTabRow}>
           <TouchableOpacity
-            style={[styles.tabBtn, activeTab === 'plan' && styles.tabBtnActive]}
+            style={[styles.inlineTab, activeTab === 'plan' && styles.inlineTabActive]}
             onPress={() => setActiveTab('plan')}
             activeOpacity={0.8}
           >
             <Ionicons
               name="checkbox-outline"
-              size={15}
+              size={13}
               color={activeTab === 'plan' ? '#7e37d8' : '#64748b'}
             />
             <Text
               style={[
-                styles.tabBtnText,
-                activeTab === 'plan' && styles.tabBtnTextActive,
+                styles.inlineTabText,
+                activeTab === 'plan' && styles.inlineTabTextActive,
               ]}
             >
-              Today's Diet Plan
+              Diet Plan
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tabBtn, activeTab === 'library' && styles.tabBtnActive]}
+            style={[styles.inlineTab, activeTab === 'library' && styles.inlineTabActive]}
             onPress={() => setActiveTab('library')}
             activeOpacity={0.8}
           >
             <Ionicons
               name="nutrition-outline"
-              size={15}
+              size={13}
               color={activeTab === 'library' ? '#7e37d8' : '#64748b'}
             />
             <Text
               style={[
-                styles.tabBtnText,
-                activeTab === 'library' && styles.tabBtnTextActive,
+                styles.inlineTabText,
+                activeTab === 'library' && styles.inlineTabTextActive,
               ]}
             >
               Diet Library
@@ -263,45 +257,48 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
         </View>
       </View>
 
-      {/* Tab 1: Today's Diet Plan */}
-      {activeTab === 'plan' && (
-        <TodaysDietPlanTab
-          selectedDateStr={selectedDateStr}
-          onPrevDay={handlePrevDay}
-          onNextDay={handleNextDay}
-          onToday={handleToday}
-          isToday={isToday}
-          dailyPlan={dailyPlan}
-          loading={loadingPlan}
-          onToggleStatus={handleToggleMealStatus}
-          onDeleteMeal={handleDeleteMeal}
-          onOpenScheduleModal={() => {
-            setPrefillDietItem(null);
-            setScheduleModalVisible(true);
-          }}
-        />
-      )}
+      {/* ─── Tab Content (flex:1 fills remaining space) ─── */}
+      <View style={{ flex: 1, overflow: 'hidden' }}>
+        {/* Tab 1: Today's Diet Plan */}
+        {activeTab === 'plan' && (
+          <TodaysDietPlanTab
+            selectedDateStr={selectedDateStr}
+            onPrevDay={handlePrevDay}
+            onNextDay={handleNextDay}
+            onToday={handleToday}
+            isToday={isToday}
+            dailyPlan={dailyPlan}
+            loading={loadingPlan}
+            onToggleStatus={handleToggleMealStatus}
+            onDeleteMeal={handleDeleteMeal}
+            onOpenScheduleModal={() => {
+              setPrefillDietItem(null);
+              setScheduleModalVisible(true);
+            }}
+          />
+        )}
 
-      {/* Tab 2: Diet Library */}
-      {activeTab === 'library' && (
-        <DietLibraryTab
-          dietItems={dietItems}
-          loading={loadingItems}
-          onOpenAddModal={() => {
-            setEditingDietItem(null);
-            setDietModalVisible(true);
-          }}
-          onOpenEditModal={(item) => {
-            setEditingDietItem(item);
-            setDietModalVisible(true);
-          }}
-          onDeleteDietItem={handleDeleteDietItem}
-          onScheduleItem={(item) => {
-            setPrefillDietItem(item);
-            setScheduleModalVisible(true);
-          }}
-        />
-      )}
+        {/* Tab 2: Diet Library */}
+        {activeTab === 'library' && (
+          <DietLibraryTab
+            dietItems={dietItems}
+            loading={loadingItems}
+            onOpenAddModal={() => {
+              setEditingDietItem(null);
+              setDietModalVisible(true);
+            }}
+            onOpenEditModal={(item) => {
+              setEditingDietItem(item);
+              setDietModalVisible(true);
+            }}
+            onDeleteDietItem={handleDeleteDietItem}
+            onScheduleItem={(item) => {
+              setPrefillDietItem(item);
+              setScheduleModalVisible(true);
+            }}
+          />
+        )}
+      </View>
 
       {/* Modal 1: Create / Edit Diet Item */}
       <DietItemModal
@@ -322,7 +319,7 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
         defaultDateStr={selectedDateStr}
         onScheduleSuccess={() => {
           loadDailyPlan(selectedDateStr);
-          setActiveTab('plan'); // Switch to plan view to see scheduled meal
+          setActiveTab('plan');
         }}
       />
     </View>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -28,8 +28,8 @@ export default function DietLibraryTab({
   onDeleteDietItem,
   onScheduleItem,
 }) {
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = React.useState('All');
+  const [searchQuery, setSearchQuery] = React.useState('');
 
   const filteredItems = (dietItems || []).filter((item) => {
     const matchesCategory =
@@ -44,65 +44,66 @@ export default function DietLibraryTab({
   });
 
   return (
-    <View style={styles.container}>
-      {/* Header with Search and Add Button */}
+    <View style={{ flex: 1 }}>
+      {/* Search + Add — stacked on 2 lines to avoid overflow */}
       <View style={styles.libraryHeader}>
-        <View style={styles.searchAndAddRow}>
-          <View style={styles.searchBar}>
-            <Ionicons name="search-outline" size={16} color="#94a3b8" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search recipes, shakes, ingredients..."
-              placeholderTextColor="#94a3b8"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={16} color="#94a3b8" />
-              </TouchableOpacity>
-            )}
-          </View>
+        {/* Row 1: Search bar full width */}
+        <View style={styles.searchBar}>
+          <Ionicons name="search-outline" size={14} color="#94a3b8" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search recipes, shakes, ingredients..."
+            placeholderTextColor="#94a3b8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={14} color="#94a3b8" />
+            </TouchableOpacity>
+          )}
+        </View>
 
+        {/* Row 2: Category scroll + Add button inline */}
+        <View style={styles.categoryAddRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryScrollInline}
+            style={{ flex: 1 }}
+          >
+            {CATEGORIES.map((cat) => {
+              const isActive = selectedCategory === cat;
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.categoryChip, isActive && styles.categoryChipActive]}
+                  onPress={() => setSelectedCategory(cat)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.categoryChipText,
+                      isActive && styles.categoryChipTextActive,
+                    ]}
+                  >
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Add button — compact icon+label */}
           <TouchableOpacity
-            style={styles.addNewDietBtn}
+            style={styles.addDietBtnCompact}
             onPress={onOpenAddModal}
             activeOpacity={0.7}
           >
-            <Ionicons name="add" size={18} color="#ffffff" />
-            <Text style={styles.addNewDietBtnText}>Add Diet</Text>
+            <Ionicons name="add" size={16} color="#ffffff" />
+            <Text style={styles.addDietBtnCompactText}>Add</Text>
           </TouchableOpacity>
         </View>
-      </View>
-
-      {/* Category Pills Horizontal Scroll */}
-      <View style={{ backgroundColor: '#ffffff' }}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryScroll}
-        >
-          {CATEGORIES.map((cat) => {
-            const isActive = selectedCategory === cat;
-            return (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.categoryChip, isActive && styles.categoryChipActive]}
-                onPress={() => setSelectedCategory(cat)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.categoryChipText,
-                    isActive && styles.categoryChipTextActive,
-                  ]}
-                >
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
       </View>
 
       {/* Diet Items List */}
@@ -139,7 +140,7 @@ export default function DietLibraryTab({
             <View key={item._id} style={styles.dietItemCard}>
               {/* Card Header */}
               <View style={styles.dietCardHeader}>
-                <Text style={styles.dietNameText}>{item.name}</Text>
+                <Text style={styles.dietNameText} numberOfLines={1}>{item.name}</Text>
                 <View style={styles.categoryBadge}>
                   <Text style={styles.categoryBadgeText}>{item.category}</Text>
                 </View>
@@ -160,14 +161,14 @@ export default function DietLibraryTab({
                 {item.nutrients?.carbs > 0 && (
                   <View style={[styles.macroChip, styles.carbChip]}>
                     <Text style={styles.carbChipText}>
-                      🌾 {item.nutrients?.carbs}g Carbs
+                      🌾 {item.nutrients?.carbs}g C
                     </Text>
                   </View>
                 )}
                 {item.nutrients?.fats > 0 && (
                   <View style={[styles.macroChip, styles.fatChip]}>
                     <Text style={styles.fatChipText}>
-                      🥑 {item.nutrients?.fats}g Fats
+                      🥑 {item.nutrients?.fats}g F
                     </Text>
                   </View>
                 )}
@@ -192,8 +193,8 @@ export default function DietLibraryTab({
               {/* Grok AI Insight */}
               {item.grokAnalysis ? (
                 <View style={styles.aiInsightBox}>
-                  <Ionicons name="sparkles" size={14} color="#7e37d8" />
-                  <Text style={styles.aiInsightText}>{item.grokAnalysis}</Text>
+                  <Ionicons name="sparkles" size={12} color="#7e37d8" />
+                  <Text style={styles.aiInsightText} numberOfLines={2}>{item.grokAnalysis}</Text>
                 </View>
               ) : null}
 
@@ -204,8 +205,8 @@ export default function DietLibraryTab({
                   onPress={() => onScheduleItem(item)}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="calendar-outline" size={13} color="#ffffff" />
-                  <Text style={styles.scheduleActionBtnText}>Schedule Meal</Text>
+                  <Ionicons name="calendar-outline" size={12} color="#ffffff" />
+                  <Text style={styles.scheduleActionBtnText}>Schedule</Text>
                 </TouchableOpacity>
 
                 <View style={styles.cardRightActions}>
@@ -214,14 +215,14 @@ export default function DietLibraryTab({
                     onPress={() => onOpenEditModal(item)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="pencil-outline" size={15} color="#64748b" />
+                    <Ionicons name="pencil-outline" size={14} color="#64748b" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.cardMiniActionBtn}
                     onPress={() => onDeleteDietItem(item._id, item.name)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="trash-outline" size={15} color="#ef4444" />
+                    <Ionicons name="trash-outline" size={14} color="#ef4444" />
                   </TouchableOpacity>
                 </View>
               </View>
