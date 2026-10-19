@@ -1,8 +1,8 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Default development IP for mobile APK
-const LAPTOP_IP = '192.168.43.236';
+// Production Cloud API URL (Vercel)
+const CLOUD_API_URL = 'https://personaldashbaord-mobile-app.vercel.app/api';
 
 const getInitialBaseUrl = () => {
   if (typeof window !== 'undefined' && window.location) {
@@ -10,15 +10,9 @@ const getInitialBaseUrl = () => {
     if (port === '5000') {
       return `${protocol}//${hostname}:${port}/api`;
     }
-    if (hostname && hostname !== 'localhost') {
-      return `${protocol}//${hostname}:5000/api`;
-    }
   }
-  // For mobile devices, localhost points to the phone, so use laptop Wi-Fi IP
-  if (Platform.OS !== 'web') {
-    return `http://${LAPTOP_IP}:5000/api`;
-  }
-  return 'http://localhost:5000/api';
+  // Default to live 24/7 cloud server for mobile APK and web client
+  return CLOUD_API_URL;
 };
 
 let API_BASE_URL = getInitialBaseUrl();

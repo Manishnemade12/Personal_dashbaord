@@ -14,17 +14,24 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Connect to MongoDB
-connectDB();
+connectDB().catch((err) => console.error('[Init DB Error]', err.message));
 
 // Middlewares
 app.use(cors());
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
-// Request logger for API calls
-app.use('/api', (req, res, next) => {
+// Ensure DB connected & log API calls (crucial for Serverless like Vercel)
+app.use('/api', async (req, res, next) => {
   console.log(`[API ${req.method}] ${req.url}`);
-  next();
+  if (req.path === '/health') return next();
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('[DB Connect Error]', err.message);
+    return res.status(500).json({ error: 'Database connection failed: ' + err.message });
+  }
 });
 
 // API Routes

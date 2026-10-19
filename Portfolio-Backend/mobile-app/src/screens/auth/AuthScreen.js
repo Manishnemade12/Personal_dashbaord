@@ -242,7 +242,7 @@ export default function AuthScreen({ onLoginSuccess }) {
                     color: '#0f172a',
                     marginBottom: 8,
                   }}
-                  placeholder="http://192.168.43.236:5000/api"
+                  placeholder="https://personaldashbaord-mobile-app.vercel.app/api"
                   value={serverUrl}
                   onChangeText={setServerUrl}
                   autoCapitalize="none"
