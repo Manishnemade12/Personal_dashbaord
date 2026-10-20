@@ -55,7 +55,7 @@ export default function Header({
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
       {/* Left: ADMIN Logo + Circular Hamburger */}
-      <View style={styles.leftGroup}>
+      <View style={[styles.leftGroup, isMobile && styles.leftGroupMobile]}>
         <View style={styles.logoWrap}>
           <View style={styles.logoRedAccent} />
           <Text style={[styles.logoText, isMobile && { fontSize: 20 }]}>ADMIN</Text>
@@ -251,10 +251,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerMobile: {
-    height: 64,
-    minHeight: 64,
+    height: 74,
+    minHeight: 74,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingTop: 16,
+    paddingBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  leftGroupMobile: {
+    gap: 12,
+    alignItems: 'center',
+    marginTop: 4,
   },
   headerHamMobile: {
     width: 38,
@@ -263,6 +271,8 @@ const styles = StyleSheet.create({
   },
   rightGroupMobile: {
     gap: 10,
+    alignItems: 'center',
+    marginTop: 4,
   },
   actionBtnMobile: {
     width: 30,
