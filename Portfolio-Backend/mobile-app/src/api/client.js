@@ -197,6 +197,16 @@ export const api = {
   aiExtractHoldings: (data) => request('/investments/ai-extract', { method: 'POST', body: data }),
   getHoldingTransactions: (holdingId) => request(`/investments/holdings/${holdingId}/transactions`),
   getAllTransactions: (holdingId = '') => request(`/investments/transactions${holdingId ? `?holdingId=${holdingId}` : ''}`),
+  getInvestmentInsights: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.sortBy) query.append('sortBy', params.sortBy);
+    if (params.assetClass) query.append('assetClass', params.assetClass);
+    if (params.search) query.append('search', params.search);
+    const qs = query.toString();
+    return request(`/investments/insights${qs ? `?${qs}` : ''}`);
+  },
+  getNetWorthHistory: (range = '1M') => request(`/investments/net-worth-history?range=${encodeURIComponent(range)}`),
+  capturePortfolioSnapshot: (data = {}) => request('/investments/snapshots/capture', { method: 'POST', body: data }),
 
 
   // API Management (/api/apis)

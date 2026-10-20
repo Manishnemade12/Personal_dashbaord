@@ -105,6 +105,22 @@ app.listen(PORT, () => {
   console.log(`[Standalone Server] Running on http://localhost:${PORT}`);
   console.log(`[Frontend UI] Open in browser at http://localhost:${PORT}`);
   console.log(`[API Endpoints] Ready at http://localhost:${PORT}/api/*`);
+
+  // Scheduled Portfolio Snapshot Capture (Runs 10s after boot, and periodically)
+  setTimeout(() => {
+    const snapshotService = require('./services/snapshotService');
+    snapshotService
+      .captureDailySnapshot('admin', { source: 'automated_cron' })
+      .then((s) => console.log(`[Daily Snapshot Cron] Net Worth snapshot ready for ${s.dateStr}`))
+      .catch((e) => console.log('[Snapshot Cron Notice]', e.message));
+  }, 10000);
+
+  setInterval(() => {
+    const snapshotService = require('./services/snapshotService');
+    snapshotService
+      .captureDailySnapshot('admin', { source: 'automated_cron' })
+      .catch((e) => console.log('[Snapshot Cron Notice]', e.message));
+  }, 4 * 60 * 60 * 1000);
 });
 
 module.exports = app;

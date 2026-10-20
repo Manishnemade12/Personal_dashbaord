@@ -3,6 +3,7 @@ const router = express.Router();
 const InvestmentHolding = require('../models/InvestmentHolding');
 const InvestmentTransaction = require('../models/InvestmentTransaction');
 const marketDataService = require('../services/marketDataService');
+const snapshotService = require('../services/snapshotService');
 
 // 1. GET /api/investments/holdings
 router.get('/holdings', async (req, res) => {
@@ -1015,6 +1016,72 @@ router.get('/analytics', async (req, res) => {
       bySubCategory: toChartData(breakdowns.bySubCategory),
     });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// 8. STOCK PERFORMANCE INSIGHTS & FILTERS
+// GET /api/investments/insights
+// ==========================================
+router.get('/insights', async (req, res) => {
+  try {
+    const userId = req.query.userId || 'admin';
+    const sortBy = req.query.sortBy || 'today_best';
+    const assetClass = req.query.assetClass || 'All';
+    const search = req.query.search || '';
+
+    const insightsData = await snapshotService.getStockPerformanceInsights(userId, {
+      sortBy,
+      assetClass,
+      search,
+    });
+
+    res.json(insightsData);
+  } catch (err) {
+    console.error('[Investments Insights Error]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// 9. HISTORICAL NET WORTH SNAPSHOTS & TIME SERIES
+// GET /api/investments/net-worth-history
+// ==========================================
+router.get('/net-worth-history', async (req, res) => {
+  try {
+    const userId = req.query.userId || 'admin';
+    const range = req.query.range || '1M'; // 1W, 1M, 1Y, ALL
+
+    const historyData = await snapshotService.getNetWorthHistory(userId, range);
+    res.json(historyData);
+  } catch (err) {
+    console.error('[Net Worth History Error]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// 10. TRIGGER DAILY SNAPSHOT CAPTURE (MANUAL / SCHEDULED)
+// POST /api/investments/snapshots/capture
+// ==========================================
+router.post('/snapshots/capture', async (req, res) => {
+  try {
+    const userId = req.body.userId || 'admin';
+    const forceUpdate = req.body.forceUpdate !== false;
+
+    const snapshot = await snapshotService.captureDailySnapshot(userId, {
+      forceUpdate,
+      source: 'manual_refresh',
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Daily net worth snapshot captured successfully",
+      snapshot,
+    });
+  } catch (err) {
+    console.error('[Snapshot Capture Error]', err);
     res.status(500).json({ error: err.message });
   }
 });

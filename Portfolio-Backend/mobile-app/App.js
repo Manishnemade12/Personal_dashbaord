@@ -21,6 +21,7 @@ import WorkoutDietScreen from './src/screens/workout/WorkoutDietScreen';
 import FinanceScreen from './src/screens/finance/FinanceScreen';
 import InvestmentScreen from './src/screens/finance/InvestmentScreen';
 import InvestmentAnalyticsScreen from './src/screens/finance/InvestmentAnalyticsScreen';
+import PortfolioInsightsScreen from './src/screens/finance/PortfolioInsightsScreen';
 import ApiManagementScreen from './src/screens/api/ApiManagementScreen';
 import ProjectApiScreen from './src/screens/api/ProjectApiScreen';
 import AiColdEmailScreen from './src/screens/ai/AiColdEmailScreen';
@@ -156,6 +157,9 @@ export default function App() {
 
       case 'InvestmentAnalytics':
         return <InvestmentAnalyticsScreen onNavigate={navigate} />;
+
+      case 'PortfolioInsights':
+        return <PortfolioInsightsScreen onNavigate={navigate} />;
 
 
       case 'Blogs':

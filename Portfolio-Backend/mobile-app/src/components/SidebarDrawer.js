@@ -24,7 +24,9 @@ export default function SidebarDrawer({
   const isFinanceActive = currentRoute === 'Finance';
   const isInvestmentsActive = currentRoute === 'Investments';
   const isInvestmentAnalyticsActive = currentRoute === 'InvestmentAnalytics';
-  const isInvestmentsGroupActive = isInvestmentsActive || isInvestmentAnalyticsActive;
+  const isPortfolioInsightsActive = currentRoute === 'PortfolioInsights';
+  const isInvestmentsGroupActive =
+    isInvestmentsActive || isInvestmentAnalyticsActive || isPortfolioInsightsActive;
 
   const isBlogsActive = currentRoute === 'Blogs' || currentRoute === 'BlogForm';
   const isProjectsActive = currentRoute === 'Projects' || currentRoute === 'ProjectForm';
@@ -389,6 +391,43 @@ export default function SidebarDrawer({
                   >
                     Holdings & Portfolio
                   </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.subMenuItem,
+                    isPortfolioInsightsActive && styles.subMenuItemActive,
+                  ]}
+                  onPress={() => handleNav('PortfolioInsights')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.subMenuIconWrap}>
+                    <Ionicons
+                      name="analytics-outline"
+                      size={16}
+                      color={isPortfolioInsightsActive ? '#7e37d8' : '#64748b'}
+                    />
+                  </View>
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text
+                      style={[
+                        styles.subMenuText,
+                        isPortfolioInsightsActive && styles.subMenuTextActive,
+                      ]}
+                    >
+                      Insights & Net Worth
+                    </Text>
+                    <View
+                      style={{
+                        backgroundColor: '#ede9fe',
+                        paddingHorizontal: 5,
+                        paddingVertical: 1,
+                        borderRadius: 4,
+                      }}
+                    >
+                      <Text style={{ fontSize: 8, fontWeight: '800', color: '#7e37d8' }}>NEW</Text>
+                    </View>
+                  </View>
                 </TouchableOpacity>
 
                 <TouchableOpacity

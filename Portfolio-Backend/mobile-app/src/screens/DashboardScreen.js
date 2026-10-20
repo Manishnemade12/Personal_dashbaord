@@ -502,7 +502,16 @@ export default function DashboardScreen({ onNavigate }) {
             onPress={() => onNavigate && onNavigate('Investments')}
           >
             <Ionicons name="trending-up-outline" size={16} color={colors.primary} />
-            <Text style={styles.finCtaBtnSecondaryText}>Open Investment Portfolio</Text>
+            <Text style={styles.finCtaBtnSecondaryText}>Open Investments</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.finCtaBtnSecondary, { backgroundColor: '#f5f3ff', borderColor: '#ddd6fe' }]}
+            activeOpacity={0.8}
+            onPress={() => onNavigate && onNavigate('PortfolioInsights')}
+          >
+            <Ionicons name="analytics-outline" size={16} color="#7e37d8" />
+            <Text style={[styles.finCtaBtnSecondaryText, { color: '#7e37d8' }]}>Insights & Net Worth</Text>
           </TouchableOpacity>
         </View>
       </View>

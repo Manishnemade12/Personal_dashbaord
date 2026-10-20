@@ -41,6 +41,16 @@ export default function InvestmentHeader({ isMobile, refreshing, onNavigate, onR
           contentContainerStyle={styles.mobileActionsScrollContent}
           style={styles.mobileActionsScroll}
         >
+          {/* Insights & Net Worth */}
+          <TouchableOpacity
+            style={[styles.mobileActionChip, { backgroundColor: '#f5f3ff', borderColor: '#ddd6fe' }]}
+            onPress={() => onNavigate && onNavigate('PortfolioInsights')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="analytics" size={14} color="#7e37d8" />
+            <Text style={[styles.mobileActionChipTextPurple, { color: '#7e37d8', fontWeight: '800' }]}>Insights</Text>
+          </TouchableOpacity>
+
           {/* Charts / Visuals */}
           <TouchableOpacity
             style={styles.mobileActionChip}
@@ -109,6 +119,15 @@ export default function InvestmentHeader({ isMobile, refreshing, onNavigate, onR
       </View>
 
       <View style={styles.rightActionRow}>
+        <TouchableOpacity
+          style={[styles.analyticsBtn, { backgroundColor: '#f5f3ff', borderColor: '#ddd6fe' }]}
+          onPress={() => onNavigate && onNavigate('PortfolioInsights')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="analytics" size={15} color="#7e37d8" />
+          <Text style={[styles.analyticsBtnText, { color: '#7e37d8', fontWeight: '800' }]}>Insights & Net Worth</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.analyticsBtn}
           onPress={() => onNavigate && onNavigate('InvestmentAnalytics')}
