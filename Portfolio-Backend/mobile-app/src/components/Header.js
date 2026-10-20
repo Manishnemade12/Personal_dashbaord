@@ -251,16 +251,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerMobile: {
-    height: 56,
-    paddingHorizontal: 12,
+    height: 64,
+    minHeight: 64,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   headerHamMobile: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
   rightGroupMobile: {
-    gap: 8,
+    gap: 10,
   },
   actionBtnMobile: {
     width: 30,

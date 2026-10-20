@@ -31,6 +31,7 @@ export default function ScreenHeader({
                 style={styles.backButton}
                 onPress={onBack}
                 activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               >
                 <Ionicons name="arrow-back" size={14} color={colors.textSecondary} />
                 <Text style={styles.backButtonTextMobile}>{backText}</Text>
@@ -127,11 +128,12 @@ const styles = StyleSheet.create({
   },
   headerContainerMobile: {
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: 10,
+    paddingHorizontal: spacing.sm + 6,
+    paddingTop: 12,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
-    gap: 6,
+    gap: 8,
   },
   topBarMobile: {
     flexDirection: 'row',
@@ -152,10 +154,13 @@ const styles = StyleSheet.create({
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 2,
+    gap: 5,
+    marginBottom: 4,
     alignSelf: 'flex-start',
-    paddingVertical: 2,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surfaceAlt,
   },
   backButtonText: {
     fontSize: 12,

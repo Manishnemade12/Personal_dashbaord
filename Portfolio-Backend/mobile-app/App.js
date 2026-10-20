@@ -1,5 +1,16 @@
-import React, { useState } from 'react';
-import { StyleSheet, SafeAreaView, View, StatusBar, Platform, Alert, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  StyleSheet,
+  SafeAreaView,
+  View,
+  StatusBar,
+  Platform,
+  Alert,
+  Text,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Header from './src/components/Header';
 import SidebarDrawer from './src/components/SidebarDrawer';
 import AuthScreen from './src/screens/auth/AuthScreen';
@@ -25,6 +36,9 @@ import PortfolioInsightsScreen from './src/screens/finance/PortfolioInsightsScre
 import ApiManagementScreen from './src/screens/api/ApiManagementScreen';
 import ProjectApiScreen from './src/screens/api/ProjectApiScreen';
 import AiColdEmailScreen from './src/screens/ai/AiColdEmailScreen';
+
+// Calculate safe status bar height for Android to prevent header colliding with notification bar
+const ANDROID_STATUS_BAR_HEIGHT = Platform.OS === 'android' ? Math.max(StatusBar.currentHeight || 0, 36) : 0;
 
 
 // React Native Web Polyfill: Enable native web confirm/alert dialogs and execute button callbacks
@@ -103,6 +117,7 @@ class ErrorBoundary extends React.Component {
 
 export default function App() {
   // Authentication State
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -111,13 +126,44 @@ export default function App() {
   const [routeParams, setRouteParams] = useState({});
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const handleLoginSuccess = (user) => {
+  // Restore authenticated session from AsyncStorage on app open
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const storedUser = await AsyncStorage.getItem('AUTH_USER');
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          if (user && (user.email || user._id || user.id)) {
+            setCurrentUser(user);
+            setIsAuthenticated(true);
+          }
+        }
+      } catch (err) {
+        console.warn('[Auth] Failed to restore session from AsyncStorage:', err.message);
+      } finally {
+        setIsAuthChecking(false);
+      }
+    };
+    restoreSession();
+  }, []);
+
+  const handleLoginSuccess = async (user) => {
+    try {
+      await AsyncStorage.setItem('AUTH_USER', JSON.stringify(user || { email: 'admin' }));
+    } catch (e) {
+      console.warn('[Auth] Failed to persist user session:', e.message);
+    }
     setCurrentUser(user);
     setIsAuthenticated(true);
     setCurrentRoute('Dashboard');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('AUTH_USER');
+    } catch (e) {
+      console.warn('[Auth] Failed to remove user session:', e.message);
+    }
     setIsAuthenticated(false);
     setCurrentUser(null);
     setIsDrawerOpen(false);
@@ -127,6 +173,19 @@ export default function App() {
     setCurrentRoute(route);
     setRouteParams(params);
   };
+
+  // While restoring session from storage on app launch, show minimal splash spinner
+  if (isAuthChecking) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { justifyContent: 'center', alignItems: 'center' }]}>
+        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+        <ActivityIndicator size="large" color="#7e37d8" />
+        <Text style={{ marginTop: 14, fontSize: 13, color: '#64748b', fontWeight: '600' }}>
+          Loading your session...
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
   // If not logged in, show Auth / Sign In screen first (matching website LoginLayout)
   if (!isAuthenticated) {
@@ -263,6 +322,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#ffffff',
+    paddingTop: ANDROID_STATUS_BAR_HEIGHT,
   },
   appContainer: {
     flex: 1,
