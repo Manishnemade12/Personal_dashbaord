@@ -246,9 +246,16 @@ export const api = {
   // Unified Portfolio Summary (/api/portfolio/summary)
   getPortfolioSummary: () => request('/portfolio/summary'),
 
-  // Grok AI Cold Email & OCR (/api/ai/*)
+  // Grok AI Cold Email & Multi-Conversation Sessions (/api/ai/*)
   generateColdEmail: (data) => request('/ai/cold-email', { method: 'POST', body: data }),
   extractTextFromImage: (data) => request('/ai/ocr', { method: 'POST', body: data }),
+  getAiConversations: () => request('/ai/conversations'),
+  createAiConversation: (data = {}) => request('/ai/conversations', { method: 'POST', body: data }),
+  getAiConversation: (id) => request(`/ai/conversations/${id}`),
+  updateAiConversation: (id, data) => request(`/ai/conversations/${id}`, { method: 'PUT', body: data }),
+  updateAiConversationResume: (id, data) => request(`/ai/conversations/${id}/resume`, { method: 'PUT', body: data }),
+  generateAiColdEmailForConversation: (id, data) => request(`/ai/conversations/${id}/generate`, { method: 'POST', body: data }),
+  deleteAiConversation: (id) => request(`/ai/conversations/${id}`, { method: 'DELETE' }),
 
   // Workout & Diet Management (/api/diet/*)
   ensureDietCalendar: () => request('/diet/ensure-calendar'),
