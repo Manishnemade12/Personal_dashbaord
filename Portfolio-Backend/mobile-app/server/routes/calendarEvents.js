@@ -3,6 +3,7 @@ const router = express.Router();
 const CalendarEvent = require('../models/CalendarEvent');
 const NotificationLog = require('../models/NotificationLog');
 const Calendar = require('../models/Calendar');
+const aiRoutinePlannerService = require('../services/aiRoutinePlannerService');
 
 // Helper to schedule notification logs
 const syncNotificationLogs = async (event) => {
@@ -96,6 +97,65 @@ router.get('/:id', async (req, res) => {
     if (!event) return res.status(404).json({ error: 'Event not found' });
     res.json(event);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/calendar-events/ai-routine - Generate cross-calendar aware AI routine
+router.post('/ai-routine', async (req, res) => {
+  try {
+    const { calendarId, targetDateStr, userGoal, planCategory, intensity, userId = 'admin' } = req.body;
+    const result = await aiRoutinePlannerService.generateAiRoutine({
+      userId,
+      calendarId,
+      targetDateStr,
+      userGoal,
+      planCategory,
+      intensity,
+    });
+    res.json(result);
+  } catch (error) {
+    console.error('[AI Routine Route Error]', error);
+    res.status(500).json({ error: error.message || 'Failed to generate AI routine' });
+  }
+});
+
+// POST /api/calendar-events/bulk - Create multiple events in bulk (for accepted AI routines)
+router.post('/bulk', async (req, res) => {
+  try {
+    const { events = [], userId = 'admin' } = req.body;
+    if (!Array.isArray(events) || events.length === 0) {
+      return res.status(400).json({ error: 'Array of events is required' });
+    }
+
+    const createdList = [];
+    for (const item of events) {
+      if (!item.title || !item.startAt || !item.calendarId) continue;
+      const ev = await CalendarEvent.create({
+        userId,
+        calendarId: item.calendarId,
+        title: item.title.trim(),
+        description: item.description || '',
+        startAt: new Date(item.startAt),
+        endAt: new Date(item.endAt || new Date(item.startAt).getTime() + 60 * 60 * 1000),
+        isAllDay: !!item.isAllDay,
+        color: item.color || '',
+        location: item.location || '',
+        priority: item.priority || 'medium',
+        status: 'scheduled',
+        reminders: [{ offsetMinutes: 15, isEnabled: true }],
+      });
+      await syncNotificationLogs(ev);
+      createdList.push(ev);
+    }
+
+    res.status(201).json({
+      success: true,
+      count: createdList.length,
+      events: createdList,
+    });
+  } catch (error) {
+    console.error('[CalendarEvent BULK POST Error]', error);
     res.status(500).json({ error: error.message });
   }
 });

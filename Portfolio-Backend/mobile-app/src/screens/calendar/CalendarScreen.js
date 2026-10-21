@@ -16,7 +16,9 @@ import CalendarSwitcher from './components/CalendarSwitcher';
 import CalendarViewControls from './components/CalendarViewControls';
 import CalendarViews from './components/CalendarViews';
 import CalendarModals from './components/CalendarModals';
+import AiRoutinePlannerModal from './components/AiRoutinePlannerModal';
 import styles from './styles/calendarStyles';
+import aiRoutineStyles from './styles/aiRoutineStyles';
 
 const formatLocalDate = (date) => {
   if (!date) return '';
@@ -55,6 +57,7 @@ export default function CalendarScreen({ onNavigate }) {
   const [remindersModalVisible, setRemindersModalVisible] = useState(false);
   const [upcomingReminders, setUpcomingReminders] = useState([]);
   const [calendarDrawerVisible, setCalendarDrawerVisible] = useState(false);
+  const [aiPlanModalVisible, setAiPlanModalVisible] = useState(false);
 
   // Event Form state
   const [eventTitle, setEventTitle] = useState('');
@@ -496,6 +499,7 @@ export default function CalendarScreen({ onNavigate }) {
         onCalendars={() => setCalendarDrawerVisible(true)}
         onReminders={() => { loadReminders(); setRemindersModalVisible(true); }}
         onCreateEvent={() => openEventModal()}
+        onAiPlan={() => setAiPlanModalVisible(true)}
       />
 
       <CalendarSwitcher
@@ -628,6 +632,28 @@ export default function CalendarScreen({ onNavigate }) {
         handleRequestNotifPermission={handleRequestNotifPermission}
         upcomingReminders={upcomingReminders}
         loadReminders={loadReminders}
+      />
+
+      {/* Floating Action Button (FAB) for AI Routine Generator */}
+      <TouchableOpacity
+        style={aiRoutineStyles.aiPlanFab}
+        onPress={() => setAiPlanModalVisible(true)}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="sparkles" size={17} color="#ffffff" />
+        <Text style={aiRoutineStyles.aiPlanFabText}>AI Routine</Text>
+      </TouchableOpacity>
+
+      {/* AI Routine Planner Modal */}
+      <AiRoutinePlannerModal
+        visible={aiPlanModalVisible}
+        onClose={() => setAiPlanModalVisible(false)}
+        calendars={calendars}
+        selectedDate={selectedDate}
+        onRoutineCreated={() => {
+          loadEvents();
+          loadReminders();
+        }}
       />
     </View>
   );

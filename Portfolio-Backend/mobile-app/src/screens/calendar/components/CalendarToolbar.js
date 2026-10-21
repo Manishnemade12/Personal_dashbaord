@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function CalendarToolbar({
   dateLabel, onPrevious, onToday, onNext, calendarCount,
-  onCalendars, onReminders, onCreateEvent,
+  onCalendars, onReminders, onCreateEvent, onAiPlan,
 }) {
   return (
     <View style={styles.container}>
@@ -25,6 +25,12 @@ export default function CalendarToolbar({
           <Ionicons name="albums-outline" size={13} color="#7e37d8" />
           <Text style={styles.calendarText} numberOfLines={1}>Calendars ({calendarCount})</Text>
         </TouchableOpacity>
+        {onAiPlan && (
+          <TouchableOpacity style={styles.aiPlanButton} onPress={onAiPlan} activeOpacity={0.7}>
+            <Ionicons name="sparkles" size={12} color="#7e37d8" />
+            <Text style={styles.aiPlanText}>AI Plan</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity accessibilityLabel="Upcoming reminders" style={styles.reminderButton} onPress={onReminders}>
           <Ionicons name="notifications-outline" size={14} color="#2563eb" />
         </TouchableOpacity>
@@ -48,7 +54,10 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   calendarButton: { flex: 1, minWidth: 0, height: 26, borderRadius: 6, paddingHorizontal: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#f4effb' },
   calendarText: { flexShrink: 1, fontSize: 10.5, fontWeight: '600', color: '#7e37d8' },
+  aiPlanButton: { height: 26, borderRadius: 6, paddingHorizontal: 8, backgroundColor: '#faf5ff', borderWidth: 1, borderColor: '#e9d5ff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 },
+  aiPlanText: { color: '#7e37d8', fontSize: 10.5, fontWeight: '700' },
   reminderButton: { width: 26, height: 26, borderRadius: 6, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' },
   createButton: { height: 26, borderRadius: 6, paddingHorizontal: 8, backgroundColor: '#7e37d8', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2 },
   createText: { color: '#fff', fontSize: 10.5, fontWeight: '600' },
 });
+

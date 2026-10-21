@@ -158,6 +158,8 @@ export const api = {
   updateEvent: (id, data) => request(`/calendar-events/${id}`, { method: 'PUT', body: data }),
   deleteEvent: (id) => request(`/calendar-events/${id}`, { method: 'DELETE' }),
   clearAllEvents: () => request('/calendar-events/clear-all', { method: 'DELETE' }),
+  generateAiRoutine: (data) => request('/calendar-events/ai-routine', { method: 'POST', body: data }),
+  bulkCreateEvents: (data) => request('/calendar-events/bulk', { method: 'POST', body: data }),
 
   // Reminders (/api/reminders)
   getUpcomingReminders: () => request('/reminders/upcoming'),
