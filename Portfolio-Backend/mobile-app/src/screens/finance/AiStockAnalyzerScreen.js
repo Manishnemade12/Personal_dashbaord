@@ -31,7 +31,23 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
   // Result Filter ('ALL' | 'AVERAGE_DOWN' | 'HOLD_LONG_TERM' | 'EXIT_OR_TRIM')
   const [resultFilter, setResultFilter] = useState('ALL');
 
+  // Active Tab ('strategy' | 'chat')
+  const [activeTab, setActiveTab] = useState('strategy');
+
+  // AI Stock Chat State
+  const [chatInput, setChatInput] = useState('');
+  const [sendingChat, setSendingChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    {
+      id: 'welcome',
+      sender: 'ai',
+      text: 'Namaste! I am your AI Investment CIO & Equity Advisor. Ask me anything about your selected stocks — whether to average down at current prices, hold for compounding, or exit/trim. I evaluate using your actual buy price and live market trends.',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    },
+  ]);
+
   const scrollRef = useRef(null);
+  const chatScrollRef = useRef(null);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -139,6 +155,65 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
     }
   };
 
+  // 3. Send Message in Interactive AI Stock Chat
+  const handleSendChatMessage = async (customPrompt) => {
+    const q = (typeof customPrompt === 'string' ? customPrompt : chatInput).trim();
+    if (!q) return;
+
+    const chosenStockObjects = allHoldings.filter((s) =>
+      selectedStockIds.includes(s._id || s.symbolOrCode)
+    );
+
+    const userMsg = {
+      id: `msg-${Date.now()}-user`,
+      sender: 'user',
+      text: q,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setChatMessages((prev) => [...prev, userMsg]);
+    setChatInput('');
+    setSendingChat(true);
+
+    setTimeout(() => {
+      chatScrollRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+
+    try {
+      const res = await api.chatWithStockAi({
+        question: q,
+        selectedStocks: chosenStockObjects,
+        history: chatMessages.slice(-6),
+      });
+
+      if (res?.success && res.answer) {
+        const aiMsg = {
+          id: `msg-${Date.now()}-ai`,
+          sender: 'ai',
+          text: res.answer,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setChatMessages((prev) => [...prev, aiMsg]);
+        setTimeout(() => {
+          chatScrollRef.current?.scrollToEnd({ animated: true });
+        }, 150);
+      } else {
+        throw new Error(res?.error || 'No response from Stock AI');
+      }
+    } catch (err) {
+      console.error('Chat error:', err);
+      const errMsg = {
+        id: `msg-${Date.now()}-err`,
+        sender: 'ai',
+        text: `⚠️ Could not complete query: ${err.message}. Please check selected stocks and try again.`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setChatMessages((prev) => [...prev, errMsg]);
+    } finally {
+      setSendingChat(false);
+    }
+  };
+
   // Copy Analysis Summary to Clipboard
   const handleCopySummary = () => {
     if (!analysisResult?.summary) return;
@@ -203,8 +278,43 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
         <View style={styles.grokBadgeRow}>
           <Ionicons name="flash" size={13} color="#7e37d8" />
           <Text style={styles.grokBadgeText}>
-            Powered by Grok LLM • Individual deep analysis per stock & portfolio rebalance plan
+            Powered by Grok LLM • Individual deep analysis per stock & interactive chat
           </Text>
+        </View>
+
+        {/* Tab Switcher: Strategy & Verdicts vs AI Stock Chat */}
+        <View style={styles.tabSwitcher}>
+          <TouchableOpacity
+            style={[styles.tabBtn, activeTab === 'strategy' && styles.tabBtnActive]}
+            onPress={() => setActiveTab('strategy')}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="analytics"
+              size={15}
+              color={activeTab === 'strategy' ? '#7e37d8' : '#64748b'}
+            />
+            <Text
+              style={[styles.tabBtnText, activeTab === 'strategy' && styles.tabBtnTextActive]}
+            >
+              Strategy & Verdicts
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabBtn, activeTab === 'chat' && styles.tabBtnActive]}
+            onPress={() => setActiveTab('chat')}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="chatbubbles"
+              size={15}
+              color={activeTab === 'chat' ? '#7e37d8' : '#64748b'}
+            />
+            <Text style={[styles.tabBtnText, activeTab === 'chat' && styles.tabBtnTextActive]}>
+              AI Stock Chat
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* ============================================================ */}
@@ -640,7 +750,135 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
             </View>
           </>
         )}
+
+        {/* ============================================================ */}
+        {/* TAB 2: INTERACTIVE AI STOCK CHAT                             */}
+        {/* ============================================================ */}
+        {activeTab === 'chat' && (
+          <View style={styles.chatContainerCard}>
+            {/* Context Banner: Active Selected Stocks */}
+            <View style={styles.chatContextBanner}>
+              <View style={styles.chatContextTitleRow}>
+                <Text style={styles.chatContextTitle}>Active Context Stocks ({selectedStockIds.length})</Text>
+                <TouchableOpacity onPress={() => setActiveTab('strategy')}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#7e37d8' }}>
+                    + Change Selection
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.chatContextChipsWrap}>
+                {selectedStockIds.length === 0 ? (
+                  <Text style={{ fontSize: 11, color: '#64748b' }}>
+                    No stocks selected. AI will answer general equity strategy questions.
+                  </Text>
+                ) : (
+                  allHoldings
+                    .filter((s) => selectedStockIds.includes(s._id || s.symbolOrCode))
+                    .map((st) => (
+                      <View key={st._id || st.symbolOrCode} style={styles.chatContextChip}>
+                        <Text style={styles.chatContextChipText}>
+                          {st.symbolOrCode} (₹{Number(st.latestPrice || st.averageBuyPrice || 0).toLocaleString('en-IN')})
+                        </Text>
+                        <TouchableOpacity onPress={() => handleToggleStock(st._id || st.symbolOrCode)}>
+                          <Ionicons name="close-circle" size={14} color="#a855f7" />
+                        </TouchableOpacity>
+                      </View>
+                    ))
+                )}
+              </View>
+            </View>
+
+            {/* Quick Prompts */}
+            <Text style={styles.chatQuickPromptsTitle}>Quick Questions to Ask AI:</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.quickPromptsRow}
+            >
+              {[
+                '⚡ Should I average down or exit?',
+                '🎯 Target & stop-loss levels?',
+                '📉 Market 5% correction plan',
+                '⚖️ Capital rebalancing advice',
+                '🏆 Which stock has highest upside?',
+              ].map((qp, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.quickPromptChip}
+                  onPress={() => handleSendChatMessage(qp)}
+                  disabled={sendingChat}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.quickPromptText}>{qp}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Message Bubbles Scroll */}
+            <ScrollView
+              ref={chatScrollRef}
+              style={styles.chatMessagesList}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={false}
+            >
+              {chatMessages.map((msg) => (
+                <View
+                  key={msg.id}
+                  style={msg.sender === 'user' ? styles.messageRowUser : styles.messageRowAi}
+                >
+                  {msg.sender === 'ai' && (
+                    <View style={styles.messageHeaderAi}>
+                      <Ionicons name="sparkles" size={13} color="#7e37d8" />
+                      <Text style={styles.messageSenderAi}>AI Portfolio CIO</Text>
+                    </View>
+                  )}
+                  <Text style={msg.sender === 'user' ? styles.messageTextUser : styles.messageTextAi}>
+                    {msg.text}
+                  </Text>
+                </View>
+              ))}
+              {sendingChat && (
+                <View style={styles.messageRowAi}>
+                  <View style={styles.messageHeaderAi}>
+                    <ActivityIndicator size="small" color="#7e37d8" />
+                    <Text style={styles.messageSenderAi}>Analyzing with Grok LLM...</Text>
+                  </View>
+                  <Text style={{ fontSize: 11, color: '#64748b' }}>
+                    Evaluating your entry price vs current market trends...
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+
+            {/* Input Row */}
+            <View style={styles.chatInputRow}>
+              <TextInput
+                style={styles.chatTextInput}
+                placeholder="Ask in Hindi or English (e.g. Reliance me kya kare?)..."
+                value={chatInput}
+                onChangeText={setChatInput}
+                onSubmitEditing={() => handleSendChatMessage()}
+                returnKeyType="send"
+                editable={!sendingChat}
+                placeholderTextColor={colors.textMuted}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.chatSendBtn,
+                  (!chatInput.trim() || sendingChat) && styles.chatSendBtnDisabled,
+                ]}
+                onPress={() => handleSendChatMessage()}
+                disabled={!chatInput.trim() || sendingChat}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="send" size={16} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </ScrollView>
+
 
       {/* Floating Toast Notification */}
       {toastMessage && (

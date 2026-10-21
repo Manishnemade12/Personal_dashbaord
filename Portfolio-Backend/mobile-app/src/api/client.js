@@ -208,6 +208,7 @@ export const api = {
   getNetWorthHistory: (range = '1M') => request(`/investments/net-worth-history?range=${encodeURIComponent(range)}`),
   capturePortfolioSnapshot: (data = {}) => request('/investments/snapshots/capture', { method: 'POST', body: data }),
   analyzeStocksWithAi: (data = {}) => request('/investments/ai-analyzer', { method: 'POST', body: data }),
+  chatWithStockAi: (data = {}) => request('/investments/ai-chat', { method: 'POST', body: data }),
 
 
   // API Management (/api/apis)

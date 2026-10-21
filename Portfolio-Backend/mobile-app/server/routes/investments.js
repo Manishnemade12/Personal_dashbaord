@@ -5,6 +5,7 @@ const InvestmentTransaction = require('../models/InvestmentTransaction');
 const marketDataService = require('../services/marketDataService');
 const snapshotService = require('../services/snapshotService');
 const aiStockAnalyzerService = require('../services/aiStockAnalyzerService');
+const portfolioOcrService = require('../services/portfolioOcrService');
 
 // 1. GET /api/investments/holdings
 router.get('/holdings', async (req, res) => {
@@ -180,202 +181,36 @@ router.post('/holdings/bulk', async (req, res) => {
   }
 });
 
-// 2c. POST /api/investments/ai-extract (Extract stock holdings from image via xAI Grok Vision API)
+// 2c. POST /api/investments/ai-extract (Multi-image OCR + Grok LLM extraction + Portfolio Merge detection)
 router.post('/ai-extract', async (req, res) => {
   try {
-    const { image, mimeType = 'image/jpeg', useDemo = false } = req.body;
+    const { image, images, useDemo = false, userId = 'admin' } = req.body;
 
-    if (!image && !useDemo) {
-      return res.status(400).json({ error: 'Image data (base64 or URL) is required' });
+    let imagesList = [];
+    if (Array.isArray(images) && images.length > 0) {
+      imagesList = images;
+    } else if (image) {
+      imagesList = [image];
     }
 
-    const apiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
-    const isKeyConfigured = apiKey && !apiKey.includes('your_xai_grok') && !apiKey.includes('placeholder') && apiKey.trim().length > 10;
-
-    // Demo / Sample portfolio holdings extracted from Zerodha / Groww screenshot for testing/fallback
-    const demoHoldings = [
-      {
-        symbolOrCode: 'TATAMOTORS.NS',
-        instrumentName: 'Tata Motors Limited',
-        assetClass: 'Equity',
-        subCategory: 'Automobile',
-        quantity: 25,
-        buyPrice: 948.50,
-        latestPrice: 978.20,
-        confidence: 0.98,
-        notes: 'AI extracted: 25 shares @ ₹948.50 avg price',
-      },
-      {
-        symbolOrCode: 'RELIANCE.NS',
-        instrumentName: 'Reliance Industries Ltd',
-        assetClass: 'Equity',
-        subCategory: 'Energy & Oil',
-        quantity: 10,
-        buyPrice: 2840.00,
-        latestPrice: 2920.40,
-        confidence: 0.96,
-        notes: 'AI extracted: 10 shares @ ₹2840.00 avg price',
-      },
-      {
-        symbolOrCode: 'HDFCBANK.NS',
-        instrumentName: 'HDFC Bank Limited',
-        assetClass: 'Equity',
-        subCategory: 'Banking',
-        quantity: 15,
-        buyPrice: 1590.25,
-        latestPrice: 1645.00,
-        confidence: 0.95,
-        notes: 'AI extracted: 15 shares @ ₹1590.25 avg price',
-      },
-    ];
-
-    if (!isKeyConfigured || useDemo) {
-      return res.json({
-        success: true,
-        isDemo: true,
-        message: isKeyConfigured
-          ? 'Extracted successfully (Demo mode)'
-          : 'Grok API Key not set in .env. Showing sample extracted holdings. Add GROK_API_KEY to .env for live AI extraction.',
-        count: demoHoldings.length,
-        holdings: demoHoldings,
-        model: 'grok-2-vision-1212 (Demo Fallback)',
-      });
+    if (imagesList.length === 0 && !useDemo) {
+      return res.status(400).json({ error: 'At least one image (base64 or URL) is required' });
     }
 
-    // Format image URL
-    let imageUrl = image;
-    if (!image.startsWith('http://') && !image.startsWith('https://') && !image.startsWith('data:')) {
-      imageUrl = `data:${mimeType};base64,${image}`;
-    }
-
-    const grokModel = process.env.GROK_MODEL || 'grok-2-vision-1212';
-
-    const promptText = `Analyze this brokerage or investment portfolio screenshot (e.g. Zerodha Kite, Groww, Angel One, Upstox, IndMoney, Coin, Robinhood, etc.).
-Extract all holdings or stocks visible in the image.
-For each holding detected, determine:
-- symbolOrCode: Stock ticker on NSE/BSE (e.g. TATAMOTORS.NS, RELIANCE.NS, INFY.NS, HDFCBANK.NS, etc.)
-- instrumentName: Full company or asset name (e.g. 'Tata Motors Ltd', 'Reliance Industries Ltd')
-- assetClass: Must be one of 'Equity', 'Mutual Fund', 'ETF', 'Gold'
-- subCategory: Industry or cap (e.g. 'Large Cap', 'Mid Cap', 'Automobile', 'IT', 'Banking')
-- quantity: Number of shares/units held (numeric)
-- buyPrice: Average purchase price / avg cost per share in INR (numeric)
-- latestPrice: Current Market Price / LTP in INR (numeric, or buyPrice if not visible)
-- confidence: Extraction confidence between 0.5 and 1.0
-- notes: Short info note
-
-Return ONLY a valid JSON array of objects.
-Example output format:
-[
-  {
-    "symbolOrCode": "TATAMOTORS.NS",
-    "instrumentName": "Tata Motors Ltd",
-    "assetClass": "Equity",
-    "subCategory": "Large Cap",
-    "quantity": 25,
-    "buyPrice": 948.5,
-    "latestPrice": 978.2,
-    "confidence": 0.95,
-    "notes": "Extracted from portfolio screenshot"
-  }
-]
-Do not output markdown backticks or any conversational text. Just the raw JSON array.`;
-
-    const grokPayload = {
-      model: grokModel,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a precise financial data extraction AI. You extract structured stock and portfolio holdings from images into pure JSON.',
-        },
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: promptText },
-            {
-              type: 'image_url',
-              image_url: {
-                url: imageUrl,
-              },
-            },
-          ],
-        },
-      ],
-      temperature: 0.1,
-    };
-
-    const grokRes = await fetch('https://api.x.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(grokPayload),
-    });
-
-    if (!grokRes.ok) {
-      const errText = await grokRes.text();
-      console.error('[Grok Vision Error]', grokRes.status, errText);
-      return res.status(502).json({
-        error: `Grok API error (${grokRes.status}): ${errText}`,
-        fallbackAvailable: true,
-        demoHoldings,
-      });
-    }
-
-    const grokData = await grokRes.json();
-    const rawContent = grokData?.choices?.[0]?.message?.content || '';
-
-    // Strip markdown code fences if model returned \`\`\`json ... \`\`\`
-    let cleanJson = rawContent.trim();
-    if (cleanJson.startsWith('```json')) {
-      cleanJson = cleanJson.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-    } else if (cleanJson.startsWith('```')) {
-      cleanJson = cleanJson.replace(/^```\s*/, '').replace(/```\s*$/, '').trim();
-    }
-
-    let parsedHoldings = [];
-    try {
-      parsedHoldings = JSON.parse(cleanJson);
-    } catch (parseErr) {
-      console.warn('[Grok JSON Parse Error]', parseErr.message, 'Raw:', rawContent);
-      const match = rawContent.match(/\[\s*\{[\s\S]*\}\s*\]/);
-      if (match) {
-        parsedHoldings = JSON.parse(match[0]);
-      } else {
-        throw new Error('Could not parse holdings JSON from Grok response');
-      }
-    }
-
-    if (!Array.isArray(parsedHoldings)) {
-      parsedHoldings = [parsedHoldings];
-    }
-
-    // Sanitize fields
-    const sanitized = parsedHoldings.map((h) => ({
-      symbolOrCode: (h.symbolOrCode || h.symbol || 'STOCK.NS').toUpperCase().trim(),
-      instrumentName: h.instrumentName || h.name || h.symbolOrCode || 'Investment Asset',
-      assetClass: ['Equity', 'Mutual Fund', 'ETF', 'Gold'].includes(h.assetClass) ? h.assetClass : 'Equity',
-      subCategory: h.subCategory || 'Stocks',
-      quantity: Number(h.quantity) || 1,
-      buyPrice: Number(h.buyPrice) || 100.0,
-      latestPrice: Number(h.latestPrice) || Number(h.buyPrice) || 100.0,
-      confidence: Number(h.confidence) || 0.9,
-      notes: h.notes || 'Extracted via Grok AI from image',
-    }));
+    console.log(`[POST /api/investments/ai-extract] Processing ${imagesList.length} screenshots (Demo: ${useDemo})...`);
+    const result = await portfolioOcrService.processMultipleImages(imagesList, userId, useDemo);
 
     res.json({
       success: true,
-      isDemo: false,
-      count: sanitized.length,
-      holdings: sanitized,
-      model: grokModel,
-      rawUsage: grokData.usage,
+      count: result.count,
+      holdings: result.holdings,
     });
   } catch (err) {
     console.error('[AI Extract Error]', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message || 'Failed to extract portfolio holdings from screenshot(s).' });
   }
 });
+
 
 // 3. POST /api/investments/transaction (Buy / Sell units with custom or live price & realized P&L calculation)
 router.post('/transaction', async (req, res) => {
@@ -1129,4 +964,29 @@ router.post('/ai-analyzer', async (req, res) => {
   }
 });
 
+// ==========================================
+// 12. AI STOCK INTERACTIVE CHAT
+// POST /api/investments/ai-chat
+// ==========================================
+router.post('/ai-chat', async (req, res) => {
+  try {
+    const { question, selectedStocks = [], history = [] } = req.body;
+    if (!question || !question.trim()) {
+      return res.status(400).json({ error: 'Question is required' });
+    }
+
+    const result = await aiStockAnalyzerService.chatWithStockAi({
+      question,
+      selectedStocks,
+      history,
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[AI Stock Chat Error]', err);
+    res.status(500).json({ error: err.message || 'Failed to generate stock chat response.' });
+  }
+});
+
 module.exports = router;
+

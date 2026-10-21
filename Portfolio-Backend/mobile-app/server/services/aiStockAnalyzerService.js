@@ -305,7 +305,174 @@ async function analyzeMultipleStocks(stocksList) {
   };
 }
 
+/**
+ * Fallback AI Chat Generator when Groq LLM API is unavailable
+ */
+function generateChatFallback(question, selectedStocks = []) {
+  if (!Array.isArray(selectedStocks) || selectedStocks.length === 0) {
+    return `### 💡 Portfolio Strategy Overview
+You currently do not have any specific stock selected for this query. 
+To get a precise recommendation on whether to **Average Down**, **Hold Long Term**, or **Exit/Trim**, select one or more stocks from your list above.
+
+**Key Disciplines:**
+1. **Average Down Only Quality**: Stagger accumulation in 2-3 tranches when fundamentally sound stocks drop 8-15% from your buy average.
+2. **Hold Compounding Leaders**: Give high-ROCE compounders at least 2-3 years to compound earnings.
+3. **Trim at Overextension**: When a holding crosses 30-40% quick gains or tests crucial technical resistance, booking 30-50% profit to protect capital is prudent.`;
+  }
+
+  const s = selectedStocks[0];
+  const buy = Number(s.averageBuyPrice || s.buyPrice || 100);
+  const cur = Number(s.latestPrice || buy);
+  const pnlPct = buy > 0 ? (((cur - buy) / buy) * 100).toFixed(1) : '0';
+  const name = s.instrumentName || s.symbolOrCode;
+  const isLoss = Number(pnlPct) < 0;
+
+  let advice = '';
+  if (Number(pnlPct) < -8) {
+    advice = `### 🟢 Average Down Thesis for ${name} (${s.symbolOrCode})
+- **Your Buy Average:** ₹${buy}
+- **Current Price:** ₹${cur} (${pnlPct}%)
+- **Recommendation:** **Average Down / Accumulate**
+- **Action Plan:** The stock is trading at an attractive ${Math.abs(Number(pnlPct))}% discount to your acquisition cost. Allocate 40% of planned fresh capital now around ₹${Math.round(cur * 0.97)} - ₹${Math.round(cur)}, and keep remaining 60% if it tests deeper support near ₹${Math.round(cur * 0.92)}.
+- **Target Price:** ₹${Math.round(buy * 1.15)} (1-2 Year horizon)`;
+  } else if (Number(pnlPct) > 25) {
+    advice = `### 🔴 Exit / Profit Booking Thesis for ${name} (${s.symbolOrCode})
+- **Your Buy Average:** ₹${buy}
+- **Current Price:** ₹${cur} (+${pnlPct}%)
+- **Recommendation:** **Trim / Book Partial Profit**
+- **Action Plan:** You are sitting on a solid gain of ${pnlPct}%. Consider booking profit on 30-50% of your position at current levels (₹${cur}) to lock in gains. Place a trailing stop-loss on the remaining quantity at ₹${Math.round(cur * 0.93)} to ride further momentum.
+- **Next Target:** ₹${Math.round(cur * 1.10)}`;
+  } else {
+    advice = `### 🔵 Hold Long Term Thesis for ${name} (${s.symbolOrCode})
+- **Your Buy Average:** ₹${buy}
+- **Current Price:** ₹${cur} (${Number(pnlPct) >= 0 ? '+' : ''}${pnlPct}%)
+- **Recommendation:** **Hold Long Term**
+- **Action Plan:** The stock is trading comfortably near your cost basis. Company fundamentals and industry tailwinds remain supportive. Maintain your position and monitor quarterly earnings and volume breakouts.
+- **Key Support:** ₹${Math.round(cur * 0.91)} | **Target:** ₹${Math.round(cur * 1.20)}`;
+  }
+
+  if (selectedStocks.length > 1) {
+    advice += `\n\n*(Note: Evaluated based on primary pick ${name}. You can ask about individual stocks or rebalancing between your ${selectedStocks.length} selected holdings).*`;
+  }
+
+  return advice;
+}
+
+/**
+ * 3. Interactive AI Stock Chat: Answer user questions about their selected stocks
+ */
+async function chatWithStockAi({ question, selectedStocks = [], history = [] }) {
+  if (!question || !question.trim()) {
+    throw new Error('Question is required');
+  }
+
+  // Format stock context
+  let stockContext = 'No specific stocks selected.';
+  if (Array.isArray(selectedStocks) && selectedStocks.length > 0) {
+    stockContext = selectedStocks
+      .map((s, idx) => {
+        const buy = Number(s.averageBuyPrice || s.buyPrice || 0);
+        const cur = Number(s.latestPrice || buy);
+        const pnl = Number(s.pnl || (cur - buy) * (s.quantity || 1));
+        const pnlPct = buy > 0 ? (((cur - buy) / buy) * 100).toFixed(2) : '0';
+        return `[Stock ${idx + 1}]
+- Name: ${s.instrumentName || s.symbolOrCode}
+- Symbol: ${s.symbolOrCode}
+- User Buy Price: ₹${buy}
+- Current Market Price: ₹${cur}
+- Quantity Held: ${s.quantity || 0}
+- Current P&L: ₹${pnl.toFixed(2)} (${pnlPct}%)
+- Day Change: ${s.dayChange || 0} (${s.dayChangePercent || 0}%)`;
+      })
+      .join('\n\n');
+  }
+
+  const systemPrompt = `You are an elite Chief Investment Officer and SEBI-registered portfolio manager specializing in Indian equity markets (NSE/BSE).
+You are discussing the user's specific stock portfolio holdings with them.
+The user's currently selected stocks with exact entry and current prices:
+${stockContext}
+
+GUIDELINES FOR YOUR RESPONSE:
+1. Always ground your analysis in the user's real numbers (their buy average price, current market price, and profit/loss).
+2. Explicitly advise whether to AVERAGE DOWN (if fundamentally solid and trading at a dip), HOLD (for long term compounding), or EXIT/TRIM (to book profits or cut losses).
+3. Provide realistic target price levels, key support zones for averaging, and sensible stop-loss levels.
+4. Keep the tone professional, objective, actionable, and encouraging. Use bullet points and clear formatting.
+5. If the user asks in Hindi or Hinglish, answer in fluent, respectful Hinglish or Hindi as requested. Otherwise answer in clear English.`;
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+  ];
+
+  if (Array.isArray(history)) {
+    history.slice(-6).forEach((h) => {
+      if (h.sender === 'user' || h.role === 'user') {
+        messages.push({ role: 'user', content: h.text || h.content || '' });
+      } else if (h.sender === 'ai' || h.role === 'assistant') {
+        messages.push({ role: 'assistant', content: h.text || h.content || '' });
+      }
+    });
+  }
+
+  messages.push({ role: 'user', content: question.trim() });
+
+  try {
+    const apiKey = await getApiKey();
+    if (!apiKey) {
+      throw new Error('No Grok/LLM API key available');
+    }
+
+    const payload = {
+      model: GROQ_MODEL,
+      messages,
+      temperature: 0.35,
+    };
+
+    let res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey.trim()}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok && payload.model !== 'llama-3.3-70b-versatile') {
+      payload.model = 'llama-3.3-70b-versatile';
+      res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey.trim()}`,
+        },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    if (!res.ok) {
+      throw new Error(`Groq LLM returned status ${res.status}`);
+    }
+
+    const data = await res.json();
+    const answer = data?.choices?.[0]?.message?.content || '';
+    return {
+      success: true,
+      answer,
+    };
+  } catch (err) {
+    console.warn('[Stock Chat Fallback Triggered]', err.message);
+    const fallbackAnswer = generateChatFallback(question, selectedStocks);
+    return {
+      success: true,
+      answer: fallbackAnswer,
+      isFallback: true,
+    };
+  }
+}
+
 module.exports = {
   analyzeSingleStock,
   analyzeMultipleStocks,
+  chatWithStockAi,
+  generateChatFallback,
 };
+
