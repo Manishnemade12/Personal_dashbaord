@@ -1,5 +1,6 @@
 const Calendar = require('../models/Calendar');
 const CalendarEvent = require('../models/CalendarEvent');
+const DietItem = require('../models/DietItem');
 const ProjectApi = require('../models/portfolio/ProjectApi');
 
 const GROQ_MODEL = process.env.GROK_MODEL || 'llama-3.3-70b-versatile';
@@ -75,6 +76,7 @@ function generateHeuristicRoutine({
   userGoal,
   planCategory,
   existingEvents = [],
+  userDietItems = [],
   intensity = 'moderate',
 }) {
   const goalLower = (userGoal || '').toLowerCase();
@@ -158,57 +160,120 @@ function generateHeuristicRoutine({
       },
     ];
   } else if (effectiveCategory === 'diet') {
-    slots = [
-      {
-        title: 'Morning Detox & Hydration',
-        description: 'Warm lemon water + soaked chia seeds / almonds',
-        defaultStart: '07:30',
-        defaultEnd: '07:45',
-        priority: 'high',
-      },
-      {
-        title: 'Nutritious High-Protein Breakfast',
-        description: 'Oats with whey / eggs & fruits according to target macros',
-        defaultStart: '09:00',
-        defaultEnd: '09:30',
-        priority: 'high',
-      },
-      {
-        title: 'Mid-Morning Hydration & Green Tea',
-        description: 'Green tea + 500ml water to maintain focus',
-        defaultStart: '11:30',
-        defaultEnd: '11:45',
-        priority: 'low',
-      },
-      {
-        title: 'Balanced Clean Lunch',
-        description: 'Brown rice/roti, lentils/paneer/chicken, fresh greens & curd',
-        defaultStart: '13:30',
-        defaultEnd: '14:15',
-        priority: 'high',
-      },
-      {
-        title: 'Pre-Workout / Evening Fuel',
-        description: 'Black coffee / fruit + handful of roasted makhana or nuts',
-        defaultStart: '17:00',
-        defaultEnd: '17:20',
-        priority: 'medium',
-      },
-      {
-        title: 'Post-Workout Protein Shake',
-        description: 'Whey protein isolate shake + 1 banana for glycogen refill',
-        defaultStart: '19:00',
-        defaultEnd: '19:15',
-        priority: 'high',
-      },
-      {
-        title: 'Light Wholesome Dinner',
-        description: 'High protein, low carb stir-fry salad or clear soup',
-        defaultStart: '20:30',
-        defaultEnd: '21:15',
-        priority: 'medium',
-      },
-    ];
+    if (Array.isArray(userDietItems) && userDietItems.length > 0) {
+      // Map user's actual saved diet items from Workout & Diet library
+      const categoryTimeMap = {
+        'Breakfast': { start: '08:30', end: '09:00' },
+        'Lunch': { start: '13:00', end: '13:45' },
+        'Snack': { start: '16:30', end: '17:00' },
+        'Pre-Workout': { start: '17:30', end: '18:00' },
+        'Post-Workout': { start: '19:00', end: '19:30' },
+        'Dinner': { start: '20:30', end: '21:15' },
+        'Other': { start: '22:00', end: '22:15' },
+      };
+
+      const fallbackTimes = [
+        { start: '08:00', end: '08:30' },
+        { start: '09:15', end: '09:45' },
+        { start: '11:30', end: '12:00' },
+        { start: '13:00', end: '13:45' },
+        { start: '16:30', end: '17:00' },
+        { start: '18:30', end: '19:00' },
+        { start: '20:30', end: '21:15' },
+        { start: '22:00', end: '22:15' },
+      ];
+
+      const usedStarts = new Set();
+      slots = userDietItems.map((item, idx) => {
+        const cat = item.category || 'Other';
+        let timeRange = categoryTimeMap[cat];
+        if (!timeRange || usedStarts.has(timeRange.start)) {
+          timeRange = fallbackTimes.find((t) => !usedStarts.has(t.start)) || {
+            start: `${String(8 + idx * 2).padStart(2, '0')}:00`,
+            end: `${String(8 + idx * 2).padStart(2, '0')}:30`,
+          };
+        }
+        usedStarts.add(timeRange.start);
+
+        const macroParts = [];
+        if (item.nutrients?.protein) macroParts.push(`${item.nutrients.protein}g Protein`);
+        if (item.nutrients?.calories) macroParts.push(`${item.nutrients.calories} kcal`);
+        if (item.nutrients?.carbs) macroParts.push(`${item.nutrients.carbs}g Carbs`);
+        if (item.nutrients?.fats) macroParts.push(`${item.nutrients.fats}g Fat`);
+
+        const descParts = [
+          cat ? `[${cat}]` : '',
+          macroParts.length > 0 ? macroParts.join(' • ') : '',
+          item.description ||
+            (item.ingredients?.length > 0
+              ? `Ingredients: ${item.ingredients.map((i) => `${i.quantity || ''} ${i.unit || ''} ${i.name}`).join(', ')}`
+              : ''),
+        ].filter(Boolean);
+
+        return {
+          title: item.name,
+          description: descParts.join(' — '),
+          defaultStart: timeRange.start,
+          defaultEnd: timeRange.end,
+          priority: cat === 'Breakfast' || cat === 'Lunch' || cat === 'Dinner' ? 'high' : 'medium',
+        };
+      });
+
+      // Sort slots chronologically
+      slots.sort((a, b) => a.defaultStart.localeCompare(b.defaultStart));
+    } else {
+      slots = [
+        {
+          title: 'Morning Detox & Hydration',
+          description: 'Warm lemon water + soaked chia seeds / almonds',
+          defaultStart: '07:30',
+          defaultEnd: '07:45',
+          priority: 'high',
+        },
+        {
+          title: 'Nutritious High-Protein Breakfast',
+          description: 'Oats with whey / eggs & fruits according to target macros',
+          defaultStart: '09:00',
+          defaultEnd: '09:30',
+          priority: 'high',
+        },
+        {
+          title: 'Mid-Morning Hydration & Green Tea',
+          description: 'Green tea + 500ml water to maintain focus',
+          defaultStart: '11:30',
+          defaultEnd: '11:45',
+          priority: 'low',
+        },
+        {
+          title: 'Balanced Clean Lunch',
+          description: 'Brown rice/roti, lentils/paneer/chicken, fresh greens & curd',
+          defaultStart: '13:30',
+          defaultEnd: '14:15',
+          priority: 'high',
+        },
+        {
+          title: 'Pre-Workout / Evening Fuel',
+          description: 'Black coffee / fruit + handful of roasted makhana or nuts',
+          defaultStart: '17:00',
+          defaultEnd: '17:20',
+          priority: 'medium',
+        },
+        {
+          title: 'Post-Workout Protein Shake',
+          description: 'Whey protein isolate shake + 1 banana for glycogen refill',
+          defaultStart: '19:00',
+          defaultEnd: '19:15',
+          priority: 'high',
+        },
+        {
+          title: 'Light Wholesome Dinner',
+          description: 'High protein, low carb stir-fry salad or clear soup',
+          defaultStart: '20:30',
+          defaultEnd: '21:15',
+          priority: 'medium',
+        },
+      ];
+    }
   } else if (effectiveCategory === 'workout') {
     slots = [
       {
@@ -440,7 +505,21 @@ async function generateAiRoutine({
     `[AI Routine Planner] Found ${existingEvents.length} existing events across all calendars for ${cleanDateStr}`
   );
 
-  // 3. Attempt LLM Generation if Key is Available
+  // 3. Fetch user's saved meals from Workout & Diet library if Diet planning is requested
+  const isDietPlan =
+    planCategory === 'diet' ||
+    /diet|nutrition|meal/i.test(targetCalendar?.name || '') ||
+    /diet|nutrition|meal/i.test(userGoal || '');
+
+  let userDietItems = [];
+  if (isDietPlan) {
+    userDietItems = await DietItem.find({ userId }).sort({ createdAt: -1 });
+    console.log(
+      `[AI Routine Planner] Fetched ${userDietItems.length} saved meals from Workout & Diet DB for user "${userId}"`
+    );
+  }
+
+  // 4. Attempt LLM Generation if Key is Available
   const apiKey = await getApiKey();
   let routineResult = null;
 
@@ -454,6 +533,18 @@ async function generateAiRoutine({
         return `- [${start} - ${end}] ${ev.title} (Calendar: "${cal}", Type: ${isPassive ? 'CO_OCCURRING_PASSIVE_CAN_OVERLAP' : 'HARD_CONFLICT_EXCLUSIVE'})`;
       });
 
+      const dietMealsPromptSection =
+        isDietPlan && userDietItems.length > 0
+          ? `
+USER SAVED WORKOUT & DIET LIBRARY MEALS (FETCHED FROM DATABASE):
+The user has saved these specific meals in their database library:
+${userDietItems.map((d, i) => `${i + 1}. "${d.name}" (Meal Category: ${d.category || 'Meal'}, Protein: ${d.nutrients?.protein || 0}g, Calories: ${d.nutrients?.calories || 0} kcal, Description: ${d.description || ''})`).join('\n')}
+
+CRITICAL INSTRUCTION FOR DIET ROUTINE:
+You MUST schedule these EXACT meals from the user's Workout & Diet library into their daily schedule!
+Assign realistic, healthy timings throughout the day for each meal (e.g. Breakfast around 08:30, Lunch around 13:00, Snack around 16:30, Post-Workout around 19:00, Dinner around 20:30, etc.) without conflicting with other calendar events. Include the category and macro summary in the description.`
+          : '';
+
       const prompt = `You are a brilliant AI Personal Executive & Daily Schedule Architect.
 Your task is to create a realistic, high-impact routine for the user on date: ${cleanDateStr}.
 
@@ -465,6 +556,7 @@ RECURRENCE: "${recurrenceRule?.frequency || 'once'}"
 
 EXISTING SCHEDULE ACROSS ALL OTHER CALENDARS (READ CAREFULLY):
 ${existingEventsFormatted.length > 0 ? existingEventsFormatted.join('\n') : 'No existing events scheduled for this day across other calendars.'}
+${dietMealsPromptSection}
 
 CRITICAL SCHEDULING RULES (MULTI-CALENDAR AWARENESS):
 1. Distinguish between HARD EXCLUSIVE CONFLICTS vs COMPATIBLE CO-OCCURRING TASKS:
@@ -553,6 +645,7 @@ Do not wrap in markdown fences. Output raw JSON only.`;
       userGoal,
       planCategory,
       existingEvents,
+      userDietItems,
       intensity,
     });
     routineResult = heuristicItems.map((item) => ({
@@ -579,6 +672,14 @@ Do not wrap in markdown fences. Output raw JSON only.`;
       startAt: ev.startAt,
       endAt: ev.endAt,
       isPassive: isPassiveCoOccurringEvent(ev),
+    })),
+    userDietItemsCount: userDietItems.length,
+    userDietItems: userDietItems.map((d) => ({
+      _id: d._id,
+      name: d.name,
+      category: d.category,
+      protein: d.nutrients?.protein || 0,
+      calories: d.nutrients?.calories || 0,
     })),
     routine: routineResult,
   };

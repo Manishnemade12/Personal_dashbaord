@@ -326,6 +326,8 @@ export default function AiRoutinePlannerModal({
   };
 
   const selectedCalendar = calendars.find((c) => c._id === selectedCalendarId);
+  const isDietSelected =
+    planCategory === 'diet' || /diet|nutrition|meal/i.test(selectedCalendar?.name || '');
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -357,15 +359,6 @@ export default function AiRoutinePlannerModal({
           {step === 'setup' && (
             <>
               <ScrollView style={styles.modalBodyScroll} contentContainerStyle={styles.modalBodyContent}>
-                {/* Info / Rule Banner */}
-                <View style={styles.infoBanner}>
-                  <Ionicons name="shield-checkmark" size={18} color="#16a34a" />
-                  <Text style={styles.infoBannerText}>
-                    <Text style={{ fontWeight: '700' }}>Smart Multi-Calendar Reference: </Text>
-                    AI scans all existing events across your calendars. Hard conflicts (meetings/classes) are avoided, while parallel habits (diet shakes, hydration, vitamins) run simultaneously without delaying your focus blocks!
-                  </Text>
-                </View>
-
                 {/* Target Calendar Selector */}
                 <View style={styles.fieldGroup}>
                   <Text style={styles.fieldLabel}>Target Calendar (Where to add routine)</Text>
@@ -389,6 +382,19 @@ export default function AiRoutinePlannerModal({
                   </View>
                 </View>
 
+                {/* Workout & Diet Integration Card if Diet Calendar / Category is Selected */}
+                {isDietSelected && (
+                  <View style={styles.dietConnectedBox}>
+                    <Ionicons name="restaurant" size={20} color="#059669" />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.dietConnectedTitle}>🥗 Workout & Diet Library Linked</Text>
+                      <Text style={styles.dietConnectedSubtitle}>
+                        AI will fetch your saved meals & recipes from the database (Shakes, Lunch, Dinner, etc.) and assign optimal meal timings across your day!
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
                 {/* Schedule & Recurrence Options (Daily, Weekly, Weekdays, Single Day) */}
                 <View style={styles.fieldGroup}>
                   <Text style={styles.fieldLabel}>Schedule & Recurrence</Text>
@@ -404,8 +410,8 @@ export default function AiRoutinePlannerModal({
                         >
                           <Ionicons
                             name={opt.icon}
-                            size={14}
-                            color={isSelected ? '#7e37d8' : '#64748b'}
+                            size={15}
+                            color={isSelected ? '#ffffff' : '#64748b'}
                           />
                           <Text
                             style={[
@@ -599,30 +605,61 @@ export default function AiRoutinePlannerModal({
 
                 {/* User Goal / Instructions Input */}
                 <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>Goal & Specific Details for AI</Text>
+                  <Text style={styles.fieldLabel}>
+                    {isDietSelected ? 'Diet Routine Goal & Preferences' : 'Goal & Specific Details for AI'}
+                  </Text>
                   <TextInput
                     style={[styles.textInput, styles.textArea]}
                     value={userGoal}
                     onChangeText={setUserGoal}
-                    placeholder="e.g. 4-hour DSA revision: trees, graphs & 3 leetcode problems. Note that I have a diet shake at 9:00 AM."
+                    placeholder={
+                      isDietSelected
+                        ? 'e.g. Schedule all saved meals, shakes and recipes from Workout & Diet library with optimal daily meal timings'
+                        : 'e.g. 4-hour DSA revision: trees, graphs & 3 leetcode problems. Note that I have a diet shake at 9:00 AM.'
+                    }
                     placeholderTextColor="#94a3b8"
                     multiline
                   />
 
                   {/* Quick Suggestion Chips */}
                   <View style={styles.suggestionsRow}>
-                    {SUGGESTIONS.map((sug, idx) => (
-                      <TouchableOpacity
-                        key={idx}
-                        style={styles.suggestionChip}
-                        onPress={() => {
-                          setPlanCategory(sug.category);
-                          setUserGoal(sug.text);
-                        }}
-                      >
-                        <Text style={styles.suggestionChipText}>{sug.label}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    {isDietSelected ? (
+                      <>
+                        <TouchableOpacity
+                          style={[styles.suggestionChip, { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' }]}
+                          onPress={() => {
+                            setPlanCategory('diet');
+                            setUserGoal('Schedule all saved meals, shakes and recipes from Workout & Diet library with optimal daily meal timings');
+                          }}
+                        >
+                          <Text style={[styles.suggestionChipText, { color: '#065f46', fontWeight: '700' }]}>
+                            🥗 Schedule All Saved Meals from Library
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.suggestionChip}
+                          onPress={() => {
+                            setPlanCategory('diet');
+                            setUserGoal('High-protein clean diet: 5 meals spread evenly across the day with hydration');
+                          }}
+                        >
+                          <Text style={styles.suggestionChipText}>⚡ High-Protein 5-Meal Spread</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+                      SUGGESTIONS.map((sug, idx) => (
+                        <TouchableOpacity
+                          key={idx}
+                          style={styles.suggestionChip}
+                          onPress={() => {
+                            setPlanCategory(sug.category);
+                            setUserGoal(sug.text);
+                          }}
+                        >
+                          <Text style={styles.suggestionChipText}>{sug.label}</Text>
+                        </TouchableOpacity>
+                      ))
+                    )}
                   </View>
                 </View>
               </ScrollView>

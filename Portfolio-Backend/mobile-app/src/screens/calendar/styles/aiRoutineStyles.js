@@ -55,14 +55,14 @@ const aiRoutineStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
     color: '#1e1b4b',
   },
   headerSubtitle: {
-    fontSize: 11.5,
+    fontSize: 13,
     color: '#6b21a8',
-    marginTop: 1,
+    marginTop: 2,
   },
   closeBtn: {
     padding: 6,
@@ -77,7 +77,7 @@ const aiRoutineStyles = StyleSheet.create({
   },
   modalBodyContent: {
     padding: 16,
-    gap: 14,
+    gap: 16,
   },
 
   // Info Banner
@@ -86,21 +86,44 @@ const aiRoutineStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#bbf7d0',
     borderRadius: 10,
-    padding: 10,
+    padding: 12,
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     alignItems: 'flex-start',
   },
   infoBannerText: {
     flex: 1,
-    fontSize: 11.5,
+    fontSize: 13,
     color: '#166534',
-    lineHeight: 16,
+    lineHeight: 18,
+  },
+
+  // Diet Connected Box
+  dietConnectedBox: {
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1.5,
+    borderColor: '#6ee7b7',
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  dietConnectedTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#065f46',
+  },
+  dietConnectedSubtitle: {
+    fontSize: 12.5,
+    color: '#047857',
+    marginTop: 2,
+    lineHeight: 17,
   },
 
   // Form Fields
   fieldGroup: {
-    gap: 6,
+    gap: 7,
   },
   fieldLabelRow: {
     flexDirection: 'row',
@@ -108,12 +131,12 @@ const aiRoutineStyles = StyleSheet.create({
     alignItems: 'center',
   },
   fieldLabel: {
-    fontSize: 12,
+    fontSize: 13.5,
     fontWeight: '700',
-    color: '#334155',
+    color: '#1e293b',
   },
   fieldHelper: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#64748b',
   },
 
@@ -121,15 +144,15 @@ const aiRoutineStyles = StyleSheet.create({
   pillsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 7,
   },
   categoryPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 9,
     backgroundColor: '#f1f5f9',
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -139,13 +162,13 @@ const aiRoutineStyles = StyleSheet.create({
     borderColor: '#c084fc',
   },
   categoryPillText: {
-    fontSize: 11.5,
+    fontSize: 12.5,
     fontWeight: '600',
     color: '#475569',
   },
   categoryPillTextActive: {
     color: '#7e37d8',
-    fontWeight: '700',
+    fontWeight: '800',
   },
 
   // Calendar Selector Pills
@@ -483,47 +506,47 @@ const aiRoutineStyles = StyleSheet.create({
   recurrenceRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 8,
   },
   recurrencePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 8,
+    gap: 6,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderRadius: 10,
     backgroundColor: '#f8fafc',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#cbd5e1',
   },
   recurrencePillActive: {
-    backgroundColor: '#f3e8ff',
-    borderColor: '#9333ea',
+    backgroundColor: '#7e37d8',
+    borderColor: '#7e37d8',
   },
   recurrencePillText: {
-    fontSize: 11.5,
-    fontWeight: '600',
-    color: '#475569',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
   },
   recurrencePillTextActive: {
-    color: '#7e37d8',
+    color: '#ffffff',
     fontWeight: '800',
   },
 
   // Weekday selection chips
   weekdaysRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 7,
     marginTop: 6,
     flexWrap: 'wrap',
   },
   weekdayChip: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#f1f5f9',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -532,31 +555,32 @@ const aiRoutineStyles = StyleSheet.create({
     borderColor: '#7e37d8',
   },
   weekdayChipText: {
-    fontSize: 11.5,
+    fontSize: 12.5,
     fontWeight: '700',
-    color: '#475569',
+    color: '#334155',
   },
   weekdayChipTextActive: {
     color: '#ffffff',
+    fontWeight: '800',
   },
 
   // Recurrence Hint Box
   recurrenceHintBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#faf5ff',
+    gap: 8,
+    backgroundColor: '#f5f3ff',
     borderWidth: 1,
-    borderColor: '#f3e8ff',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginTop: 4,
+    borderColor: '#ddd6fe',
+    borderRadius: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 6,
   },
   recurrenceHintText: {
-    fontSize: 11,
-    color: '#7e37d8',
-    fontWeight: '600',
+    fontSize: 12.5,
+    color: '#5b21b6',
+    fontWeight: '700',
     flex: 1,
   },
 
