@@ -301,6 +301,40 @@ export default StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '700',
   },
+  compactPrimaryBtn: {
+    backgroundColor: '#7e37d8',
+    borderRadius: radii.xs,
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    minHeight: 34,
+  },
+  compactPrimaryBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  compactSecondaryBtn: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: radii.xs,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    minHeight: 34,
+  },
+  compactSecondaryBtnText: {
+    color: '#334155',
+    fontSize: 12,
+    fontWeight: '700',
+  },
 
   // Scanning State Box
   scanningCard: {

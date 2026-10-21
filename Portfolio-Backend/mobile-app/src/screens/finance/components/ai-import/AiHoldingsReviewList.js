@@ -179,27 +179,28 @@ export default function AiHoldingsReviewList({
       {/* Sticky Bottom Review Footer Bar (Always Visible!) */}
       <View style={styles.reviewFooterBar}>
         <TouchableOpacity
-          style={[styles.secondaryBtn, { flex: 1 }]}
+          style={[styles.compactSecondaryBtn, { flex: 1 }]}
           onPress={onCancel}
           disabled={isSaving}
+          activeOpacity={0.7}
         >
-          <Text style={styles.secondaryBtnText}>Upload More</Text>
+          <Ionicons name="cloud-upload-outline" size={14} color="#334155" />
+          <Text style={styles.compactSecondaryBtnText}>Upload</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[
-            styles.primaryBtn,
-            { flex: 2 },
+            styles.compactPrimaryBtn,
+            { flex: 1.5 },
             (selectedHoldings.length === 0 || isSaving) && styles.primaryBtnDisabled,
           ]}
           onPress={onConfirm}
           disabled={selectedHoldings.length === 0 || isSaving}
+          activeOpacity={0.8}
         >
-          <Ionicons name="checkmark-circle" size={16} color="#ffffff" />
-          <Text style={styles.primaryBtnText}>
-            {isSaving
-              ? 'Saving to Portfolio...'
-              : `Confirm & Add ${selectedHoldings.length} Stock${selectedHoldings.length > 1 ? 's' : ''}`}
+          <Ionicons name="checkmark-circle" size={14} color="#ffffff" />
+          <Text style={styles.compactPrimaryBtnText}>
+            {isSaving ? 'Adding...' : 'Add'}
           </Text>
         </TouchableOpacity>
       </View>

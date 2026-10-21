@@ -49,7 +49,64 @@ const COMMON_STOCKS_DICT = [
   { name: 'IDFC First Bank', symbol: 'IDFCFIRSTB', alias: ['IDFC FIRST', 'IDFCFIRSTB'] },
   { name: 'Tata Power', symbol: 'TATAPOWER', alias: ['TATA POWER', 'TATAPOWER'] },
   { name: 'Vedanta', symbol: 'VEDL', alias: ['VEDL', 'VEDANTA'] },
+  { name: 'Central Depository Services', symbol: 'CDSL', alias: ['CDSL'] },
+  { name: 'BSE Limited', symbol: 'BSE', alias: ['BSE', 'BSE LTD'] },
+  { name: 'Hindustan Aeronautics', symbol: 'HAL', alias: ['HAL', 'HINDUSTAN AERONAUTICS'] },
+  { name: 'Bharat Electronics', symbol: 'BEL', alias: ['BEL', 'BHARAT ELECTRONICS'] },
+  { name: 'Trent Limited', symbol: 'TRENT', alias: ['TRENT'] },
+  { name: 'Mazagon Dock Shipbuilders', symbol: 'MAZDOCK', alias: ['MAZDOCK', 'MAZAGON DOCK', 'MAZAGON'] },
+  { name: 'Cochin Shipyard', symbol: 'COCHINSHIP', alias: ['COCHIN SHIP', 'COCHINSHIP'] },
+  { name: 'Titan Company', symbol: 'TITAN', alias: ['TITAN'] },
+  { name: 'Maruti Suzuki', symbol: 'MARUTI', alias: ['MARUTI', 'MARUTI SUZUKI'] },
+  { name: 'Mahindra & Mahindra', symbol: 'M&M', alias: ['M&M', 'MAHINDRA'] },
+  { name: 'Hero MotoCorp', symbol: 'HEROMOTOCO', alias: ['HERO MOTOCORP', 'HEROMOTOCO'] },
+  { name: 'Bajaj Auto', symbol: 'BAJAJ-AUTO', alias: ['BAJAJ AUTO', 'BAJAJ-AUTO'] },
+  { name: 'Eicher Motors', symbol: 'EICHERMOT', alias: ['EICHER', 'EICHERMOT'] },
+  { name: 'Asian Paints', symbol: 'ASIANPAINT', alias: ['ASIAN PAINTS', 'ASIANPAINT'] },
+  { name: 'Pidilite Industries', symbol: 'PIDILITIND', alias: ['PIDILITE', 'PIDILITIND'] },
+  { name: 'Polycab India', symbol: 'POLYCAB', alias: ['POLYCAB'] },
+  { name: 'Havells India', symbol: 'HAVELLS', alias: ['HAVELLS'] },
+  { name: 'Dixon Technologies', symbol: 'DIXON', alias: ['DIXON'] },
+  { name: 'Ambuja Cements', symbol: 'AMBUJACEM', alias: ['AMBUJA', 'AMBUJACEM'] },
+  { name: 'UltraTech Cement', symbol: 'ULTRACEMCO', alias: ['ULTRATECH', 'ULTRACEMCO'] },
+  { name: 'Persistent Systems', symbol: 'PERSISTENT', alias: ['PERSISTENT'] },
+  { name: 'Coforge', symbol: 'COFORGE', alias: ['COFORGE'] },
+  { name: 'KPIT Technologies', symbol: 'KPITTECH', alias: ['KPIT', 'KPITTECH'] },
+  { name: 'Tata Elxsi', symbol: 'TATAELXSI', alias: ['TATA ELXSI', 'TATAELXSI'] },
+  { name: 'LTIMindtree', symbol: 'LTIM', alias: ['LTIM', 'LTIMINDTREE'] },
+  { name: 'Tech Mahindra', symbol: 'TECHM', alias: ['TECH MAHINDRA', 'TECHM'] },
+  { name: 'HCL Technologies', symbol: 'HCLTECH', alias: ['HCL', 'HCLTECH'] },
+  { name: 'IRCTC', symbol: 'IRCTC', alias: ['IRCTC'] },
+  { name: 'BHEL', symbol: 'BHEL', alias: ['BHEL'] },
+  { name: 'Steel Authority of India', symbol: 'SAIL', alias: ['SAIL'] },
+  { name: 'GAIL India', symbol: 'GAIL', alias: ['GAIL'] },
+  { name: 'NHPC Limited', symbol: 'NHPC', alias: ['NHPC'] },
+  { name: 'SJVN Limited', symbol: 'SJVN', alias: ['SJVN'] },
+  { name: 'Power Finance Corp', symbol: 'PFC', alias: ['PFC'] },
+  { name: 'REC Limited', symbol: 'RECLTD', alias: ['REC', 'RECLTD'] },
+  { name: 'Muthoot Finance', symbol: 'MUTHOOTFIN', alias: ['MUTHOOT', 'MUTHOOTFIN'] },
+  { name: 'Canara Bank', symbol: 'CANBK', alias: ['CANARA BANK', 'CANBK'] },
+  { name: 'Punjab National Bank', symbol: 'PNB', alias: ['PNB', 'PUNJAB NATIONAL'] },
+  { name: 'Bank of Baroda', symbol: 'BANKBARODA', alias: ['BANK OF BARODA', 'BANKBARODA'] },
+  { name: 'Union Bank of India', symbol: 'UNIONBANK', alias: ['UNION BANK', 'UNIONBANK'] },
+  { name: 'Yes Bank', symbol: 'YESBANK', alias: ['YES BANK', 'YESBANK'] },
+  { name: 'Federal Bank', symbol: 'FEDERALBNK', alias: ['FEDERAL BANK', 'FEDERALBNK'] },
+  { name: 'IndusInd Bank', symbol: 'INDUSINDBK', alias: ['INDUSIND', 'INDUSINDBK'] },
+  { name: 'Tata Consumer Products', symbol: 'TATACONSUM', alias: ['TATA CONSUMER', 'TATACONSUM'] },
+  { name: 'Varun Beverages', symbol: 'VBL', alias: ['VBL', 'VARUN BEVERAGES'] },
+  { name: 'One97 Communications (Paytm)', symbol: 'PAYTM', alias: ['PAYTM', 'ONE97'] },
+  { name: 'FSN E-Commerce (Nykaa)', symbol: 'NYKAA', alias: ['NYKAA'] },
+  { name: 'PB Fintech (PolicyBazaar)', symbol: 'POLICYBZR', alias: ['POLICYBAZAAR', 'POLICYBZR', 'PB FINTECH'] },
+  { name: 'Ola Electric', symbol: 'OLAELEC', alias: ['OLA ELECTRIC', 'OLAELEC'] },
+  { name: 'Swiggy', symbol: 'SWIGGY', alias: ['SWIGGY'] },
+  { name: 'Kalyan Jewellers', symbol: 'KALYANKJIL', alias: ['KALYAN', 'KALYANKJIL'] },
+  { name: 'Premier Energies', symbol: 'PREMIERENE', alias: ['PREMIER ENERGIES', 'PREMIERENE'] },
+  { name: 'Waaree Energies', symbol: 'WAAREEENER', alias: ['WAAREE', 'WAAREEENER'] },
+  { name: 'Nippon India ETF Nifty BeES', symbol: 'NIFTYBEES', alias: ['NIFTYBEES', 'NIFTY BEES'] },
+  { name: 'Nippon India ETF Gold BeES', symbol: 'GOLDBEES', alias: ['GOLDBEES', 'GOLD BEES'] },
+  { name: 'Nippon India ETF Bank BeES', symbol: 'BANKBEES', alias: ['BANKBEES', 'BANK BEES'] },
 ];
+
 
 /**
  * Retrieve Groq/Grok API Key
@@ -213,115 +270,133 @@ Do not wrap in markdown fences. Output raw JSON only.`;
 }
 
 /**
- * Regex-based Brokerage Screenshot Parser (Deterministic labeled parser)
+ * Dual-Pass Deterministic Indian Brokerage Parser:
+ * Pass 1: High-precision dictionary matching for top Indian stocks & aliases
+ * Pass 2: Universal Generic Broker Layout & Financial Signal Extractor (catches ANY ticker or company row with Qty + Avg/LTP/Invested)
  */
 function parseHoldingsWithRegex(ocrText) {
-  const lines = ocrText.split('\n').map((l) => l.trim()).filter(Boolean);
+  const lines = ocrText
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const METRIC_PREFIXES = /^(QTY|AVG|AVERAGE|INVESTED|INVESTMENTS?|LTP|CMP|CURRENT|CUR|PROFIT|LOSS|P&L|PNL|TOTAL|SHARES|UNITS|VALUE|RETURNS?|CHANGE|DATE|FILTER|HOLDINGS?|PORTFOLIOS?|EQUITY|BUY|SELL|DAY|OVERALL|NET|CHARGES|TAX|UNREALIZED|REALIZED)\b/i;
+
   const detected = [];
   const seenSymbols = new Set();
 
+  // Helper to extract numbers & metrics from a block of text around a candidate
+  const extractMetricsFromBlock = (block) => {
+    let quantity = null;
+    let buyPrice = null;
+    let latestPrice = null;
+    let investedAmount = null;
+
+    // 1. Zerodha / Kite inline: "Qty. 25 • Avg. 1,420.50" or "Qty: 25 | Avg: 1420"
+    const inlineZerodha = block.match(/Qty\.?\s*[:\s]*([0-9,]+)\s*(?:•|\s*\|\s*|-|\s+)\s*Avg\.?\s*(?:cost|price)?[:\s]*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i);
+    if (inlineZerodha) {
+      quantity = Number(inlineZerodha[1].replace(/,/g, ''));
+      buyPrice = Number(inlineZerodha[2].replace(/,/g, ''));
+    }
+
+    // 2. Groww inline: "25 shares • Avg ₹385.50"
+    if (!quantity || !buyPrice) {
+      const inlineGroww = block.match(/([0-9,]+)\s*shares?\s*(?:•|\s*\|\s*|-|\s+)\s*Avg\s*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i);
+      if (inlineGroww) {
+        quantity = Number(inlineGroww[1].replace(/,/g, ''));
+        buyPrice = Number(inlineGroww[2].replace(/,/g, ''));
+      }
+    }
+
+    // 3. Angel One / Upstox inline: "Qty 500 Avg 21.40"
+    if (!quantity || !buyPrice) {
+      const inlineAngel = block.match(/Qty\s*[:\s]*([0-9,]+)\s+Avg\s*[:\s]*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i);
+      if (inlineAngel) {
+        quantity = Number(inlineAngel[1].replace(/,/g, ''));
+        buyPrice = Number(inlineAngel[2].replace(/,/g, ''));
+      }
+    }
+
+    // 4. Standalone Qty label
+    if (!quantity) {
+      const qtyMatch = block.match(/(?:Qty\.?|Quantity|Shares|Units)[:\s]*([0-9,]+)/i) ||
+        block.match(/([0-9,]+)\s*(?:shares|units|qty)\b/i);
+      if (qtyMatch) {
+        quantity = Number(qtyMatch[1].replace(/,/g, ''));
+      }
+    }
+
+    // 5. Standalone Buy Price label
+    if (!buyPrice) {
+      const avgMatch = block.match(/(?:Avg\.?\s*(?:cost|price)?|Average|Buy\s*Price|Purchase\s*Price)[:\s]*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i);
+      if (avgMatch) {
+        buyPrice = Number(avgMatch[1].replace(/,/g, ''));
+      }
+    }
+
+    // 6. LTP / Current Price (Prioritize explicit LTP / CMP over total current portfolio value)
+    const ltpMatch = block.match(/(?:LTP|CMP|Last\s*Price|Market\s*Price)[:\s]*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i);
+    if (ltpMatch) {
+      latestPrice = Number(ltpMatch[1].replace(/,/g, ''));
+    } else {
+      const curMatch = block.match(/(?:Current|Cur\.?\s*val)[:\s]*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i);
+      if (curMatch) {
+        const rawVal = Number(curMatch[1].replace(/,/g, ''));
+        if (quantity && quantity > 1 && rawVal > (buyPrice || 100) * 1.5) {
+          latestPrice = Number((rawVal / quantity).toFixed(2));
+        } else {
+          latestPrice = rawVal;
+        }
+      }
+    }
+
+    // 7. Invested Amount
+    const invMatch = block.match(/(?:Invested|Investment|Total\s*Cost)[:\s]*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i);
+    if (invMatch) {
+      investedAmount = Number(invMatch[1].replace(/,/g, ''));
+    }
+
+    // Cross-calculate if one field is missing
+    if (investedAmount && buyPrice && (!quantity || quantity <= 0)) {
+      quantity = Math.round(investedAmount / buyPrice);
+    } else if (investedAmount && quantity && (!buyPrice || buyPrice <= 0)) {
+      buyPrice = Number((investedAmount / quantity).toFixed(2));
+    }
+
+    // Fallback: search for numbers if labeled extraction missed
+    if (!buyPrice || !quantity) {
+      const numbers = (block.match(/₹?\s*[0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?/g) || [])
+        .map((n) => Number(n.replace(/[₹,\s]/g, '')))
+        .filter((n) => !isNaN(n) && n > 0 && n < 500000);
+
+      if (numbers.length >= 2) {
+        const intCandidates = numbers.filter((n) => Number.isInteger(n) && n > 0 && n <= 10000);
+        const priceCandidates = numbers.filter((n) => n > 10 && !intCandidates.includes(n));
+        if (!quantity && intCandidates.length > 0) quantity = intCandidates[0];
+        if (!buyPrice && priceCandidates.length > 0) buyPrice = priceCandidates[0];
+        if (!latestPrice && priceCandidates.length > 1) latestPrice = priceCandidates[1];
+      }
+    }
+
+    return { quantity, buyPrice, latestPrice, investedAmount };
+  };
+
+  // PASS 1: High-precision Dictionary Matching
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Check if line matches any common stock name/alias
     for (const item of COMMON_STOCKS_DICT) {
       const isMatch = item.alias.some((alias) =>
         new RegExp(`\\b${alias.replace('&', '\\&')}\\b`, 'i').test(line)
       );
 
       if (isMatch && !seenSymbols.has(item.symbol)) {
-        // Take lines around the stock symbol (up to 6 lines)
-        const block = lines.slice(Math.max(0, i - 1), Math.min(lines.length, i + 6)).join('\n');
+        const block = lines.slice(Math.max(0, i - 1), Math.min(lines.length, i + 7)).join('\n');
+        const metrics = extractMetricsFromBlock(block);
 
-        let quantity = null;
-        let buyPrice = null;
-        let latestPrice = null;
-        let investedAmount = null;
-
-        // 1. Zerodha Kite inline format: "Qty. 50 • Avg. 940.50" or "Qty: 50 | Avg: 940.50"
-        const zerodhaInline = block.match(/Qty\.?\s*[:\s]*([0-9,]+)\s*(?:•|\s*\|\s*|-|\s+)\s*Avg\.?\s*(?:cost|price)?[:\s]*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i);
-        if (zerodhaInline) {
-          quantity = Number(zerodhaInline[1].replace(/,/g, ''));
-          buyPrice = Number(zerodhaInline[2].replace(/,/g, ''));
-        }
-
-        // 2. Groww inline format: "50 shares • Avg ₹940.50"
-        if (!quantity || !buyPrice) {
-          const growwInline = block.match(/([0-9,]+)\s*shares?\s*(?:•|\s*\|\s*|-|\s+)\s*Avg\s*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i);
-          if (growwInline) {
-            quantity = Number(growwInline[1].replace(/,/g, ''));
-            buyPrice = Number(growwInline[2].replace(/,/g, ''));
-          }
-        }
-
-        // 3. Explicit labels for Qty
-        if (!quantity) {
-          const qtyMatch =
-            block.match(/(?:Qty\.?|Quantity|Shares|Units)[:\s]*([0-9,]+)/i) ||
-            block.match(/([0-9,]+)\s*(?:shares|units|qty)\b/i);
-          if (qtyMatch) {
-            quantity = Number(qtyMatch[1].replace(/,/g, ''));
-          }
-        }
-
-        // 4. Explicit labels for Avg / Buy Price
-        if (!buyPrice) {
-          const avgMatch = block.match(
-            /(?:Avg\.?\s*(?:cost|price)?|Average|Buy\s*Price|Purchase\s*Price)[:\s]*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i
-          );
-          if (avgMatch) {
-            buyPrice = Number(avgMatch[1].replace(/,/g, ''));
-          }
-        }
-
-        // 5. Explicit labels for LTP / Market Price
-        const ltpMatch = block.match(
-          /(?:LTP|CMP|Market\s*Price|Current\s*Price|Last\s*Price)[:\s]*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i
-        );
-        if (ltpMatch) {
-          latestPrice = Number(ltpMatch[1].replace(/,/g, ''));
-        }
-
-        // 6. Explicit labels for Invested Amount
-        const invMatch = block.match(
-          /(?:Invested|Investment|Total\s*Cost)[:\s]*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i
-        );
-        if (invMatch) {
-          investedAmount = Number(invMatch[1].replace(/,/g, ''));
-        }
-
-        // Cross-calculate if one is missing
-        if (investedAmount && buyPrice && (!quantity || quantity <= 0)) {
-          quantity = Math.round(investedAmount / buyPrice);
-        } else if (investedAmount && quantity && (!buyPrice || buyPrice <= 0)) {
-          buyPrice = Number((investedAmount / quantity).toFixed(2));
-        }
-
-        // Fallback to numbers if labeled extraction missed
-        if (!buyPrice || !quantity) {
-          const numbers = (block.match(/₹?\s*[0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?/g) || [])
-            .map((n) => Number(n.replace(/[₹,\s]/g, '')))
-            .filter((n) => !isNaN(n) && n > 0 && n < 500000);
-
-          if (numbers.length >= 2) {
-            const intCandidates = numbers.filter((n) => Number.isInteger(n) && n > 0 && n <= 10000);
-            const priceCandidates = numbers.filter((n) => n > 10 && !intCandidates.includes(n));
-
-            if (!quantity && intCandidates.length > 0) {
-              quantity = intCandidates[0];
-            }
-            if (!buyPrice && priceCandidates.length > 0) {
-              buyPrice = priceCandidates[0];
-            }
-            if (!latestPrice && priceCandidates.length > 1) {
-              latestPrice = priceCandidates[1];
-            }
-          }
-        }
-
-        const finalQty = quantity && quantity > 0 ? quantity : 10;
-        const finalBuy = buyPrice && buyPrice > 0 ? buyPrice : (latestPrice || 100);
-        const finalLtp = latestPrice && latestPrice > 0 ? latestPrice : finalBuy;
+        const finalQty = metrics.quantity && metrics.quantity > 0 ? metrics.quantity : 10;
+        const finalBuy = metrics.buyPrice && metrics.buyPrice > 0 ? metrics.buyPrice : (metrics.latestPrice || 100);
+        const finalLtp = metrics.latestPrice && metrics.latestPrice > 0 ? metrics.latestPrice : finalBuy;
 
         seenSymbols.add(item.symbol);
         detected.push({
@@ -338,8 +413,46 @@ function parseHoldingsWithRegex(ocrText) {
     }
   }
 
+  // PASS 2: Universal Generic Broker Layout & Financial Signal Extractor
+  // Scans for ANY stock / ticker not captured by the dictionary
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (METRIC_PREFIXES.test(line)) continue;
+    if (/\b(shares?|units?|invested|returns?|profit|loss|p&l)\b/i.test(line) && /\d/.test(line)) continue;
+
+    const isSingleTicker = /^[A-Z0-9&-]{2,15}$/.test(line) && !/^\d+$/.test(line);
+    const isCompanyName = /^[A-Z][a-zA-Z0-9&.\s-]{2,35}$/.test(line) &&
+      !/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i.test(line) &&
+      !/^\d+[\s\w]*$/.test(line);
+
+    if (isSingleTicker || isCompanyName) {
+      const block = lines.slice(i + 1, Math.min(lines.length, i + 7)).join('\n');
+      const metrics = extractMetricsFromBlock(block);
+
+      if (metrics.quantity && metrics.quantity > 0 && (metrics.buyPrice || metrics.latestPrice || metrics.investedAmount)) {
+        let cleanSym = line.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        if (cleanSym.length > 12) cleanSym = cleanSym.slice(0, 12);
+
+        if (!seenSymbols.has(cleanSym) && cleanSym.length >= 2) {
+          seenSymbols.add(cleanSym);
+          detected.push({
+            symbolOrCode: cleanSym,
+            instrumentName: line.replace(/[^\w\s&.-]/g, '').trim(),
+            quantity: metrics.quantity,
+            buyPrice: metrics.buyPrice || (metrics.investedAmount ? Number((metrics.investedAmount / metrics.quantity).toFixed(2)) : (metrics.latestPrice || 100)),
+            latestPrice: metrics.latestPrice || metrics.buyPrice || 100,
+            assetClass: 'Equity',
+            subCategory: 'Stocks',
+          });
+        }
+      }
+    }
+  }
+
   return detected;
 }
+
 
 
 /**
@@ -441,6 +554,7 @@ async function processMultipleImages(imagesArray = [], userId = 'admin', forceDe
   });
 
   const finalHoldingsList = Array.from(dedupedMap.values());
+  console.log(`[Portfolio OCR Total] Extracted ${finalHoldingsList.length} unique holdings across screenshots: ${finalHoldingsList.map(h => `${h.symbolOrCode}(Qty:${h.quantity}@${h.buyPrice})`).join(', ')}`);
 
   // Cross-reference with database holdings to show MERGE vs NEW status
   const userHoldings = await InvestmentHolding.find({ userId });
