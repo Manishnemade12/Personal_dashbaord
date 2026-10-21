@@ -478,6 +478,169 @@ const aiRoutineStyles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.3,
   },
+
+  // Recurrence Options
+  recurrenceRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  recurrencePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  recurrencePillActive: {
+    backgroundColor: '#f3e8ff',
+    borderColor: '#9333ea',
+  },
+  recurrencePillText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  recurrencePillTextActive: {
+    color: '#7e37d8',
+    fontWeight: '800',
+  },
+
+  // Weekday selection chips
+  weekdaysRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 6,
+    flexWrap: 'wrap',
+  },
+  weekdayChip: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekdayChipActive: {
+    backgroundColor: '#7e37d8',
+    borderColor: '#7e37d8',
+  },
+  weekdayChipText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  weekdayChipTextActive: {
+    color: '#ffffff',
+  },
+
+  // Recurrence Hint Box
+  recurrenceHintBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#faf5ff',
+    borderWidth: 1,
+    borderColor: '#f3e8ff',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 4,
+  },
+  recurrenceHintText: {
+    fontSize: 11,
+    color: '#7e37d8',
+    fontWeight: '600',
+    flex: 1,
+  },
+
+  // Cross-Calendar Reference Box
+  crossCalBox: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    padding: 10,
+    gap: 6,
+  },
+  crossCalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  crossCalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  crossCalTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  crossCalCountBadge: {
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  crossCalCountText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  crossCalEventItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  crossCalEventLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    minWidth: 0,
+  },
+  crossCalEventTitle: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  crossCalEventTag: {
+    fontSize: 10,
+    fontWeight: '700',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  crossCalCoOccurTag: {
+    backgroundColor: '#eff6ff',
+    color: '#1d4ed8',
+  },
+  crossCalConflictTag: {
+    backgroundColor: '#fefce8',
+    color: '#854d0e',
+  },
+  crossCalEmptyText: {
+    fontSize: 11,
+    color: '#64748b',
+    fontStyle: 'italic',
+  },
 });
 
 export default aiRoutineStyles;

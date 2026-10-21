@@ -4,6 +4,53 @@ import { Ionicons } from '@expo/vector-icons';
 import MobileDayAgenda from './MobileDayAgenda';
 import styles from '../styles/calendarStyles';
 
+/**
+ * Check if an event occurs on a target date, accounting for exact date
+ * and recurring rules (daily, weekly, monthly).
+ */
+export const isEventMatchingDate = (ev, targetDate) => {
+  if (!ev || !ev.startAt || !targetDate) return false;
+  const evDate = new Date(ev.startAt);
+  const target = new Date(targetDate);
+
+  // Exact same day
+  if (
+    evDate.getFullYear() === target.getFullYear() &&
+    evDate.getMonth() === target.getMonth() &&
+    evDate.getDate() === target.getDate()
+  ) {
+    return true;
+  }
+
+  // Handle recurrence frequency
+  const freq = ev.recurrenceRule?.frequency;
+  if (!freq || freq === 'none') return false;
+
+  const startMidnight = new Date(evDate.getFullYear(), evDate.getMonth(), evDate.getDate()).getTime();
+  const targetMidnight = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
+  if (targetMidnight < startMidnight) return false;
+
+  if (ev.recurrenceRule?.until) {
+    const untilMidnight = new Date(new Date(ev.recurrenceRule.until).setHours(23, 59, 59, 999)).getTime();
+    if (targetMidnight > untilMidnight) return false;
+  }
+
+  if (freq === 'daily') return true;
+  if (freq === 'weekdays') {
+    const day = target.getDay();
+    return day >= 1 && day <= 5;
+  }
+  if (freq === 'weekly') {
+    if (Array.isArray(ev.recurrenceRule?.daysOfWeek) && ev.recurrenceRule.daysOfWeek.length > 0) {
+      return ev.recurrenceRule.daysOfWeek.includes(target.getDay());
+    }
+    return evDate.getDay() === target.getDay();
+  }
+  if (freq === 'monthly') return evDate.getDate() === target.getDate();
+
+  return false;
+};
+
 export default function CalendarViews({
   isMobile,
   currentDate,
@@ -39,15 +86,8 @@ export default function CalendarViews({
       const dateObj = new Date(year, month, d);
       const isToday = isCurrentMonth && today.getDate() === d;
 
-      // Filter events on this day
-      const dayEvents = visibleEvents.filter((ev) => {
-        const evDate = new Date(ev.startAt);
-        return (
-          evDate.getFullYear() === year &&
-          evDate.getMonth() === month &&
-          evDate.getDate() === d
-        );
-      });
+      // Filter events on this day (including recurring daily/weekly)
+      const dayEvents = visibleEvents.filter((ev) => isEventMatchingDate(ev, dateObj));
 
       days.push({
         dayNumber: d,
@@ -59,14 +99,7 @@ export default function CalendarViews({
     }
 
     if (isMobile) {
-      const selectedDayEvents = visibleEvents.filter((ev) => {
-        const evDate = new Date(ev.startAt);
-        return (
-          evDate.getFullYear() === selectedDate.getFullYear() &&
-          evDate.getMonth() === selectedDate.getMonth() &&
-          evDate.getDate() === selectedDate.getDate()
-        );
-      });
+      const selectedDayEvents = visibleEvents.filter((ev) => isEventMatchingDate(ev, selectedDate));
 
       return (
         <ScrollView
@@ -244,14 +277,7 @@ export default function CalendarViews({
       const d = new Date(startOfWeek);
       d.setDate(startOfWeek.getDate() + i);
 
-      const dayEvents = visibleEvents.filter((ev) => {
-        const evDate = new Date(ev.startAt);
-        return (
-          evDate.getFullYear() === d.getFullYear() &&
-          evDate.getMonth() === d.getMonth() &&
-          evDate.getDate() === d.getDate()
-        );
-      });
+      const dayEvents = visibleEvents.filter((ev) => isEventMatchingDate(ev, d));
 
       weekDays.push({ date: d, events: dayEvents });
     }
@@ -322,10 +348,7 @@ export default function CalendarViews({
 
   // 3. Day View
   const renderDayView = () => {
-    const dayEvents = visibleEvents.filter((ev) => {
-      const evDate = new Date(ev.startAt);
-      return evDate.toDateString() === currentDate.toDateString();
-    });
+    const dayEvents = visibleEvents.filter((ev) => isEventMatchingDate(ev, currentDate));
 
     return (
       <View style={styles.dayViewContainer}>

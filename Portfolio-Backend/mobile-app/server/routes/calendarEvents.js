@@ -104,7 +104,15 @@ router.get('/:id', async (req, res) => {
 // POST /api/calendar-events/ai-routine - Generate cross-calendar aware AI routine
 router.post('/ai-routine', async (req, res) => {
   try {
-    const { calendarId, targetDateStr, userGoal, planCategory, intensity, userId = 'admin' } = req.body;
+    const {
+      calendarId,
+      targetDateStr,
+      userGoal,
+      planCategory,
+      intensity,
+      recurrenceRule,
+      userId = 'admin',
+    } = req.body;
     const result = await aiRoutinePlannerService.generateAiRoutine({
       userId,
       calendarId,
@@ -112,6 +120,7 @@ router.post('/ai-routine', async (req, res) => {
       userGoal,
       planCategory,
       intensity,
+      recurrenceRule,
     });
     res.json(result);
   } catch (error) {
@@ -143,6 +152,7 @@ router.post('/bulk', async (req, res) => {
         location: item.location || '',
         priority: item.priority || 'medium',
         status: 'scheduled',
+        recurrenceRule: item.recurrenceRule || { frequency: 'none' },
         reminders: [{ offsetMinutes: 15, isEnabled: true }],
       });
       await syncNotificationLogs(ev);

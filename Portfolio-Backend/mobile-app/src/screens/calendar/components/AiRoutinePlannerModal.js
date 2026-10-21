@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../../api/client';
 import styles from '../styles/aiRoutineStyles';
+import { isEventMatchingDate } from './CalendarViews';
 
 const formatTimeLabel = (dateInput) => {
   if (!dateInput) return '';
@@ -35,24 +36,50 @@ const SUGGESTIONS = [
   { label: '💼 Full-Day Deep Work Sprint', category: 'work', text: 'Deep work sprint: finish priority roadmap milestones and review pull requests' },
 ];
 
+const RECURRENCE_OPTIONS = [
+  { id: 'daily', label: 'Every Day', icon: 'repeat' },
+  { id: 'weekly', label: 'Every Week', icon: 'calendar-outline' },
+  { id: 'weekdays', label: 'Weekdays (Mon-Fri)', icon: 'briefcase-outline' },
+  { id: 'once', label: 'Single Day', icon: 'today-outline' },
+];
+
+const DAYS_OF_WEEK = [
+  { day: 1, label: 'Mon', short: 'M' },
+  { day: 2, label: 'Tue', short: 'T' },
+  { day: 3, label: 'Wed', short: 'W' },
+  { day: 4, label: 'Thu', short: 'T' },
+  { day: 5, label: 'Fri', short: 'F' },
+  { day: 6, label: 'Sat', short: 'S' },
+  { day: 0, label: 'Sun', short: 'S' },
+];
+
+const isPassiveCoOccurringEvent = (ev) => {
+  const combined = `${ev.calendarId?.name || ''} ${ev.title || ''} ${ev.description || ''}`.toLowerCase();
+  return /\b(shake|protein|drink|water|hydrate|hydration|sip|snack|fruit|diet|meal|pill|vitamin|tea|coffee|green\s*tea)\b/i.test(combined);
+};
+
 export default function AiRoutinePlannerModal({
   visible,
   onClose,
   calendars = [],
   selectedDate,
+  existingEvents = [],
   onRoutineCreated,
 }) {
   const [step, setStep] = useState('setup'); // 'setup' | 'generating' | 'review'
   const [selectedCalendarId, setSelectedCalendarId] = useState('');
   const [targetDateStr, setTargetDateStr] = useState('');
+  const [recurrenceFreq, setRecurrenceFreq] = useState('daily'); // 'daily' | 'weekly' | 'weekdays' | 'once'
+  const [selectedDaysOfWeek, setSelectedDaysOfWeek] = useState([new Date().getDay()]);
   const [planCategory, setPlanCategory] = useState('study');
   const [userGoal, setUserGoal] = useState('');
   const [intensity, setIntensity] = useState('moderate');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Review state
+  // Review & Cross-calendar state
   const [routineItems, setRoutineItems] = useState([]);
+  const [detectedOtherEvents, setDetectedOtherEvents] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
@@ -68,9 +95,9 @@ export default function AiRoutinePlannerModal({
       const mm = String(d.getMonth() + 1).padStart(2, '0');
       const dd = String(d.getDate()).padStart(2, '0');
       setTargetDateStr(`${yyyy}-${mm}-${dd}`);
+      setSelectedDaysOfWeek([d.getDay()]);
 
       if (calendars.length > 0 && !selectedCalendarId) {
-        // Default to a study or personal calendar if found
         const studyCal = calendars.find((c) => /study|exam|learn/i.test(c.name));
         const defaultCal = calendars.find((c) => c.isDefault) || calendars[0];
         setSelectedCalendarId(studyCal ? studyCal._id : defaultCal._id);
@@ -80,6 +107,25 @@ export default function AiRoutinePlannerModal({
       }
     }
   }, [visible, selectedDate, calendars]);
+
+  // Detect other calendars' events on target date for transparent live AI reference
+  useEffect(() => {
+    if (!targetDateStr) {
+      setDetectedOtherEvents([]);
+      return;
+    }
+    const [y, m, d] = targetDateStr.split('-').map(Number);
+    const targetObj = new Date(y, m - 1, d);
+
+    const matches = (existingEvents || []).filter((ev) => {
+      const isOtherCal =
+        (ev.calendarId?._id && ev.calendarId._id !== selectedCalendarId) ||
+        (typeof ev.calendarId === 'string' && ev.calendarId !== selectedCalendarId);
+      return isOtherCal && isEventMatchingDate(ev, targetObj);
+    });
+
+    setDetectedOtherEvents(matches);
+  }, [targetDateStr, selectedCalendarId, existingEvents]);
 
   // Handle Category Change
   const handleSelectCategory = (cat) => {
@@ -100,6 +146,18 @@ export default function AiRoutinePlannerModal({
       const match = calendars.find((c) => /work|project/i.test(c.name));
       if (match) setSelectedCalendarId(match._id);
     }
+  };
+
+  // Toggle Day of Week for Weekly Recurrence
+  const toggleDayOfWeek = (dayNum) => {
+    setSelectedDaysOfWeek((prev) => {
+      if (prev.includes(dayNum)) {
+        if (prev.length <= 1) return prev; // keep at least 1 day
+        return prev.filter((d) => d !== dayNum);
+      } else {
+        return [...prev, dayNum].sort();
+      }
+    });
   };
 
   // Generate Routine with AI API
@@ -123,6 +181,10 @@ export default function AiRoutinePlannerModal({
         userGoal: userGoal.trim(),
         planCategory,
         intensity,
+        recurrenceRule: {
+          frequency: recurrenceFreq === 'once' ? 'none' : recurrenceFreq,
+          daysOfWeek: recurrenceFreq === 'weekly' ? selectedDaysOfWeek : undefined,
+        },
       });
 
       if (res && res.success && Array.isArray(res.routine) && res.routine.length > 0) {
@@ -226,13 +288,27 @@ export default function AiRoutinePlannerModal({
         startAt: item.startAt,
         endAt: item.endAt,
         priority: item.priority || 'medium',
+        recurrenceRule: {
+          frequency: recurrenceFreq === 'once' ? 'none' : recurrenceFreq,
+          daysOfWeek: recurrenceFreq === 'weekly' ? selectedDaysOfWeek : undefined,
+          interval: 1,
+        },
       }));
 
       const res = await api.bulkCreateEvents({ events: payload });
       if (res && res.success) {
+        const freqLabel =
+          recurrenceFreq === 'daily'
+            ? 'Every Day (Daily)'
+            : recurrenceFreq === 'weekly'
+            ? `Every Week (${selectedDaysOfWeek.map((d) => DAYS_OF_WEEK.find((dw) => dw.day === d)?.label || d).join(', ')})`
+            : recurrenceFreq === 'weekdays'
+            ? 'Weekdays (Mon-Fri)'
+            : `Single Day (${targetDateStr})`;
+
         Alert.alert(
           '🎉 Routine Scheduled!',
-          `Successfully added ${res.count} events to your calendar for ${targetDateStr}.`
+          `Successfully added ${res.count} events to your calendar (${freqLabel}).`
         );
         if (onRoutineCreated) {
           onRoutineCreated();
@@ -267,7 +343,7 @@ export default function AiRoutinePlannerModal({
                 </Text>
                 <Text style={styles.headerSubtitle} numberOfLines={1}>
                   {step === 'review'
-                    ? `Cross-calendar optimized for ${targetDateStr}`
+                    ? `Cross-calendar optimized routine`
                     : 'Smart schedule with multi-calendar conflict & synergy awareness'}
                 </Text>
               </View>
@@ -285,8 +361,8 @@ export default function AiRoutinePlannerModal({
                 <View style={styles.infoBanner}>
                   <Ionicons name="shield-checkmark" size={18} color="#16a34a" />
                   <Text style={styles.infoBannerText}>
-                    <Text style={{ fontWeight: '700' }}>Smart Multi-Calendar Awareness: </Text>
-                    AI checks all existing events across your calendars. Hard conflicts (meetings/classes) are avoided, while parallel habits (diet reminders, shakes, water) co-occur naturally without delaying your study/work blocks!
+                    <Text style={{ fontWeight: '700' }}>Smart Multi-Calendar Reference: </Text>
+                    AI scans all existing events across your calendars. Hard conflicts (meetings/classes) are avoided, while parallel habits (diet shakes, hydration, vitamins) run simultaneously without delaying your focus blocks!
                   </Text>
                 </View>
 
@@ -313,43 +389,189 @@ export default function AiRoutinePlannerModal({
                   </View>
                 </View>
 
-                {/* Target Date Input */}
+                {/* Schedule & Recurrence Options (Daily, Weekly, Weekdays, Single Day) */}
                 <View style={styles.fieldGroup}>
-                  <View style={styles.fieldLabelRow}>
-                    <Text style={styles.fieldLabel}>Schedule Date (YYYY-MM-DD)</Text>
-                    <View style={{ flexDirection: 'row', gap: 6 }}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          const today = new Date();
-                          const yyyy = today.getFullYear();
-                          const mm = String(today.getMonth() + 1).padStart(2, '0');
-                          const dd = String(today.getDate()).padStart(2, '0');
-                          setTargetDateStr(`${yyyy}-${mm}-${dd}`);
-                        }}
-                      >
-                        <Text style={{ fontSize: 11, color: '#7e37d8', fontWeight: '700' }}>Today</Text>
-                      </TouchableOpacity>
-                      <Text style={{ fontSize: 11, color: '#94a3b8' }}>•</Text>
-                      <TouchableOpacity
-                        onPress={() => {
-                          const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-                          const yyyy = tomorrow.getFullYear();
-                          const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
-                          const dd = String(tomorrow.getDate()).padStart(2, '0');
-                          setTargetDateStr(`${yyyy}-${mm}-${dd}`);
-                        }}
-                      >
-                        <Text style={{ fontSize: 11, color: '#7e37d8', fontWeight: '700' }}>Tomorrow</Text>
-                      </TouchableOpacity>
+                  <Text style={styles.fieldLabel}>Schedule & Recurrence</Text>
+                  <View style={styles.recurrenceRow}>
+                    {RECURRENCE_OPTIONS.map((opt) => {
+                      const isSelected = recurrenceFreq === opt.id;
+                      return (
+                        <TouchableOpacity
+                          key={opt.id}
+                          style={[styles.recurrencePill, isSelected && styles.recurrencePillActive]}
+                          onPress={() => setRecurrenceFreq(opt.id)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons
+                            name={opt.icon}
+                            size={14}
+                            color={isSelected ? '#7e37d8' : '#64748b'}
+                          />
+                          <Text
+                            style={[
+                              styles.recurrencePillText,
+                              isSelected && styles.recurrencePillTextActive,
+                            ]}
+                          >
+                            {opt.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  {/* Day of Week Selector if Weekly is Selected */}
+                  {recurrenceFreq === 'weekly' && (
+                    <View style={{ marginTop: 4 }}>
+                      <Text style={styles.fieldHelper}>Repeats every week on:</Text>
+                      <View style={styles.weekdaysRow}>
+                        {DAYS_OF_WEEK.map((item) => {
+                          const isDayActive = selectedDaysOfWeek.includes(item.day);
+                          return (
+                            <TouchableOpacity
+                              key={item.day}
+                              style={[styles.weekdayChip, isDayActive && styles.weekdayChipActive]}
+                              onPress={() => toggleDayOfWeek(item.day)}
+                              activeOpacity={0.7}
+                            >
+                              <Text
+                                style={[
+                                  styles.weekdayChipText,
+                                  isDayActive && styles.weekdayChipTextActive,
+                                ]}
+                              >
+                                {item.label}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Starting Date Input */}
+                  <View style={{ marginTop: 6 }}>
+                    <View style={styles.fieldLabelRow}>
+                      <Text style={styles.fieldHelper}>
+                        {recurrenceFreq === 'once' ? 'Date (YYYY-MM-DD)' : 'Starting Date (YYYY-MM-DD)'}
+                      </Text>
+                      <View style={{ flexDirection: 'row', gap: 6 }}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            const today = new Date();
+                            const yyyy = today.getFullYear();
+                            const mm = String(today.getMonth() + 1).padStart(2, '0');
+                            const dd = String(today.getDate()).padStart(2, '0');
+                            setTargetDateStr(`${yyyy}-${mm}-${dd}`);
+                          }}
+                        >
+                          <Text style={{ fontSize: 11, color: '#7e37d8', fontWeight: '700' }}>Today</Text>
+                        </TouchableOpacity>
+                        <Text style={{ fontSize: 11, color: '#94a3b8' }}>•</Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+                            const yyyy = tomorrow.getFullYear();
+                            const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+                            const dd = String(tomorrow.getDate()).padStart(2, '0');
+                            setTargetDateStr(`${yyyy}-${mm}-${dd}`);
+                          }}
+                        >
+                          <Text style={{ fontSize: 11, color: '#7e37d8', fontWeight: '700' }}>Tomorrow</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <TextInput
+                      style={[styles.textInput, { marginTop: 4 }]}
+                      value={targetDateStr}
+                      onChangeText={setTargetDateStr}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </View>
+
+                  {/* Recurrence Explanation Hint */}
+                  <View style={styles.recurrenceHintBox}>
+                    <Ionicons
+                      name={
+                        recurrenceFreq === 'daily'
+                          ? 'repeat'
+                          : recurrenceFreq === 'weekly'
+                          ? 'calendar'
+                          : recurrenceFreq === 'weekdays'
+                          ? 'business'
+                          : 'today'
+                      }
+                      size={14}
+                      color="#7e37d8"
+                    />
+                    <Text style={styles.recurrenceHintText}>
+                      {recurrenceFreq === 'daily'
+                        ? '🔁 Routine will recur every single day across your calendar.'
+                        : recurrenceFreq === 'weekly'
+                        ? `📆 Routine will recur weekly on ${selectedDaysOfWeek
+                            .map((d) => DAYS_OF_WEEK.find((dw) => dw.day === d)?.label || d)
+                            .join(', ')}.`
+                        : recurrenceFreq === 'weekdays'
+                        ? '💼 Routine will recur Monday through Friday every week.'
+                        : `📅 Routine applies only to ${targetDateStr}.`}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Multi-Calendar Live AI Reference Preview */}
+                <View style={styles.crossCalBox}>
+                  <View style={styles.crossCalHeader}>
+                    <View style={styles.crossCalTitleRow}>
+                      <Ionicons name="git-network-outline" size={15} color="#7e37d8" />
+                      <Text style={styles.crossCalTitle}>Multi-Calendar Context (AI Reference)</Text>
+                    </View>
+                    <View style={styles.crossCalCountBadge}>
+                      <Text style={styles.crossCalCountText}>
+                        {detectedOtherEvents.length} event{detectedOtherEvents.length === 1 ? '' : 's'} found
+                      </Text>
                     </View>
                   </View>
-                  <TextInput
-                    style={styles.textInput}
-                    value={targetDateStr}
-                    onChangeText={setTargetDateStr}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#94a3b8"
-                  />
+
+                  {detectedOtherEvents.length === 0 ? (
+                    <Text style={styles.crossCalEmptyText}>
+                      ✓ All other calendars clear on this day. AI has full flexibility without conflicts!
+                    </Text>
+                  ) : (
+                    detectedOtherEvents.map((ev, idx) => {
+                      const isPassive = isPassiveCoOccurringEvent(ev);
+                      const timeStr = formatTimeLabel(ev.startAt);
+                      const calColor = ev.color || ev.calendarId?.color || '#7e37d8';
+                      const calName = ev.calendarId?.name || 'Other';
+
+                      return (
+                        <View key={idx} style={styles.crossCalEventItem}>
+                          <View style={styles.crossCalEventLeft}>
+                            <View style={[styles.calendarDot, { backgroundColor: calColor }]} />
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                              <Text style={styles.crossCalEventTitle} numberOfLines={1}>
+                                {timeStr ? `[${timeStr}] ` : ''}{ev.title}
+                              </Text>
+                              <Text style={{ fontSize: 10, color: '#64748b' }}>
+                                Calendar: {calName}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View>
+                            <Text
+                              style={[
+                                styles.crossCalEventTag,
+                                isPassive ? styles.crossCalCoOccurTag : styles.crossCalConflictTag,
+                              ]}
+                            >
+                              {isPassive ? '⚡ Parallel Co-Occur' : '🛡️ Avoid Conflict'}
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })
+                  )}
                 </View>
 
                 {/* Category Selector */}
@@ -417,7 +639,7 @@ export default function AiRoutinePlannerModal({
                   activeOpacity={0.8}
                 >
                   <Ionicons name="sparkles" size={15} color="#ffffff" />
-                  <Text style={styles.primaryBtnText}>Generate Routine with AI</Text>
+                  <Text style={styles.primaryBtnText}>Generate</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -427,9 +649,9 @@ export default function AiRoutinePlannerModal({
           {step === 'generating' && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#7e37d8" />
-              <Text style={styles.loadingTitle}>Architecting Your Daily Routine...</Text>
+              <Text style={styles.loadingTitle}>Architecting Your Schedule...</Text>
               <Text style={styles.loadingSubtitle}>
-                Analyzing existing events across all calendars, verifying compatibility of habits (shakes/hydration), and creating optimal focus blocks.
+                Cross-referencing all user calendars, aligning co-occurring habits (diet/shakes), preventing hard conflicts, and optimizing your routine.
               </Text>
             </View>
           )}
@@ -439,12 +661,33 @@ export default function AiRoutinePlannerModal({
             <>
               <ScrollView style={styles.modalBodyScroll} contentContainerStyle={styles.modalBodyContent}>
                 <View style={styles.reviewHeaderRow}>
-                  <Text style={styles.reviewTitle}>
-                    {selectedCalendar?.name || 'Routine'} ({targetDateStr})
-                  </Text>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.reviewTitle}>
+                      {selectedCalendar?.name || 'Routine'}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: '#6b21a8', fontWeight: '700', marginTop: 2 }}>
+                      {recurrenceFreq === 'daily'
+                        ? '🔁 Repeats Every Day (Daily)'
+                        : recurrenceFreq === 'weekly'
+                        ? `📆 Repeats Every Week (${selectedDaysOfWeek
+                            .map((d) => DAYS_OF_WEEK.find((dw) => dw.day === d)?.label || d)
+                            .join(', ')})`
+                        : recurrenceFreq === 'weekdays'
+                        ? '💼 Repeats Weekdays (Mon - Fri)'
+                        : `📅 Date: ${targetDateStr}`}
+                    </Text>
+                  </View>
                   <View style={styles.reviewCountBadge}>
                     <Text style={styles.reviewCountText}>{routineItems.length} Events</Text>
                   </View>
+                </View>
+
+                {/* Multi-Calendar Notice */}
+                <View style={[styles.infoBanner, { backgroundColor: '#f5f3ff', borderColor: '#ddd6fe' }]}>
+                  <Ionicons name="sparkles" size={16} color="#7e37d8" />
+                  <Text style={[styles.infoBannerText, { color: '#5b21b6' }]}>
+                    Cross-Calendar Verified: Parallel habits (e.g. Diet shakes, water) co-occur naturally without pushing back focus blocks.
+                  </Text>
                 </View>
 
                 {/* Routine Items List */}

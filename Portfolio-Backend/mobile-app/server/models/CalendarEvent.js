@@ -29,10 +29,11 @@ const CalendarEventSchema = new mongoose.Schema(
     recurrenceRule: {
       frequency: {
         type: String,
-        enum: ['none', 'daily', 'weekly', 'monthly'],
+        enum: ['none', 'daily', 'weekly', 'monthly', 'weekdays'],
         default: 'none',
       },
       interval: { type: Number, default: 1 },
+      daysOfWeek: [{ type: Number }], // 0 = Sun, 1 = Mon, 2 = Tue, ... 6 = Sat
       until: { type: Date, default: null },
     },
     reminders: [

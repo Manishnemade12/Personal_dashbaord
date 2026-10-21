@@ -650,6 +650,7 @@ export default function CalendarScreen({ onNavigate }) {
         onClose={() => setAiPlanModalVisible(false)}
         calendars={calendars}
         selectedDate={selectedDate}
+        existingEvents={events}
         onRoutineCreated={() => {
           loadEvents();
           loadReminders();

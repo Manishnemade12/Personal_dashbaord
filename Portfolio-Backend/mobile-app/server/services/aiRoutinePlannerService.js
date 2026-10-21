@@ -335,6 +335,50 @@ function generateHeuristicRoutine({
 }
 
 /**
+ * Backend date matcher for checking if an event (one-time or recurring) occurs on targetDate
+ */
+function isBackendEventMatchingDate(ev, targetDate) {
+  if (!ev || !ev.startAt || !targetDate) return false;
+  const evDate = new Date(ev.startAt);
+  const target = new Date(targetDate);
+
+  if (
+    evDate.getFullYear() === target.getFullYear() &&
+    evDate.getMonth() === target.getMonth() &&
+    evDate.getDate() === target.getDate()
+  ) {
+    return true;
+  }
+
+  const freq = ev.recurrenceRule?.frequency;
+  if (!freq || freq === 'none') return false;
+
+  const startMidnight = new Date(evDate.getFullYear(), evDate.getMonth(), evDate.getDate()).getTime();
+  const targetMidnight = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
+  if (targetMidnight < startMidnight) return false;
+
+  if (ev.recurrenceRule?.until) {
+    const untilMidnight = new Date(new Date(ev.recurrenceRule.until).setHours(23, 59, 59, 999)).getTime();
+    if (targetMidnight > untilMidnight) return false;
+  }
+
+  if (freq === 'daily') return true;
+  if (freq === 'weekdays') {
+    const day = target.getDay();
+    return day >= 1 && day <= 5;
+  }
+  if (freq === 'weekly') {
+    if (Array.isArray(ev.recurrenceRule?.daysOfWeek) && ev.recurrenceRule.daysOfWeek.length > 0) {
+      return ev.recurrenceRule.daysOfWeek.includes(target.getDay());
+    }
+    return evDate.getDay() === target.getDay();
+  }
+  if (freq === 'monthly') return evDate.getDate() === target.getDate();
+
+  return false;
+}
+
+/**
  * Main AI Routine Planner Service
  * Takes user instructions, analyzes ALL existing user calendars for that date,
  * and generates a smart, optimized routine without unnecessary rescheduling of co-occurring habits.
@@ -346,6 +390,7 @@ async function generateAiRoutine({
   userGoal,
   planCategory = 'general',
   intensity = 'moderate',
+  recurrenceRule = { frequency: 'none' },
 }) {
   // 1. Resolve Target Calendar
   let targetCalendar = null;
@@ -368,17 +413,28 @@ async function generateAiRoutine({
     });
   }
 
-  // 2. Fetch ALL user events across ALL calendars for target date
+  // 2. Fetch ALL user events across ALL calendars for target date (including recurring habits & events)
   const cleanDateStr = targetDateStr || new Date().toISOString().split('T')[0];
-  const startOfDay = new Date(`${cleanDateStr}T00:00:00.000Z`);
-  const endOfDay = new Date(`${cleanDateStr}T23:59:59.999Z`);
+  const [tYear, tMonth, tDay] = cleanDateStr.split('-').map(Number);
+  const targetDateObj = new Date(tYear, tMonth - 1, tDay);
 
-  const existingEvents = await CalendarEvent.find({
+  const broadStart = new Date(targetDateObj.getTime() - 24 * 60 * 60 * 1000);
+  const broadEnd = new Date(targetDateObj.getTime() + 48 * 60 * 60 * 1000);
+
+  const rawEvents = await CalendarEvent.find({
     userId,
-    startAt: { $gte: startOfDay, $lte: endOfDay },
+    $or: [
+      { startAt: { $gte: broadStart, $lte: broadEnd } },
+      {
+        'recurrenceRule.frequency': { $in: ['daily', 'weekly', 'weekdays', 'monthly'] },
+        startAt: { $lte: broadEnd },
+      },
+    ],
   })
     .populate('calendarId')
     .sort({ startAt: 1 });
+
+  const existingEvents = rawEvents.filter((ev) => isBackendEventMatchingDate(ev, targetDateObj));
 
   console.log(
     `[AI Routine Planner] Found ${existingEvents.length} existing events across all calendars for ${cleanDateStr}`
@@ -405,9 +461,10 @@ TARGET CALENDAR: "${targetCalendar.name}"
 USER GOAL / FOCUS: "${userGoal || 'Productive balanced schedule'}"
 CATEGORY: "${planCategory}"
 INTENSITY: "${intensity}"
+RECURRENCE: "${recurrenceRule?.frequency || 'once'}"
 
 EXISTING SCHEDULE ACROSS ALL OTHER CALENDARS (READ CAREFULLY):
-${existingEventsFormatted.length > 0 ? existingEventsFormatted.join('\n') : 'No existing events scheduled for this day.'}
+${existingEventsFormatted.length > 0 ? existingEventsFormatted.join('\n') : 'No existing events scheduled for this day across other calendars.'}
 
 CRITICAL SCHEDULING RULES (MULTI-CALENDAR AWARENESS):
 1. Distinguish between HARD EXCLUSIVE CONFLICTS vs COMPATIBLE CO-OCCURRING TASKS:
@@ -475,6 +532,7 @@ Do not wrap in markdown fences. Output raw JSON only.`;
             calendarName: targetCalendar.name,
             calendarColor: targetCalendar.color,
             isCompatibleParallel: !!item.coOccurrenceNote,
+            recurrenceRule: recurrenceRule || { frequency: 'none' },
           }));
           console.log(`[AI Routine Planner] LLM generated ${routineResult.length} slots successfully`);
         }
@@ -489,7 +547,7 @@ Do not wrap in markdown fences. Output raw JSON only.`;
   // 4. Fallback to Dynamic Heuristic Engine if LLM did not produce results
   if (!routineResult || routineResult.length === 0) {
     console.log('[AI Routine Planner] Running Heuristic Cross-Calendar Routine Engine');
-    routineResult = generateHeuristicRoutine({
+    const heuristicItems = generateHeuristicRoutine({
       targetDateStr: cleanDateStr,
       targetCalendar,
       userGoal,
@@ -497,17 +555,31 @@ Do not wrap in markdown fences. Output raw JSON only.`;
       existingEvents,
       intensity,
     });
+    routineResult = heuristicItems.map((item) => ({
+      ...item,
+      recurrenceRule: recurrenceRule || { frequency: 'none' },
+    }));
   }
 
   return {
     success: true,
     targetDate: cleanDateStr,
+    recurrenceRule: recurrenceRule || { frequency: 'none' },
     targetCalendar: {
       id: targetCalendar._id,
       name: targetCalendar.name,
       color: targetCalendar.color,
     },
     existingEventsCount: existingEvents.length,
+    existingEventsSummary: existingEvents.map((ev) => ({
+      _id: ev._id,
+      title: ev.title,
+      calendarName: ev.calendarId?.name || 'General',
+      calendarColor: ev.calendarId?.color || '#7e37d8',
+      startAt: ev.startAt,
+      endAt: ev.endAt,
+      isPassive: isPassiveCoOccurringEvent(ev),
+    })),
     routine: routineResult,
   };
 }
