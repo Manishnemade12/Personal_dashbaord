@@ -21,26 +21,41 @@ export default function AiHoldingsReviewList({
   const mergeCount = selectedHoldings.filter((h) => h.isExisting).length;
   const newCount = selectedHoldings.filter((h) => !h.isExisting).length;
 
+  const handleSwapBuyAndLtp = (id) => {
+    const item = holdings.find((h) => h.id === id);
+    if (!item) return;
+    const oldBuy = item.buyPrice;
+    const oldLtp = item.latestPrice || item.buyPrice;
+    onUpdateField(id, 'buyPrice', String(oldLtp));
+    onUpdateField(id, 'latestPrice', String(oldBuy));
+  };
+
   return (
-    <View style={{ flex: 1 }}>
-      {/* Review Summary Banner */}
+    <View style={styles.reviewContainer}>
+      {/* Review Summary Banner (Fixed Top) */}
       <View style={styles.reviewSummaryBanner}>
-        <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.reviewSummaryTitle}>
-            Review & Verify Extracted Holdings ({selectedHoldings.length})
+            Review Holdings ({selectedHoldings.length}/{holdings.length})
           </Text>
           <Text style={styles.reviewSummaryNote}>
-            {mergeCount} existing will be merged (auto-weighted average) • {newCount} new assets
+            {mergeCount} will merge (weighted avg) • {newCount} new assets
           </Text>
         </View>
 
         <View style={styles.reviewTotalsBadge}>
-          <Text style={{ fontSize: 10, color: '#6b21a8', fontWeight: '700' }}>TOTAL CAPITAL</Text>
+          <Text style={{ fontSize: 9.5, color: '#6b21a8', fontWeight: '800' }}>TOTAL CAPITAL</Text>
           <Text style={styles.reviewTotalsText}>₹{Math.round(totalAmount).toLocaleString('en-IN')}</Text>
         </View>
       </View>
 
-      <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+      {/* Middle Scrollable Holdings List */}
+      <ScrollView
+        style={styles.reviewScrollList}
+        contentContainerStyle={{ paddingBottom: 16 }}
+        showsVerticalScrollIndicator={true}
+        keyboardShouldPersistTaps="handled"
+      >
         {holdings.map((item) => {
           const qty = Number(item.quantity) || 0;
           const buy = Number(item.buyPrice) || 0;
@@ -74,7 +89,7 @@ export default function AiHoldingsReviewList({
                       item.isSelected && styles.holdingCheckboxSelected,
                     ]}
                   >
-                    {item.isSelected && <Ionicons name="checkmark" size={14} color="#ffffff" />}
+                    {item.isSelected && <Ionicons name="checkmark" size={13} color="#ffffff" />}
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.holdingSymbol} numberOfLines={1}>
@@ -91,15 +106,29 @@ export default function AiHoldingsReviewList({
                   onPress={() => onRemoveHolding(item.id)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="trash-outline" size={17} color="#94a3b8" />
+                  <Ionicons name="trash-outline" size={16} color="#94a3b8" />
                 </TouchableOpacity>
               </View>
 
-              {/* Status Badge: Merge vs New Asset */}
-              <View style={item.isExisting ? styles.statusBadgeMerge : styles.statusBadgeNew}>
-                <Text style={item.isExisting ? styles.statusTextMerge : styles.statusTextNew}>
-                  {item.badgeText || (item.isExisting ? '🟢 Merge With Existing' : '🔵 New Asset')}
-                </Text>
+              {/* Status Badge Row with Swap Option */}
+              <View style={styles.statusBadgeRow}>
+                <View style={item.isExisting ? styles.statusBadgeMerge : styles.statusBadgeNew}>
+                  <Text style={item.isExisting ? styles.statusTextMerge : styles.statusTextNew}>
+                    {item.badgeText || (item.isExisting ? '🟢 Merge With Existing' : '🔵 New Asset')}
+                  </Text>
+                </View>
+
+                {/* Quick Swap Button if LTP was detected */}
+                {Boolean(item.latestPrice) && Number(item.latestPrice) !== Number(item.buyPrice) && (
+                  <TouchableOpacity
+                    style={styles.swapBtn}
+                    onPress={() => handleSwapBuyAndLtp(item.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="swap-horizontal" size={11} color="#64748b" />
+                    <Text style={styles.swapBtnText}>Swap with LTP (₹{item.latestPrice})</Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               {/* Merge Calculation Note */}
@@ -107,7 +136,7 @@ export default function AiHoldingsReviewList({
                 <Text style={styles.mergeCalculationNote}>{dynamicNote}</Text>
               ) : null}
 
-              {/* Editable Fields: Quantity, Buy Price, and Live Calculated Total */}
+              {/* Editable Fields: Quantity, Buy Price (Avg Cost), and Row Total */}
               <View style={styles.fieldsRow}>
                 <View style={styles.inputCol}>
                   <Text style={styles.inputLabel}>Shares (Qty)</Text>
@@ -127,12 +156,12 @@ export default function AiHoldingsReviewList({
                     value={String(item.buyPrice || '')}
                     onChangeText={(val) => onUpdateField(item.id, 'buyPrice', val)}
                     keyboardType="numeric"
-                    placeholder="Price"
+                    placeholder="Avg Buy Price"
                   />
                 </View>
 
                 <View style={styles.totalCol}>
-                  <Text style={styles.totalLabel}>Row Total</Text>
+                  <Text style={styles.totalLabel}>Total (₹)</Text>
                   <Text style={styles.totalAmountText}>₹{rowTotal.toLocaleString('en-IN')}</Text>
                 </View>
               </View>
@@ -142,19 +171,19 @@ export default function AiHoldingsReviewList({
 
         {/* Add custom holding button */}
         <TouchableOpacity style={styles.addCustomBtn} onPress={onAddCustom} activeOpacity={0.7}>
-          <Ionicons name="add-circle-outline" size={16} color="#7e37d8" />
+          <Ionicons name="add-circle-outline" size={15} color="#7e37d8" />
           <Text style={styles.addCustomText}>+ Add Another Asset Manually</Text>
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Review Footer Buttons */}
+      {/* Sticky Bottom Review Footer Bar (Always Visible!) */}
       <View style={styles.reviewFooterBar}>
         <TouchableOpacity
-          style={[styles.secondaryBtn, { flex: 1, marginTop: 0 }]}
+          style={[styles.secondaryBtn, { flex: 1 }]}
           onPress={onCancel}
           disabled={isSaving}
         >
-          <Text style={styles.secondaryBtnText}>Back to Upload</Text>
+          <Text style={styles.secondaryBtnText}>Upload More</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -166,11 +195,11 @@ export default function AiHoldingsReviewList({
           onPress={onConfirm}
           disabled={selectedHoldings.length === 0 || isSaving}
         >
-          <Ionicons name="checkmark-circle" size={17} color="#ffffff" />
+          <Ionicons name="checkmark-circle" size={16} color="#ffffff" />
           <Text style={styles.primaryBtnText}>
             {isSaving
               ? 'Saving to Portfolio...'
-              : `Confirm & Add ${selectedHoldings.length} Holding${selectedHoldings.length > 1 ? 's' : ''}`}
+              : `Confirm & Add ${selectedHoldings.length} Stock${selectedHoldings.length > 1 ? 's' : ''}`}
           </Text>
         </TouchableOpacity>
       </View>

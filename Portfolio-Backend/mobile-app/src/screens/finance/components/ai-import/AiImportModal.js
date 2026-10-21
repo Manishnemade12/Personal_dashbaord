@@ -203,16 +203,18 @@ export default function AiImportModal({
           </View>
 
           {/* Modal Body */}
-          <View style={{ padding: 16 }}>
+          <View style={styles.modalBody}>
             {/* STEP 1: Upload & Select Screenshots */}
             {step === 'upload' && (
-              <AiImageDropzone
-                selectedImages={selectedImages}
-                onAddImages={handleAddImages}
-                onRemoveImage={handleRemoveImage}
-                onRunScan={() => handleRunScan(false)}
-                onUseSample={() => handleRunScan(true)}
-              />
+              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 14 }}>
+                <AiImageDropzone
+                  selectedImages={selectedImages}
+                  onAddImages={handleAddImages}
+                  onRemoveImage={handleRemoveImage}
+                  onRunScan={() => handleRunScan(false)}
+                  onUseSample={() => handleRunScan(true)}
+                />
+              </ScrollView>
             )}
 
             {/* STEP 2: Scanning In Progress */}
@@ -226,7 +228,7 @@ export default function AiImportModal({
               </View>
             )}
 
-            {/* STEP 3: Review & Verify */}
+            {/* STEP 3: Review & Verify (Fills modalBody and has sticky footer) */}
             {step === 'review' && (
               <AiHoldingsReviewList
                 holdings={extractedHoldings}

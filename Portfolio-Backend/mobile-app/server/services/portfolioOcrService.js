@@ -124,7 +124,7 @@ async function performOcr(imageSource) {
 }
 
 /**
- * Parse OCR text using Groq LLM
+ * Parse OCR text using Groq LLM with strict Indian Brokerage parsing rules
  */
 async function parseHoldingsWithLlm(ocrText) {
   const apiKey = await getApiKey();
@@ -132,25 +132,26 @@ async function parseHoldingsWithLlm(ocrText) {
     throw new Error('No Groq LLM API key available');
   }
 
-  const prompt = `You are a financial portfolio parser.
-Analyze the following raw OCR text extracted from an Indian brokerage screenshot (such as Zerodha Kite, Groww, Angel One, Upstox, IndMoney, Dhan, etc.).
+  const prompt = `You are an elite Chief Investment Officer and precision financial OCR parser for Indian stock brokers (Zerodha Kite, Groww, Angel One, Upstox, IndMoney, Dhan, etc.).
 
-RAW OCR TEXT:
+Analyze this raw OCR text extracted from brokerage portfolio screenshot(s):
 """
-${ocrText.slice(0, 4500)}
+${ocrText.slice(0, 5000)}
 """
 
-TASK:
-Extract all stock or fund holdings with their:
-- symbolOrCode: Stock ticker symbol (e.g. TATAMOTORS, RELIANCE, INFY, HDFCBANK, SBIN, ITC). Do NOT append .NS or .BO unless required.
-- instrumentName: Clean company or asset name.
-- quantity: Positive number of shares or units.
-- buyPrice: User's average purchase price / avg cost in INR.
-- latestPrice: Current market price / LTP in INR (or buyPrice if not visible).
-- assetClass: "Equity" or "Mutual Fund" or "ETF" or "Gold"
-- subCategory: "Stocks" or sector name
-
-Return ONLY a pure JSON array of objects with schema:
+CRITICAL EXTRACTION RULES (INDIAN STOCK BROKERS):
+1. "buyPrice" vs "latestPrice":
+   - "buyPrice" is strictly the user's AVERAGE PURCHASE COST (labeled as "Avg.", "Avg. cost", "Avg price", "Purchase price", "Cost price", "Avg:", or shown inline like "Qty. 10 • Avg. 2800" -> buyPrice=2800).
+   - "latestPrice" is the CURRENT MARKET PRICE (LTP) (labeled as "LTP", "Last Price", "CMP", "Market price", or shown like "LTP 2650 (-5.4%)" -> latestPrice=2650).
+   - STRICT CONSTRAINT: NEVER set buyPrice equal to LTP if an average buy price or avg cost is visible! If both are visible, buyPrice MUST be the average purchase cost, and latestPrice MUST be the LTP.
+2. "quantity":
+   - "quantity" is strictly the positive integer number of shares or units held (labeled as "Qty", "Qty.", "Shares", "Units", or "50 shares").
+   - NEVER use P&L amount, day change, total investment amount, or percentage numbers as quantity!
+   - If total invested amount and average buy price are shown, quantity = Math.round(Invested / buyPrice).
+3. "symbolOrCode":
+   - Clean ticker (e.g. RELIANCE, TCS, INFY, HDFCBANK, TATAMOTORS, SBIN). Strip any .NS or .BO suffix.
+4. Output format:
+   Return ONLY a valid JSON array of objects with schema:
 [
   {
     "symbolOrCode": "TATAMOTORS",
@@ -167,7 +168,7 @@ Do not wrap in markdown fences. Output raw JSON only.`;
   const payload = {
     model: GROQ_MODEL,
     messages: [
-      { role: 'system', content: 'You extract structured stock holdings from brokerage OCR text into JSON.' },
+      { role: 'system', content: 'You extract structured stock holdings from brokerage OCR text into JSON without confusing LTP with Buy Price.' },
       { role: 'user', content: prompt },
     ],
     temperature: 0.1,
@@ -212,7 +213,7 @@ Do not wrap in markdown fences. Output raw JSON only.`;
 }
 
 /**
- * Regex-based Brokerage Screenshot Parser (Deterministic fallback when LLM is offline)
+ * Regex-based Brokerage Screenshot Parser (Deterministic labeled parser)
  */
 function parseHoldingsWithRegex(ocrText) {
   const lines = ocrText.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -229,39 +230,106 @@ function parseHoldingsWithRegex(ocrText) {
       );
 
       if (isMatch && !seenSymbols.has(item.symbol)) {
-        // Look within this line and the next 3 lines for numbers (Quantity and Prices)
-        const combinedContext = lines.slice(i, i + 4).join(' ');
-        // Find numbers with optional decimals and commas
-        const numbers = (combinedContext.match(/₹?\s*[0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?/g) || [])
-          .map((n) => Number(n.replace(/[₹,\s]/g, '')))
-          .filter((n) => !isNaN(n) && n > 0);
+        // Take lines around the stock symbol (up to 6 lines)
+        const block = lines.slice(Math.max(0, i - 1), Math.min(lines.length, i + 6)).join('\n');
 
-        let quantity = 10;
-        let buyPrice = 500;
-        let latestPrice = 500;
+        let quantity = null;
+        let buyPrice = null;
+        let latestPrice = null;
+        let investedAmount = null;
 
-        if (numbers.length >= 2) {
-          // Typically in broker apps: [Qty, Avg Price, LTP] or [Avg, LTP, Qty]
-          const intLike = numbers.find((n) => Number.isInteger(n) && n > 0 && n < 50000);
-          const priceLikes = numbers.filter((n) => n > 10 && n !== intLike);
+        // 1. Zerodha Kite inline format: "Qty. 50 • Avg. 940.50" or "Qty: 50 | Avg: 940.50"
+        const zerodhaInline = block.match(/Qty\.?\s*[:\s]*([0-9,]+)\s*(?:•|\s*\|\s*|-|\s+)\s*Avg\.?\s*(?:cost|price)?[:\s]*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i);
+        if (zerodhaInline) {
+          quantity = Number(zerodhaInline[1].replace(/,/g, ''));
+          buyPrice = Number(zerodhaInline[2].replace(/,/g, ''));
+        }
 
-          if (intLike) quantity = intLike;
-          if (priceLikes.length >= 2) {
-            buyPrice = priceLikes[0];
-            latestPrice = priceLikes[1];
-          } else if (priceLikes.length === 1) {
-            buyPrice = priceLikes[0];
-            latestPrice = priceLikes[0];
+        // 2. Groww inline format: "50 shares • Avg ₹940.50"
+        if (!quantity || !buyPrice) {
+          const growwInline = block.match(/([0-9,]+)\s*shares?\s*(?:•|\s*\|\s*|-|\s+)\s*Avg\s*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i);
+          if (growwInline) {
+            quantity = Number(growwInline[1].replace(/,/g, ''));
+            buyPrice = Number(growwInline[2].replace(/,/g, ''));
           }
         }
+
+        // 3. Explicit labels for Qty
+        if (!quantity) {
+          const qtyMatch =
+            block.match(/(?:Qty\.?|Quantity|Shares|Units)[:\s]*([0-9,]+)/i) ||
+            block.match(/([0-9,]+)\s*(?:shares|units|qty)\b/i);
+          if (qtyMatch) {
+            quantity = Number(qtyMatch[1].replace(/,/g, ''));
+          }
+        }
+
+        // 4. Explicit labels for Avg / Buy Price
+        if (!buyPrice) {
+          const avgMatch = block.match(
+            /(?:Avg\.?\s*(?:cost|price)?|Average|Buy\s*Price|Purchase\s*Price)[:\s]*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i
+          );
+          if (avgMatch) {
+            buyPrice = Number(avgMatch[1].replace(/,/g, ''));
+          }
+        }
+
+        // 5. Explicit labels for LTP / Market Price
+        const ltpMatch = block.match(
+          /(?:LTP|CMP|Market\s*Price|Current\s*Price|Last\s*Price)[:\s]*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i
+        );
+        if (ltpMatch) {
+          latestPrice = Number(ltpMatch[1].replace(/,/g, ''));
+        }
+
+        // 6. Explicit labels for Invested Amount
+        const invMatch = block.match(
+          /(?:Invested|Investment|Total\s*Cost)[:\s]*₹?\s*([0-9,]+(?:\.[0-9]+)?)/i
+        );
+        if (invMatch) {
+          investedAmount = Number(invMatch[1].replace(/,/g, ''));
+        }
+
+        // Cross-calculate if one is missing
+        if (investedAmount && buyPrice && (!quantity || quantity <= 0)) {
+          quantity = Math.round(investedAmount / buyPrice);
+        } else if (investedAmount && quantity && (!buyPrice || buyPrice <= 0)) {
+          buyPrice = Number((investedAmount / quantity).toFixed(2));
+        }
+
+        // Fallback to numbers if labeled extraction missed
+        if (!buyPrice || !quantity) {
+          const numbers = (block.match(/₹?\s*[0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?/g) || [])
+            .map((n) => Number(n.replace(/[₹,\s]/g, '')))
+            .filter((n) => !isNaN(n) && n > 0 && n < 500000);
+
+          if (numbers.length >= 2) {
+            const intCandidates = numbers.filter((n) => Number.isInteger(n) && n > 0 && n <= 10000);
+            const priceCandidates = numbers.filter((n) => n > 10 && !intCandidates.includes(n));
+
+            if (!quantity && intCandidates.length > 0) {
+              quantity = intCandidates[0];
+            }
+            if (!buyPrice && priceCandidates.length > 0) {
+              buyPrice = priceCandidates[0];
+            }
+            if (!latestPrice && priceCandidates.length > 1) {
+              latestPrice = priceCandidates[1];
+            }
+          }
+        }
+
+        const finalQty = quantity && quantity > 0 ? quantity : 10;
+        const finalBuy = buyPrice && buyPrice > 0 ? buyPrice : (latestPrice || 100);
+        const finalLtp = latestPrice && latestPrice > 0 ? latestPrice : finalBuy;
 
         seenSymbols.add(item.symbol);
         detected.push({
           symbolOrCode: item.symbol,
           instrumentName: item.name,
-          quantity,
-          buyPrice,
-          latestPrice,
+          quantity: finalQty,
+          buyPrice: finalBuy,
+          latestPrice: finalLtp,
           assetClass: 'Equity',
           subCategory: 'Stocks',
         });
@@ -272,6 +340,7 @@ function parseHoldingsWithRegex(ocrText) {
 
   return detected;
 }
+
 
 /**
  * Process Multiple Portfolio Screenshots:
