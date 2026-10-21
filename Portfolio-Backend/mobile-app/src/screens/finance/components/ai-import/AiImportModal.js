@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ActivityIndicator, Alert, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../../../api/client';
 import styles from './aiImportStyles';
@@ -206,15 +206,12 @@ export default function AiImportModal({
           <View style={styles.modalBody}>
             {/* STEP 1: Upload & Select Screenshots */}
             {step === 'upload' && (
-              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 14 }}>
-                <AiImageDropzone
-                  selectedImages={selectedImages}
-                  onAddImages={handleAddImages}
-                  onRemoveImage={handleRemoveImage}
-                  onRunScan={() => handleRunScan(false)}
-                  onUseSample={() => handleRunScan(true)}
-                />
-              </ScrollView>
+              <AiImageDropzone
+                selectedImages={selectedImages}
+                onAddImages={handleAddImages}
+                onRemoveImage={handleRemoveImage}
+                onRunScan={() => handleRunScan(false)}
+              />
             )}
 
             {/* STEP 2: Scanning In Progress */}

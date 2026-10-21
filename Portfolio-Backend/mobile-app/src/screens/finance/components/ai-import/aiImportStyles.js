@@ -13,10 +13,10 @@ export default StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: radii.lg,
     overflow: 'hidden',
-    width: '100%',
+    width: '95%',
     maxWidth: 720,
-    height: '92%',
-    maxHeight: '94%',
+    height: '90%',
+    maxHeight: 740,
     display: 'flex',
     flexDirection: 'column',
     ...Platform.select({
@@ -33,6 +33,7 @@ export default StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
     backgroundColor: '#ffffff',
+    flexShrink: 0,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -69,9 +70,37 @@ export default StyleSheet.create({
   // Modal Body Container
   modalBody: {
     flex: 1,
+    minHeight: 0,
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
+  },
+
+  // Step 1: Upload Container with Pinned Sticky Footer
+  uploadContainer: {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    overflow: 'hidden',
+  },
+  uploadScrollList: {
+    flex: 1,
+    minHeight: 0,
+    ...Platform.select({
+      web: {
+        overflowY: 'auto',
+      },
+    }),
+  },
+  uploadFooterBar: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+    flexShrink: 0,
   },
 
   // Info Banner
@@ -149,13 +178,34 @@ export default StyleSheet.create({
     marginHorizontal: 14,
     marginBottom: 12,
   },
+  thumbsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   thumbsTitle: {
     fontSize: 11,
     fontWeight: '800',
     color: '#475569',
-    marginBottom: 6,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  addMoreSmallBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radii.xs,
+    backgroundColor: '#faf5ff',
+    borderWidth: 1,
+    borderColor: '#e9d5ff',
+  },
+  addMoreSmallText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#7e37d8',
   },
   thumbsGrid: {
     flexDirection: 'row',
@@ -319,10 +369,26 @@ export default StyleSheet.create({
     color: '#7e37d8',
   },
 
+  // Step 3: Review Container (Fixed height with inner scroll & sticky footer)
+  reviewContainer: {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    overflow: 'hidden',
+  },
+
   // Scrollable Holdings List
   reviewScrollList: {
     flex: 1,
+    minHeight: 0,
     paddingHorizontal: 12,
+    ...Platform.select({
+      web: {
+        overflowY: 'auto',
+      },
+    }),
   },
 
   // Extracted Holding Card
