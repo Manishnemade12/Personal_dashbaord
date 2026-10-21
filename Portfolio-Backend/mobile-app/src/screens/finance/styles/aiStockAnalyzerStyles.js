@@ -109,7 +109,69 @@ export default StyleSheet.create({
     borderColor: colors.border,
     fontSize: 12,
     color: colors.textPrimary,
-    marginBottom: 10,
+    marginBottom: 8,
+  },
+
+  // Stock Selection Scrollable Container (Fixed height with internal scroll)
+  stockSelectionScroll: {
+    maxHeight: 185,
+    marginVertical: 4,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: radii.sm,
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    ...Platform.select({
+      web: {
+        overflowY: 'auto',
+      },
+    }),
+  },
+
+  // Collapsed Stock Selection Summary Bar
+  stocksCollapsedBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#faf5ff',
+    borderWidth: 1,
+    borderColor: '#e9d5ff',
+    borderRadius: radii.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 8,
+  },
+  stocksCollapsedText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6b21a8',
+    flex: 1,
+  },
+  expandStocksBtn: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#c084fc',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radii.xs,
+  },
+  expandStocksBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#7e37d8',
+  },
+  collapseToggleBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radii.xs,
+    backgroundColor: 'rgba(126, 55, 216, 0.08)',
+    marginLeft: 6,
+  },
+  collapseToggleText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#7e37d8',
   },
 
   // Stock Selection Item

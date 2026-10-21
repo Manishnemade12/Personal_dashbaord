@@ -15,12 +15,402 @@ import { api } from '../../api/client';
 import { ScreenHeader } from '../../components/common';
 import styles from './styles/aiStockAnalyzerStyles';
 
+/**
+ * Sanitize raw LaTeX math syntax into clean, standard Unicode symbols and Indian Rupee notation
+ */
+function sanitizeLatexAndMarkdown(rawText) {
+  if (!rawText) return '';
+  let str = String(rawText);
+
+  // 1. Normalize line breaks
+  str = str.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  // 2. Remove block math delimiters $$ ... $$ and \[ ... \]
+  str = str.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, '$1');
+  str = str.replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, '$1');
+
+  // 3. Remove inline math delimiters \( ... \) and $ ... $
+  str = str.replace(/\\\(\s*([\s\S]*?)\s*\\\)/g, '$1');
+  str = str.replace(/\$([^\$\n]+?)\$/g, (match, inner) => inner.trim());
+
+  // 4. Flatten inner text/formatting commands FIRST so nested braces are removed
+  str = str.replace(/\\(?:text|mathrm|operatorname)\{([^{}]+)\}/g, '$1');
+  str = str.replace(/\\(?:textbf|mathbf)\{([^{}]+)\}/g, '**$1**');
+  str = str.replace(/\\(?:textit|mathit)\{([^{}]+)\}/g, '*$1*');
+  str = str.replace(/\\boxed\{([^{}]+)\}/g, '[$1]');
+  str = str.replace(/\\sqrt\{([^{}]+)\}/g, '√($1)');
+
+  // 5. Transform LaTeX fractions: \frac{a}{b}, \dfrac{a}{b}, \tfrac{a}{b} -> (a / b)
+  for (let i = 0; i < 4; i++) {
+    str = str.replace(/\\(?:d|t)?frac\{([^{}]+)\}\{([^{}]+)\}/g, '($1 / $2)');
+  }
+
+  // 6. LaTeX math symbols to standard Unicode
+  const symbolMap = [
+    [/\\times\b/g, '×'],
+    [/\\cdot\b/g, '·'],
+    [/\\div\b/g, '÷'],
+    [/\\approx\b/g, '≈'],
+    [/\\pm\b/g, '±'],
+    [/\\mp\b/g, '∓'],
+    [/\\neq\b/g, '≠'],
+    [/\\leq\b|\\le\b/g, '≤'],
+    [/\\geq\b|\\ge\b/g, '≥'],
+    [/\\ll\b/g, '≪'],
+    [/\\gg\b/g, '≫'],
+    [/\\infty\b/g, '∞'],
+    [/\\sum\b/g, '∑'],
+    [/\\prod\b/g, '∏'],
+    [/\\Delta\b|\\delta\b/g, 'Δ'],
+    [/\\alpha\b/g, 'α'],
+    [/\\beta\b/g, 'β'],
+    [/\\theta\b/g, 'θ'],
+    [/\\pi\b/g, 'π'],
+    [/\\sigma\b/g, 'σ'],
+    [/\\mu\b/g, 'μ'],
+    [/\\to\b|\\rightarrow\b/g, '→'],
+    [/\\leftarrow\b/g, '←'],
+    [/\\uparrow\b/g, '↑'],
+    [/\\downarrow\b/g, '↓'],
+    [/\\dots\b|\\ldots\b/g, '...'],
+    [/\\left\(/g, '('],
+    [/\\right\)/g, ')'],
+    [/\\left\[/g, '['],
+    [/\\right\]/g, ']'],
+    [/\\left\{/g, '{'],
+    [/\\right\}/g, '}'],
+    [/\\%/g, '%'],
+    [/\\([$_&])/g, '$1'],
+    [/\\quad\b/g, '  '],
+    [/\\qquad\b/g, '    '],
+    [/\\([,;:!])/g, ' '],
+  ];
+
+  symbolMap.forEach(([reg, rep]) => {
+    str = str.replace(reg, rep);
+  });
+
+  // 7. Clean up multiple spaces and lingering backslashes
+  str = str.replace(/\\([a-zA-Z]+)/g, '$1');
+
+  return str;
+}
+
+/**
+ * Rich Formatted AI Response Renderer:
+ * Parses LaTeX, Markdown tables, semantic color badges (Average Down 🟢, Hold 🔵, Exit 🔴),
+ * bullet lists, code blocks, and bold highlights.
+ */
+function FormattedAiText({ text, isUser = false }) {
+  if (!text) return null;
+  if (isUser) {
+    return <Text style={styles.messageTextUser}>{text}</Text>;
+  }
+
+  const cleanedText = sanitizeLatexAndMarkdown(text);
+  const rawLines = cleanedText.split('\n');
+
+  // Parse lines into structured blocks
+  const blocks = [];
+  let currentTable = null;
+  let inCodeBlock = false;
+  let codeBuffer = [];
+
+  for (let i = 0; i < rawLines.length; i++) {
+    const rawLine = rawLines[i];
+    const line = rawLine.trim();
+
+    // Code / Formula block toggle
+    if (line.startsWith('```')) {
+      if (inCodeBlock) {
+        blocks.push({ type: 'code', lines: codeBuffer });
+        codeBuffer = [];
+        inCodeBlock = false;
+      } else {
+        inCodeBlock = true;
+      }
+      continue;
+    }
+
+    if (inCodeBlock) {
+      codeBuffer.push(rawLine);
+      continue;
+    }
+
+    // Markdown Table detection: lines with '|'
+    if (line.startsWith('|') && line.endsWith('|')) {
+      // Ignore separator row like '| --- | --- |'
+      if (/^\|[\s\-:|]+\|$/.test(line)) {
+        continue;
+      }
+      const cells = line
+        .split('|')
+        .slice(1, -1)
+        .map((c) => c.trim());
+
+      if (!currentTable) {
+        currentTable = { headers: cells, rows: [] };
+      } else {
+        currentTable.rows.push(cells);
+      }
+      continue;
+    } else {
+      if (currentTable) {
+        blocks.push({ type: 'table', data: currentTable });
+        currentTable = null;
+      }
+    }
+
+    if (!line) {
+      blocks.push({ type: 'spacer' });
+      continue;
+    }
+
+    // Headings: "# ...", "## ...", "### ..."
+    if (line.startsWith('#')) {
+      const heading = line.replace(/^#+\s*/, '');
+      blocks.push({ type: 'heading', text: heading });
+      continue;
+    }
+
+    // Bullets: "- ...", "* ...", "• ...", "1. ..."
+    const bulletMatch = line.match(/^([-*•]|\d+\.)\s+(.*)$/);
+    if (bulletMatch) {
+      blocks.push({ type: 'bullet', bullet: bulletMatch[1], text: bulletMatch[2] });
+      continue;
+    }
+
+    // Standard paragraph line
+    blocks.push({ type: 'paragraph', text: line });
+  }
+
+  if (currentTable) {
+    blocks.push({ type: 'table', data: currentTable });
+  }
+  if (codeBuffer.length > 0) {
+    blocks.push({ type: 'code', lines: codeBuffer });
+  }
+
+  return (
+    <View style={{ gap: 4, width: '100%' }}>
+      {blocks.map((block, idx) => {
+        if (block.type === 'spacer') {
+          return <View key={idx} style={{ height: 3 }} />;
+        }
+
+        // Semantic colored headings
+        if (block.type === 'heading') {
+          const isAverage = /average|accumulate|buy/i.test(block.text);
+          const isExit = /exit|trim|sell|profit|cut\s*loss/i.test(block.text);
+          const isHold = /hold/i.test(block.text);
+          const isTarget = /target|support|stop\s*loss|levels|action/i.test(block.text);
+
+          const badgeBg = isAverage
+            ? '#ecfdf5'
+            : isExit
+            ? '#fef2f2'
+            : isHold
+            ? '#eff6ff'
+            : isTarget
+            ? '#fffbeb'
+            : '#f5f3ff';
+          const badgeBorder = isAverage
+            ? '#10b981'
+            : isExit
+            ? '#ef4444'
+            : isHold
+            ? '#3b82f6'
+            : isTarget
+            ? '#f59e0b'
+            : '#8b5cf6';
+          const textColor = isAverage
+            ? '#065f46'
+            : isExit
+            ? '#991b1b'
+            : isHold
+            ? '#1e40af'
+            : isTarget
+            ? '#92400e'
+            : '#581c87';
+
+          return (
+            <View
+              key={idx}
+              style={{
+                backgroundColor: badgeBg,
+                borderLeftWidth: 3.5,
+                borderLeftColor: badgeBorder,
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                borderRadius: 4,
+                marginTop: 5,
+                marginBottom: 2,
+              }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '800', color: textColor }}>
+                {block.text}
+              </Text>
+            </View>
+          );
+        }
+
+        // Native Responsive Data Table
+        if (block.type === 'table') {
+          return (
+            <View
+              key={idx}
+              style={{
+                borderWidth: 1,
+                borderColor: '#cbd5e1',
+                borderRadius: 6,
+                backgroundColor: '#ffffff',
+                marginVertical: 4,
+                overflow: 'hidden',
+              }}
+            >
+              {/* Table Header */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  backgroundColor: '#f1f5f9',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#cbd5e1',
+                  paddingVertical: 6,
+                  paddingHorizontal: 8,
+                }}
+              >
+                {block.data.headers.map((h, hIdx) => (
+                  <Text
+                    key={hIdx}
+                    style={{
+                      flex: 1,
+                      fontSize: 11,
+                      fontWeight: '800',
+                      color: '#334155',
+                      textAlign: hIdx === 0 ? 'left' : 'center',
+                    }}
+                  >
+                    {h}
+                  </Text>
+                ))}
+              </View>
+
+              {/* Table Rows */}
+              {block.data.rows.map((row, rIdx) => (
+                <View
+                  key={rIdx}
+                  style={{
+                    flexDirection: 'row',
+                    backgroundColor: rIdx % 2 === 0 ? '#ffffff' : '#f8fafc',
+                    borderBottomWidth: rIdx === block.data.rows.length - 1 ? 0 : 1,
+                    borderBottomColor: '#f1f5f9',
+                    paddingVertical: 6,
+                    paddingHorizontal: 8,
+                  }}
+                >
+                  {row.map((cell, cIdx) => (
+                    <Text
+                      key={cIdx}
+                      style={{
+                        flex: 1,
+                        fontSize: 11,
+                        color: '#1e293b',
+                        fontWeight: cIdx === 0 ? '700' : '500',
+                        textAlign: cIdx === 0 ? 'left' : 'center',
+                      }}
+                    >
+                      {cell}
+                    </Text>
+                  ))}
+                </View>
+              ))}
+            </View>
+          );
+        }
+
+        // Code / Formula Monospace Block
+        if (block.type === 'code') {
+          return (
+            <View
+              key={idx}
+              style={{
+                backgroundColor: '#0f172a',
+                padding: 10,
+                borderRadius: 6,
+                marginVertical: 4,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 11.5,
+                  fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+                  color: '#38bdf8',
+                  lineHeight: 18,
+                }}
+              >
+                {block.lines.join('\n')}
+              </Text>
+            </View>
+          );
+        }
+
+        // Bullet or Paragraph with Bold Highlights
+        const isBullet = block.type === 'bullet';
+        const content = block.text;
+        const parts = content.split(/(\*\*[^*]+\*\*)/g);
+
+        return (
+          <View
+            key={idx}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              paddingLeft: isBullet ? 6 : 0,
+              gap: 6,
+            }}
+          >
+            {isBullet && (
+              <Text style={{ fontSize: 13, color: '#7e37d8', lineHeight: 18, fontWeight: '800' }}>
+                {block.bullet?.includes('.') ? block.bullet : '•'}
+              </Text>
+            )}
+            <Text style={{ flex: 1, fontSize: 12.5, color: '#1e293b', lineHeight: 19 }}>
+              {parts.map((part, pIdx) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                  const boldText = part.slice(2, -2);
+                  const isAvg = /average\s*down|buy|target|upside/i.test(boldText);
+                  const isEx = /exit|trim|loss|stop\s*loss|risk/i.test(boldText);
+                  const isHld = /hold|support|neutral/i.test(boldText);
+
+                  return (
+                    <Text
+                      key={pIdx}
+                      style={{
+                        fontWeight: '800',
+                        color: isAvg ? '#047857' : isEx ? '#b91c1c' : isHld ? '#1d4ed8' : '#0f172a',
+                      }}
+                    >
+                      {boldText}
+                    </Text>
+                  );
+                }
+                return <Text key={pIdx}>{part}</Text>;
+              })}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 export default function AiStockAnalyzerScreen({ onNavigate }) {
   // Holdings & Selection State
   const [allHoldings, setAllHoldings] = useState([]);
   const [loadingHoldings, setLoadingHoldings] = useState(true);
   const [selectedStockIds, setSelectedStockIds] = useState([]);
   const [searchFilter, setSearchFilter] = useState('');
+  const [isStocksCollapsed, setIsStocksCollapsed] = useState(false);
 
   // AI Analysis State
   const [analyzing, setAnalyzing] = useState(false);
@@ -318,134 +708,179 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
         </View>
 
         {/* ============================================================ */}
-        {/* 1. STOCK SELECTION CARD                                      */}
+        {/* COMPACT STOCK SELECTION BOX (SHARED & FIXED-HEIGHT SCROLL)   */}
         {/* ============================================================ */}
-        <View style={styles.card}>
-          <View style={styles.selectionHeader}>
-            <View style={styles.selectionTitleRow}>
-              <Ionicons name="checkbox-outline" size={16} color="#7e37d8" />
-              <Text style={styles.selectionTitle}>Select Stocks to Analyze</Text>
-              <View style={styles.selectionCountBadge}>
-                <Text style={styles.selectionCountText}>
-                  {selectedStockIds.length} of {allHoldings.length}
-                </Text>
+        {isStocksCollapsed ? (
+          <View style={styles.stocksCollapsedBar}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+              <Ionicons name="layers" size={15} color="#7e37d8" />
+              <Text style={styles.stocksCollapsedText} numberOfLines={1}>
+                {selectedStockIds.length === 0
+                  ? 'All holdings active (tap to select specific stocks)'
+                  : `${selectedStockIds.length} Stock(s) Active: ${allHoldings
+                      .filter((s) => selectedStockIds.includes(s._id || s.symbolOrCode))
+                      .map((s) => s.symbolOrCode)
+                      .slice(0, 3)
+                      .join(', ')}${selectedStockIds.length > 3 ? '...' : ''}`}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.expandStocksBtn}
+              onPress={() => setIsStocksCollapsed(false)}
+            >
+              <Text style={styles.expandStocksBtnText}>▼ Change</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.card}>
+            <View style={styles.selectionHeader}>
+              <View style={styles.selectionTitleRow}>
+                <Ionicons name="checkbox-outline" size={16} color="#7e37d8" />
+                <Text style={styles.selectionTitle}>Select Stocks to Analyze / Chat</Text>
+                <View style={styles.selectionCountBadge}>
+                  <Text style={styles.selectionCountText}>
+                    {selectedStockIds.length} of {allHoldings.length}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <TouchableOpacity style={styles.selectAllBtn} onPress={handleToggleSelectAll}>
+                  <Text style={styles.selectAllText}>
+                    {selectedStockIds.length === filteredStocks.length ? 'Clear All' : 'Select All'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.collapseToggleBtn}
+                  onPress={() => setIsStocksCollapsed(true)}
+                >
+                  <Text style={styles.collapseToggleText}>▲ Minimize</Text>
+                </TouchableOpacity>
               </View>
             </View>
 
-            <TouchableOpacity style={styles.selectAllBtn} onPress={handleToggleSelectAll}>
-              <Text style={styles.selectAllText}>
-                {selectedStockIds.length === filteredStocks.length ? 'Clear All' : 'Select All'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Quick search filter */}
-          {allHoldings.length > 4 && (
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search by stock name or symbol (e.g. Tata, Reliance)..."
-              value={searchFilter}
-              onChangeText={setSearchFilter}
-              placeholderTextColor={colors.textMuted}
-            />
-          )}
-
-          {/* Stock selection list */}
-          {loadingHoldings ? (
-            <ActivityIndicator size="small" color="#7e37d8" style={{ paddingVertical: 16 }} />
-          ) : filteredStocks.length === 0 ? (
-            <View style={{ paddingVertical: 16, alignItems: 'center' }}>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>
-                No stock holdings found in your portfolio.
-              </Text>
-              <TouchableOpacity
-                style={{ marginTop: 8 }}
-                onPress={() => onNavigate && onNavigate('Investments')}
-              >
-                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>
-                  + Add Stocks in Investments
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            filteredStocks.map((stock) => {
-              const isSelected = selectedStockIds.includes(stock._id || stock.symbolOrCode);
-              const isProfit = Number(stock.pnl || 0) >= 0;
-              const pnlPct = Number(stock.pnlPercent || 0).toFixed(2);
-
-              return (
-                <TouchableOpacity
-                  key={stock._id || stock.symbolOrCode}
-                  style={[styles.stockItem, isSelected && styles.stockItemSelected]}
-                  onPress={() => handleToggleStock(stock._id || stock.symbolOrCode)}
-                  activeOpacity={0.75}
-                >
-                  <View style={styles.stockItemLeft}>
-                    <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                      {isSelected && <Ionicons name="checkmark" size={14} color="#ffffff" />}
-                    </View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={styles.stockSymbol} numberOfLines={1}>
-                        {stock.symbolOrCode}
-                      </Text>
-                      <Text style={styles.stockName} numberOfLines={1}>
-                        {stock.instrumentName || stock.symbolOrCode}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.stockItemRight}>
-                    <Text style={styles.stockPrice}>
-                      ₹{Number(stock.latestPrice || stock.averageBuyPrice || 0).toLocaleString('en-IN')}
-                    </Text>
-                    <View
-                      style={[
-                        styles.stockPnlBadge,
-                        isProfit ? styles.stockPnlBadgeProfit : styles.stockPnlBadgeLoss,
-                      ]}
-                    >
-                      <Ionicons
-                        name={isProfit ? 'caret-up' : 'caret-down'}
-                        size={10}
-                        color={isProfit ? '#059669' : '#dc2626'}
-                      />
-                      <Text
-                        style={isProfit ? styles.stockPnlTextProfit : styles.stockPnlTextLoss}
-                      >
-                        {isProfit ? '+' : ''}
-                        {pnlPct}%
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
-          )}
-
-          {/* Action Button: Run Analysis */}
-          <TouchableOpacity
-            style={[
-              styles.analyzeBtn,
-              (analyzing || selectedStockIds.length === 0) && styles.analyzeBtnDisabled,
-            ]}
-            onPress={handleRunAnalysis}
-            disabled={analyzing || selectedStockIds.length === 0}
-            activeOpacity={0.85}
-          >
-            {analyzing ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <>
-                <Ionicons name="sparkles" size={16} color="#ffffff" />
-                <Text style={styles.analyzeBtnText}>
-                  {selectedStockIds.length > 0
-                    ? `Analyze ${selectedStockIds.length} Stock(s) with Grok AI`
-                    : 'Select Stocks to Analyze'}
-                </Text>
-              </>
+            {/* Quick search filter */}
+            {allHoldings.length > 4 && (
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by stock name or symbol (e.g. Tata, Reliance)..."
+                value={searchFilter}
+                onChangeText={setSearchFilter}
+                placeholderTextColor={colors.textMuted}
+              />
             )}
-          </TouchableOpacity>
-        </View>
+
+            {/* Compact Scrollable Stock selection list (Fixed height with internal scroll) */}
+            {loadingHoldings ? (
+              <ActivityIndicator size="small" color="#7e37d8" style={{ paddingVertical: 16 }} />
+            ) : filteredStocks.length === 0 ? (
+              <View style={{ paddingVertical: 14, alignItems: 'center' }}>
+                <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                  No stock holdings found in your portfolio.
+                </Text>
+                <TouchableOpacity
+                  style={{ marginTop: 6 }}
+                  onPress={() => onNavigate && onNavigate('Investments')}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>
+                    + Add Stocks in Investments
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <ScrollView
+                style={styles.stockSelectionScroll}
+                nestedScrollEnabled={true}
+                showsVerticalScrollIndicator={true}
+              >
+                {filteredStocks.map((stock) => {
+                  const isSelected = selectedStockIds.includes(stock._id || stock.symbolOrCode);
+                  const isProfit = Number(stock.pnl || 0) >= 0;
+                  const pnlPct = Number(stock.pnlPercent || 0).toFixed(2);
+
+                  return (
+                    <TouchableOpacity
+                      key={stock._id || stock.symbolOrCode}
+                      style={[styles.stockItem, isSelected && styles.stockItemSelected]}
+                      onPress={() => handleToggleStock(stock._id || stock.symbolOrCode)}
+                      activeOpacity={0.75}
+                    >
+                      <View style={styles.stockItemLeft}>
+                        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                          {isSelected && <Ionicons name="checkmark" size={14} color="#ffffff" />}
+                        </View>
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <Text style={styles.stockSymbol} numberOfLines={1}>
+                            {stock.symbolOrCode}
+                          </Text>
+                          <Text style={styles.stockName} numberOfLines={1}>
+                            {stock.instrumentName || stock.symbolOrCode}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.stockItemRight}>
+                        <Text style={styles.stockPrice}>
+                          ₹{Number(stock.latestPrice || stock.averageBuyPrice || 0).toLocaleString('en-IN')}
+                        </Text>
+                        <View
+                          style={[
+                            styles.stockPnlBadge,
+                            isProfit ? styles.stockPnlBadgeProfit : styles.stockPnlBadgeLoss,
+                          ]}
+                        >
+                          <Ionicons
+                            name={isProfit ? 'caret-up' : 'caret-down'}
+                            size={10}
+                            color={isProfit ? '#059669' : '#dc2626'}
+                          />
+                          <Text
+                            style={isProfit ? styles.stockPnlTextProfit : styles.stockPnlTextLoss}
+                          >
+                            {isProfit ? '+' : ''}
+                            {pnlPct}%
+                          </Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+        )}
+
+        {/* ============================================================ */}
+        {/* TAB 1: STRATEGY & RECOMMENDATIONS                            */}
+        {/* ============================================================ */}
+        {activeTab === 'strategy' && (
+          <>
+            {/* Action Button: Run Analysis */}
+            <TouchableOpacity
+              style={[
+                styles.analyzeBtn,
+                (analyzing || selectedStockIds.length === 0) && styles.analyzeBtnDisabled,
+                { marginBottom: 12 },
+              ]}
+              onPress={handleRunAnalysis}
+              disabled={analyzing || selectedStockIds.length === 0}
+              activeOpacity={0.85}
+            >
+              {analyzing ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <>
+                  <Ionicons name="sparkles" size={16} color="#ffffff" />
+                  <Text style={styles.analyzeBtnText}>
+                    {selectedStockIds.length > 0
+                      ? `Analyze ${selectedStockIds.length} Stock(s) with Grok AI`
+                      : 'Select Stocks to Analyze'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
 
         {/* ============================================================ */}
         {/* 2. LOADING STATE WITH DEDICATED PROGRESS CARD               */}
@@ -506,7 +941,7 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
             {/* Strategic Action Plan Box */}
             <View style={styles.summaryPlanBox}>
               <Text style={styles.summaryPlanTitle}>RECOMMENDED ACTION STRATEGY:</Text>
-              <Text style={styles.summaryPlanText}>{summary.overallActionPlan}</Text>
+              <FormattedAiText text={summary.overallActionPlan} />
             </View>
 
             <Text style={styles.rebalanceNote}>
@@ -697,22 +1132,23 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
                   {/* Action Plan Box */}
                   <View style={styles.actionPlanBox}>
                     <Text style={styles.actionPlanTitle}>ACTION PLAN FOR YOU:</Text>
-                    <Text style={styles.actionPlanText}>{stock.actionPlan}</Text>
+                    <FormattedAiText text={stock.actionPlan} />
                   </View>
 
                   {/* Fundamental & Technical Thesis */}
-                  <Text style={styles.thesisText}>
-                    <Text style={{ fontWeight: '700', color: colors.textPrimary }}>
-                      Fundamental:
-                    </Text>{' '}
-                    {stock.fundamentalThesis}
-                  </Text>
-                  <Text style={styles.thesisText}>
-                    <Text style={{ fontWeight: '700', color: colors.textPrimary }}>
-                      Technical:
-                    </Text>{' '}
-                    {stock.technicalTrend}
-                  </Text>
+                  <View style={{ marginVertical: 3 }}>
+                    <Text style={{ fontWeight: '700', fontSize: 12, color: colors.textPrimary, marginBottom: 2 }}>
+                      Fundamental Thesis:
+                    </Text>
+                    <FormattedAiText text={stock.fundamentalThesis} />
+                  </View>
+
+                  <View style={{ marginVertical: 3 }}>
+                    <Text style={{ fontWeight: '700', fontSize: 12, color: colors.textPrimary, marginBottom: 2 }}>
+                      Technical Trend & Levels:
+                    </Text>
+                    <FormattedAiText text={stock.technicalTrend} />
+                  </View>
 
                   {/* Footer Row: Time Horizon & Conviction */}
                   <View style={styles.tagsRow}>
@@ -750,9 +1186,11 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
             </View>
           </>
         )}
+          </>
+        )}
 
         {/* ============================================================ */}
-        {/* TAB 2: INTERACTIVE AI STOCK CHAT                             */}
+        {/* TAB 2: INTERACTIVE AI STOCK CHAT (AT TOP WITH COMPACT CONTEXT) */}
         {/* ============================================================ */}
         {activeTab === 'chat' && (
           <View style={styles.chatContainerCard}>
@@ -760,17 +1198,18 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
             <View style={styles.chatContextBanner}>
               <View style={styles.chatContextTitleRow}>
                 <Text style={styles.chatContextTitle}>Active Context Stocks ({selectedStockIds.length})</Text>
-                <TouchableOpacity onPress={() => setActiveTab('strategy')}>
+                <TouchableOpacity onPress={() => setIsStocksCollapsed((v) => !v)}>
                   <Text style={{ fontSize: 11, fontWeight: '700', color: '#7e37d8' }}>
-                    + Change Selection
+                    {isStocksCollapsed ? '+ Add / Change Stocks' : '▲ Minimize Stock Box'}
                   </Text>
                 </TouchableOpacity>
               </View>
 
+              {/* Selected Stock Chips Row */}
               <View style={styles.chatContextChipsWrap}>
                 {selectedStockIds.length === 0 ? (
                   <Text style={{ fontSize: 11, color: '#64748b' }}>
-                    No stocks selected. AI will answer general equity strategy questions.
+                    No stocks selected. AI will answer general equity strategy questions. Click "+ Add / Change Stocks" above.
                   </Text>
                 ) : (
                   allHoldings
@@ -815,7 +1254,7 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
               ))}
             </ScrollView>
 
-            {/* Message Bubbles Scroll */}
+            {/* Message Bubbles Scroll with Rich Markdown Formatter */}
             <ScrollView
               ref={chatScrollRef}
               style={styles.chatMessagesList}
@@ -833,9 +1272,7 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
                       <Text style={styles.messageSenderAi}>AI Portfolio CIO</Text>
                     </View>
                   )}
-                  <Text style={msg.sender === 'user' ? styles.messageTextUser : styles.messageTextAi}>
-                    {msg.text}
-                  </Text>
+                  <FormattedAiText text={msg.text} isUser={msg.sender === 'user'} />
                 </View>
               ))}
               {sendingChat && (
@@ -855,7 +1292,7 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
             <View style={styles.chatInputRow}>
               <TextInput
                 style={styles.chatTextInput}
-                placeholder="Ask in Hindi or English (e.g. Reliance me kya kare?)..."
+                placeholder="Ask in Hindi or English (e.g. Reliance me average kare ya wait?)..."
                 value={chatInput}
                 onChangeText={setChatInput}
                 onSubmitEditing={() => handleSendChatMessage()}
@@ -877,6 +1314,7 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
             </View>
           </View>
         )}
+
       </ScrollView>
 
 

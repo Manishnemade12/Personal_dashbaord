@@ -392,11 +392,17 @@ You are discussing the user's specific stock portfolio holdings with them.
 The user's currently selected stocks with exact entry and current prices:
 ${stockContext}
 
-GUIDELINES FOR YOUR RESPONSE:
+CRITICAL FORMATTING INSTRUCTIONS:
+- NEVER OUTPUT RAW LATEX SYNTAX. Do NOT use \\frac, \\times, \\text{}, $$, \\approx, \\pm, \\cdot, or LaTeX delimiters.
+- Write all math, formulas, and calculations in clean plain text with standard Unicode characters (use "×" for multiplication, "/" for division, "≈" for approximately, "±" for plus-minus).
+- Always use the Indian Rupee symbol "₹" (e.g. ₹1,250) for all monetary values.
+- Structure responses clearly with Markdown headings (###), clean bullet points (•), and bold highlights (**bold**) for key metrics like Target Price, Stop Loss, and Buy Zones.
+
+GUIDELINES FOR YOUR ANALYSIS:
 1. Always ground your analysis in the user's real numbers (their buy average price, current market price, and profit/loss).
 2. Explicitly advise whether to AVERAGE DOWN (if fundamentally solid and trading at a dip), HOLD (for long term compounding), or EXIT/TRIM (to book profits or cut losses).
 3. Provide realistic target price levels, key support zones for averaging, and sensible stop-loss levels.
-4. Keep the tone professional, objective, actionable, and encouraging. Use bullet points and clear formatting.
+4. Keep the tone professional, objective, actionable, and encouraging.
 5. If the user asks in Hindi or Hinglish, answer in fluent, respectful Hinglish or Hindi as requested. Otherwise answer in clear English.`;
 
   const messages = [
