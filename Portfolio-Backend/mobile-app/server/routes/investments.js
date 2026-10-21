@@ -4,6 +4,7 @@ const InvestmentHolding = require('../models/InvestmentHolding');
 const InvestmentTransaction = require('../models/InvestmentTransaction');
 const marketDataService = require('../services/marketDataService');
 const snapshotService = require('../services/snapshotService');
+const aiStockAnalyzerService = require('../services/aiStockAnalyzerService');
 
 // 1. GET /api/investments/holdings
 router.get('/holdings', async (req, res) => {
@@ -1077,12 +1078,54 @@ router.post('/snapshots/capture', async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Daily net worth snapshot captured successfully",
+      message: 'Daily net worth snapshot captured successfully',
       snapshot,
     });
   } catch (err) {
     console.error('[Snapshot Capture Error]', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// 11. AI STOCK ANALYZER (INDIVIDUAL GROK LLM CALLS + PORTFOLIO SYNTHESIS)
+// POST /api/investments/ai-analyzer
+// ==========================================
+router.post('/ai-analyzer', async (req, res) => {
+  try {
+    const userId = req.body.userId || 'admin';
+    const { stockIds = [], stocks = [] } = req.body;
+
+    let targetHoldings = [];
+
+    if (Array.isArray(stocks) && stocks.length > 0) {
+      targetHoldings = stocks;
+    } else if (Array.isArray(stockIds) && stockIds.length > 0) {
+      const raw = await InvestmentHolding.find({ _id: { $in: stockIds }, userId });
+      targetHoldings = await marketDataService.enrichHoldingsWithLiveData(raw, false);
+    } else {
+      // If neither specified, fetch all equity/stock holdings for user
+      const raw = await InvestmentHolding.find({
+        userId,
+        $or: [
+          { assetClass: 'Equity' },
+          { subCategory: { $regex: /stock|equity/i } },
+        ],
+      });
+      targetHoldings = await marketDataService.enrichHoldingsWithLiveData(raw, false);
+    }
+
+    if (targetHoldings.length === 0) {
+      return res.status(400).json({
+        error: 'No valid stocks found to analyze. Please select at least one stock.',
+      });
+    }
+
+    const result = await aiStockAnalyzerService.analyzeMultipleStocks(targetHoldings);
+    res.json(result);
+  } catch (err) {
+    console.error('[AI Stock Analyzer Route Error]', err);
+    res.status(500).json({ error: err.message || 'Failed to analyze stocks with AI.' });
   }
 });
 

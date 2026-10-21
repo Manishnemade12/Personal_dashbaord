@@ -25,8 +25,9 @@ export default function SidebarDrawer({
   const isInvestmentsActive = currentRoute === 'Investments';
   const isInvestmentAnalyticsActive = currentRoute === 'InvestmentAnalytics';
   const isPortfolioInsightsActive = currentRoute === 'PortfolioInsights';
+  const isAiStockAnalyzerActive = currentRoute === 'AiStockAnalyzer';
   const isInvestmentsGroupActive =
-    isInvestmentsActive || isInvestmentAnalyticsActive || isPortfolioInsightsActive;
+    isInvestmentsActive || isInvestmentAnalyticsActive || isPortfolioInsightsActive || isAiStockAnalyzerActive;
 
   const isBlogsActive = currentRoute === 'Blogs' || currentRoute === 'BlogForm';
   const isProjectsActive = currentRoute === 'Projects' || currentRoute === 'ProjectForm';
@@ -426,6 +427,43 @@ export default function SidebarDrawer({
                       }}
                     >
                       <Text style={{ fontSize: 8, fontWeight: '800', color: '#7e37d8' }}>NEW</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.subMenuItem,
+                    isAiStockAnalyzerActive && styles.subMenuItemActive,
+                  ]}
+                  onPress={() => handleNav('AiStockAnalyzer')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.subMenuIconWrap}>
+                    <Ionicons
+                      name="sparkles-outline"
+                      size={16}
+                      color={isAiStockAnalyzerActive ? '#7e37d8' : '#64748b'}
+                    />
+                  </View>
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text
+                      style={[
+                        styles.subMenuText,
+                        isAiStockAnalyzerActive && styles.subMenuTextActive,
+                      ]}
+                    >
+                      AI Stock Analyzer
+                    </Text>
+                    <View
+                      style={{
+                        backgroundColor: 'rgba(126, 55, 216, 0.15)',
+                        paddingHorizontal: 5,
+                        paddingVertical: 1,
+                        borderRadius: 4,
+                      }}
+                    >
+                      <Text style={{ fontSize: 8, fontWeight: '800', color: '#7e37d8' }}>AI</Text>
                     </View>
                   </View>
                 </TouchableOpacity>

@@ -33,6 +33,7 @@ import FinanceScreen from './src/screens/finance/FinanceScreen';
 import InvestmentScreen from './src/screens/finance/InvestmentScreen';
 import InvestmentAnalyticsScreen from './src/screens/finance/InvestmentAnalyticsScreen';
 import PortfolioInsightsScreen from './src/screens/finance/PortfolioInsightsScreen';
+import AiStockAnalyzerScreen from './src/screens/finance/AiStockAnalyzerScreen';
 import ApiManagementScreen from './src/screens/api/ApiManagementScreen';
 import ProjectApiScreen from './src/screens/api/ProjectApiScreen';
 import AiColdEmailScreen from './src/screens/ai/AiColdEmailScreen';
@@ -219,6 +220,9 @@ export default function App() {
 
       case 'PortfolioInsights':
         return <PortfolioInsightsScreen onNavigate={navigate} />;
+
+      case 'AiStockAnalyzer':
+        return <AiStockAnalyzerScreen onNavigate={navigate} />;
 
 
       case 'Blogs':
