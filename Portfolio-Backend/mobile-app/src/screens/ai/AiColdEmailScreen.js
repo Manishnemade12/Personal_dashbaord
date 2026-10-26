@@ -254,24 +254,30 @@ export default function AiColdEmailScreen({ onNavigate }) {
             reader.readAsDataURL(file);
           });
 
-          // 1. Upload file to Cloudinary
-          const uploadRes = await api.uploadImage(base64Data, 'portfolio/resumes');
-          const uploadedUrl = uploadRes?.secure_url || uploadRes?.url;
-
-          // 2. Run OCR to extract text from PDF or Image
+          // 1. Run high-performance local extraction directly on file base64Data
           let extractedText = '';
           try {
             const ocrRes = await api.extractTextFromImage({
-              image: uploadedUrl || base64Data,
+              image: base64Data,
               fileType: isPdf ? 'pdf' : 'image',
+              fileName: file.name,
             });
-            extractedText = ocrRes?.text || '';
+            extractedText = (ocrRes?.text || '').trim();
           } catch (ocrErr) {
-            console.warn('OCR error on resume:', ocrErr.message);
+            console.warn('Text extraction error on resume:', ocrErr.message);
+          }
+
+          // 2. Also backup / upload file to Cloudinary in background
+          let uploadedUrl = '';
+          try {
+            const uploadRes = await api.uploadImage(base64Data, 'portfolio/resumes');
+            uploadedUrl = uploadRes?.secure_url || uploadRes?.url || '';
+          } catch (cloudErr) {
+            console.warn('Cloudinary upload warning:', cloudErr.message);
           }
 
           if (!extractedText) {
-            // If OCR returns empty, open modal so user can paste text directly
+            // If OCR returns empty, open modal so user can review or paste text directly
             setModalResumeFileName(file.name);
             setModalResumeText('');
             setShowResumeModal(true);
@@ -424,25 +430,31 @@ export default function AiColdEmailScreen({ onNavigate }) {
             reader.readAsDataURL(file);
           });
 
-          // Upload to Cloudinary
-          const uploadRes = await api.uploadImage(base64Data, 'portfolio/job-screenshots');
-          const uploadedUrl = uploadRes?.secure_url || uploadRes?.url;
-
-          if (uploadedUrl) {
-            setImageUrl(uploadedUrl);
-            showToast('✓ Screenshot uploaded! Scanning text with OCR...');
-
-            // Perform OCR
-            try {
-              const ocrRes = await api.extractTextFromImage({ image: uploadedUrl });
-              if (ocrRes?.text) {
-                setJobDescription(ocrRes.text);
-                setOcrSuccess(true);
-                showToast('✓ Job details extracted from screenshot!');
-              }
-            } catch (ocrErr) {
-              console.warn('OCR error on screenshot:', ocrErr.message);
+          // 1. Extract text directly from screenshot base64Data
+          try {
+            const ocrRes = await api.extractTextFromImage({
+              image: base64Data,
+              fileType: 'image',
+              fileName: file.name,
+            });
+            if (ocrRes?.text) {
+              setJobDescription(ocrRes.text);
+              setOcrSuccess(true);
+              showToast('✓ Job details extracted from screenshot!');
             }
+          } catch (ocrErr) {
+            console.warn('OCR error on screenshot:', ocrErr.message);
+          }
+
+          // 2. Upload to Cloudinary for preview image
+          try {
+            const uploadRes = await api.uploadImage(base64Data, 'portfolio/job-screenshots');
+            const uploadedUrl = uploadRes?.secure_url || uploadRes?.url;
+            if (uploadedUrl) {
+              setImageUrl(uploadedUrl);
+            }
+          } catch (uploadErr) {
+            console.warn('Screenshot upload warning:', uploadErr.message);
           }
         } catch (err) {
           Alert.alert('Upload Error', err.message || 'Failed to upload screenshot.');
@@ -588,6 +600,68 @@ export default function AiColdEmailScreen({ onNavigate }) {
     if (draft.role && !role) setRole(draft.role);
     showToast('Loaded draft into editor.');
     scrollRef.current?.scrollToEnd({ animated: true });
+  };
+
+  // Delete a specific email draft from this conversation
+  const handleDeleteDraft = (draftId, draftSubject) => {
+    if (!activeConversationId || !draftId) return;
+
+    Alert.alert(
+      'Delete Email Draft',
+      `Are you sure you want to delete "${draftSubject || 'this email'}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await api.deleteAiConversationEmail(activeConversationId, draftId);
+              if (res?.success && res.conversation) {
+                setActiveConversation(res.conversation);
+                setConversations((prev) =>
+                  prev.map((c) =>
+                    c._id === activeConversationId
+                      ? { ...c, emailCount: res.conversation.emails?.length || 0 }
+                      : c
+                  )
+                );
+
+                // If currently viewing the deleted draft, switch to the latest remaining or clear
+                if (generatedResult?._id === draftId) {
+                  const remainingDrafts = res.conversation.emails || [];
+                  if (remainingDrafts.length > 0) {
+                    const nextDraft = remainingDrafts[0];
+                    setGeneratedResult(nextDraft);
+                    setEditableSubject(nextDraft.subject || '');
+                    setEditableBody(nextDraft.emailBody || '');
+                    setEditableRecipient(nextDraft.recipient || '');
+                  } else {
+                    setGeneratedResult(null);
+                    setEditableSubject('');
+                    setEditableBody('');
+                    setEditableRecipient('');
+                  }
+                }
+                showToast('✓ Email draft deleted.');
+              }
+            } catch (err) {
+              Alert.alert('Error', err.message || 'Could not delete draft.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Format Date and Time for draft items
+  const formatDraftDateTime = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const datePart = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    const timePart = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return `${datePart} • ${timePart}`;
   };
 
   const hasAttachedResume = !!(
@@ -1188,7 +1262,7 @@ export default function AiColdEmailScreen({ onNavigate }) {
         {/* ============================================================ */}
         {/* 5. PAST EMAILS IN THIS CONVERSATION                         */}
         {/* ============================================================ */}
-        {activeConversation?.emails && activeConversation.emails.length > 1 && (
+        {activeConversation?.emails && activeConversation.emails.length > 0 && (
           <View style={styles.historySection}>
             <View style={styles.historyHeader}>
               <Text style={styles.historyTitle}>
@@ -1203,7 +1277,7 @@ export default function AiColdEmailScreen({ onNavigate }) {
                     {draft.subject || 'Cold Application Email'}
                   </Text>
                   <Text style={styles.draftDate}>
-                    {draft.createdAt ? new Date(draft.createdAt).toLocaleDateString() : ''}
+                    {formatDraftDateTime(draft.createdAt)}
                   </Text>
                 </View>
                 <Text numberOfLines={2} style={styles.draftSnippet}>
@@ -1217,6 +1291,7 @@ export default function AiColdEmailScreen({ onNavigate }) {
                     <Ionicons name="create-outline" size={12} color={colors.primary} />
                     <Text style={styles.draftActionText}>Load in Editor</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.draftActionBtn}
                     onPress={() =>
@@ -1228,6 +1303,16 @@ export default function AiColdEmailScreen({ onNavigate }) {
                   >
                     <Ionicons name="copy-outline" size={12} color={colors.primary} />
                     <Text style={styles.draftActionText}>Copy</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.draftActionBtn, { backgroundColor: '#fee2e2' }]}
+                    onPress={() => handleDeleteDraft(draft._id, draft.subject)}
+                  >
+                    <Ionicons name="trash-outline" size={12} color="#dc2626" />
+                    <Text style={[styles.draftActionText, { color: '#dc2626', fontWeight: '700' }]}>
+                      Delete
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>

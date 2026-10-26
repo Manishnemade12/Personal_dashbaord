@@ -260,6 +260,7 @@ export const api = {
   updateAiConversationResume: (id, data) => request(`/ai/conversations/${id}/resume`, { method: 'PUT', body: data }),
   generateAiColdEmailForConversation: (id, data) => request(`/ai/conversations/${id}/generate`, { method: 'POST', body: data }),
   deleteAiConversation: (id) => request(`/ai/conversations/${id}`, { method: 'DELETE' }),
+  deleteAiConversationEmail: (id, emailId) => request(`/ai/conversations/${id}/emails/${emailId}`, { method: 'DELETE' }),
 
   // Workout & Diet Management (/api/diet/*)
   ensureDietCalendar: () => request('/diet/ensure-calendar'),

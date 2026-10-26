@@ -720,8 +720,9 @@ export default StyleSheet.create({
     marginRight: 6,
   },
   draftDate: {
-    fontSize: 10,
-    color: colors.textMuted,
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
   },
   draftSnippet: {
     fontSize: 11,
