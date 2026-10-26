@@ -10,6 +10,7 @@ import TodaysDietPlanTab from './components/TodaysDietPlanTab';
 import DietLibraryTab from './components/DietLibraryTab';
 import DietItemModal from './components/DietItemModal';
 import ScheduleMealModal from './components/ScheduleMealModal';
+import IngredientBreakdownModal from './components/IngredientBreakdownModal';
 import styles from './styles/workoutStyles';
 import api from '../../api/client';
 
@@ -41,6 +42,9 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
 
   const [scheduleModalVisible, setScheduleModalVisible] = useState(false);
   const [prefillDietItem, setPrefillDietItem] = useState(null);
+
+  const [breakdownModalVisible, setBreakdownModalVisible] = useState(false);
+  const [breakdownDietItem, setBreakdownDietItem] = useState(null);
 
   useEffect(() => {
     initScreen();
@@ -296,6 +300,10 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
               setPrefillDietItem(item);
               setScheduleModalVisible(true);
             }}
+            onOpenBreakdown={(item) => {
+              setBreakdownDietItem(item);
+              setBreakdownModalVisible(true);
+            }}
           />
         )}
       </View>
@@ -320,6 +328,17 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
         onScheduleSuccess={() => {
           loadDailyPlan(selectedDateStr);
           setActiveTab('plan');
+        }}
+      />
+
+      {/* Modal 3: Ingredient Breakdown Modal ("i" button) */}
+      <IngredientBreakdownModal
+        visible={breakdownModalVisible}
+        onClose={() => setBreakdownModalVisible(false)}
+        item={breakdownDietItem}
+        onScheduleMeal={(item) => {
+          setPrefillDietItem(item);
+          setScheduleModalVisible(true);
         }}
       />
     </View>

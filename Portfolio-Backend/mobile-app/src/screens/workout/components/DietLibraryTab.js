@@ -27,6 +27,7 @@ export default function DietLibraryTab({
   onOpenEditModal,
   onDeleteDietItem,
   onScheduleItem,
+  onOpenBreakdown,
 }) {
   const [selectedCategory, setSelectedCategory] = React.useState('All');
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -140,7 +141,28 @@ export default function DietLibraryTab({
             <View key={item._id} style={styles.dietItemCard}>
               {/* Card Header */}
               <View style={styles.dietCardHeader}>
-                <Text style={styles.dietNameText} numberOfLines={1}>{item.name}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                  <Text style={styles.dietNameText} numberOfLines={1}>{item.name}</Text>
+                  <TouchableOpacity
+                    style={{
+                      marginLeft: 6,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 10,
+                      backgroundColor: '#f3e8ff',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 2,
+                    }}
+                    onPress={() => onOpenBreakdown && onOpenBreakdown(item)}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    title="View Ingredient Breakdown"
+                  >
+                    <Ionicons name="information-circle" size={13} color="#7e37d8" />
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#7e37d8' }}>i</Text>
+                  </TouchableOpacity>
+                </View>
                 <View style={styles.categoryBadge}>
                   <Text style={styles.categoryBadgeText}>{item.category}</Text>
                 </View>
@@ -148,11 +170,16 @@ export default function DietLibraryTab({
 
               {/* Macro Nutrients Chips */}
               <View style={styles.macroBadgeRow}>
-                <View style={[styles.macroChip, styles.calChip]}>
+                <TouchableOpacity
+                  style={[styles.macroChip, styles.calChip, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}
+                  onPress={() => onOpenBreakdown && onOpenBreakdown(item)}
+                  activeOpacity={0.7}
+                >
                   <Text style={styles.calChipText}>
                     ⚡ {item.nutrients?.calories || 0} kcal
                   </Text>
-                </View>
+                  <Ionicons name="information-circle-outline" size={12} color="#7e37d8" />
+                </TouchableOpacity>
                 <View style={[styles.macroChip, styles.proChip]}>
                   <Text style={styles.proChipText}>
                     💪 {item.nutrients?.protein || 0}g Pro
@@ -210,6 +237,14 @@ export default function DietLibraryTab({
                 </TouchableOpacity>
 
                 <View style={styles.cardRightActions}>
+                  <TouchableOpacity
+                    style={[styles.cardMiniActionBtn, { backgroundColor: '#f3e8ff' }]}
+                    onPress={() => onOpenBreakdown && onOpenBreakdown(item)}
+                    activeOpacity={0.7}
+                    title="View Ingredient Breakdown"
+                  >
+                    <Ionicons name="information-circle" size={14} color="#7e37d8" />
+                  </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.cardMiniActionBtn}
                     onPress={() => onOpenEditModal(item)}

@@ -273,6 +273,14 @@ export const api = {
   updateDietItem: (id, data) => request(`/diet/items/${id}`, { method: 'PUT', body: data }),
   deleteDietItem: (id) => request(`/diet/items/${id}`, { method: 'DELETE' }),
   calculateDietMacros: (data) => request('/diet/calculate-macros', { method: 'POST', body: data }),
+
+  // AI Stock Analyzer & Interactive Chat (/api/investments/*)
+  analyzeStocksWithAi: (data) => request('/investments/ai-analyze', { method: 'POST', body: data }),
+  chatWithStockAi: (data) => request('/investments/ai-chat', { method: 'POST', body: data }),
+  getStockChatSessions: () => request('/investments/ai-chat/sessions'),
+  getStockChatSession: (id) => request(`/investments/ai-chat/sessions/${id}`),
+  saveStockChatSession: (data) => request('/investments/ai-chat/sessions', { method: 'POST', body: data }),
+  deleteStockChatSession: (id) => request(`/investments/ai-chat/sessions/${id}`, { method: 'DELETE' }),
 };
 
 export default api;

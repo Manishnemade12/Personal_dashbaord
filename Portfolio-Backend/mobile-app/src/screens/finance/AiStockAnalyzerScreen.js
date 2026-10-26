@@ -14,6 +14,7 @@ import { colors } from '../../styles/theme';
 import { api } from '../../api/client';
 import { ScreenHeader } from '../../components/common';
 import styles from './styles/aiStockAnalyzerStyles';
+import StockChatHistoryModal from './components/StockChatHistoryModal';
 
 /**
  * Sanitize raw LaTeX math syntax into clean, standard Unicode symbols and Indian Rupee notation
@@ -424,7 +425,14 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
   // Active Tab ('strategy' | 'chat')
   const [activeTab, setActiveTab] = useState('strategy');
 
-  // AI Stock Chat State
+  // AI Stock Chat State & History Persistence
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [chatSessions, setChatSessions] = useState([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+  const [selectedChatStockSymbol, setSelectedChatStockSymbol] = useState('ALL');
+  const [activeStockAnalyses, setActiveStockAnalyses] = useState([]);
+
   const [chatInput, setChatInput] = useState('');
   const [sendingChat, setSendingChat] = useState(false);
   const [chatMessages, setChatMessages] = useState([
@@ -442,6 +450,105 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2800);
+  };
+
+  // Load Saved Chat Sessions from DB
+  const loadChatSessions = async () => {
+    setLoadingSessions(true);
+    try {
+      const list = await api.getStockChatSessions();
+      setChatSessions(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.warn('Failed to load stock chat sessions:', err.message);
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
+
+  // Auto-Save Chat Session to DB
+  const saveCurrentSession = async (msgs, stocks, analyses) => {
+    if (!msgs || msgs.length <= 1) return;
+    try {
+      const res = await api.saveStockChatSession({
+        sessionId: currentSessionId,
+        selectedStocks: stocks,
+        messages: msgs,
+        stockAnalyses: analyses,
+      });
+      if (res?._id && !currentSessionId) {
+        setCurrentSessionId(res._id);
+      }
+    } catch (e) {
+      console.warn('Could not auto-save chat session:', e.message);
+    }
+  };
+
+  // Restore Saved Chat Session
+  const handleSelectSession = async (sess) => {
+    try {
+      const full = await api.getStockChatSession(sess._id);
+      if (full) {
+        setCurrentSessionId(full._id);
+        if (Array.isArray(full.messages) && full.messages.length > 0) {
+          setChatMessages(full.messages);
+        }
+        if (Array.isArray(full.stockAnalyses)) {
+          setActiveStockAnalyses(full.stockAnalyses);
+        }
+        if (Array.isArray(full.selectedStocks) && full.selectedStocks.length > 0) {
+          const stockIds = full.selectedStocks.map((s) => s.symbolOrCode);
+          const matchedIds = allHoldings
+            .filter((h) => stockIds.includes(h.symbolOrCode))
+            .map((h) => h._id || h.symbolOrCode);
+          if (matchedIds.length > 0) {
+            setSelectedStockIds(matchedIds);
+          }
+        }
+        setSelectedChatStockSymbol('ALL');
+        setActiveTab('chat');
+        showToast(`✓ Restored session: ${full.title}`);
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Could not restore chat session.');
+    }
+  };
+
+  // Delete Chat Session
+  const handleDeleteSession = async (sessId) => {
+    try {
+      await api.deleteStockChatSession(sessId);
+      setChatSessions((prev) => prev.filter((s) => s._id !== sessId));
+      if (currentSessionId === sessId) {
+        setCurrentSessionId(null);
+        setChatMessages([
+          {
+            id: 'welcome',
+            sender: 'ai',
+            text: 'Session deleted. Started a new chat. Ask me anything about your stocks!',
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      }
+      showToast('✓ Chat session deleted');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to delete chat session.');
+    }
+  };
+
+  // Start New Chat
+  const handleNewChat = () => {
+    setCurrentSessionId(null);
+    setChatMessages([
+      {
+        id: 'welcome',
+        sender: 'ai',
+        text: 'Namaste! I am your AI Investment CIO & Equity Advisor. Ask me anything about your selected stocks — whether to average down at current prices, hold for compounding, or exit/trim. I evaluate using your actual buy price and live market trends.',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+    setSelectedChatStockSymbol('ALL');
+    setActiveTab('chat');
+    showToast('✓ Started fresh stock chat');
   };
 
   // 1. Load User's Stock Holdings
@@ -481,6 +588,11 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
         s.symbolOrCode?.toLowerCase().includes(q)
     );
   }, [allHoldings, searchFilter]);
+
+  // Selected Stock Objects Memo
+  const chosenStockObjects = useMemo(() => {
+    return allHoldings.filter((s) => selectedStockIds.includes(s._id || s.symbolOrCode));
+  }, [allHoldings, selectedStockIds]);
 
   // Toggle Single Stock Selection
   const handleToggleStock = (stockId) => {
@@ -527,6 +639,7 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
       if (res?.success && res.stocks) {
         setAnalysisResult(res);
         setResultFilter('ALL');
+        setActiveStockAnalyses(res.stocks);
         showToast(`✨ Analyzed ${res.stocks.length} stocks with Grok AI!`);
 
         // Smooth scroll to results
@@ -583,7 +696,18 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
           text: res.answer,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
-        setChatMessages((prev) => [...prev, aiMsg]);
+        const updatedMsgs = [...chatMessages, userMsg, aiMsg];
+        setChatMessages(updatedMsgs);
+
+        const newAnalyses = (res.stockAnalyses && res.stockAnalyses.length > 0)
+          ? res.stockAnalyses
+          : activeStockAnalyses;
+        if (res.stockAnalyses && res.stockAnalyses.length > 0) {
+          setActiveStockAnalyses(res.stockAnalyses);
+        }
+
+        saveCurrentSession(updatedMsgs, chosenStockObjects, newAnalyses);
+
         setTimeout(() => {
           chatScrollRef.current?.scrollToEnd({ animated: true });
         }, 150);
@@ -672,39 +796,82 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
           </Text>
         </View>
 
-        {/* Tab Switcher: Strategy & Verdicts vs AI Stock Chat */}
-        <View style={styles.tabSwitcher}>
-          <TouchableOpacity
-            style={[styles.tabBtn, activeTab === 'strategy' && styles.tabBtnActive]}
-            onPress={() => setActiveTab('strategy')}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="analytics"
-              size={15}
-              color={activeTab === 'strategy' ? '#7e37d8' : '#64748b'}
-            />
-            <Text
-              style={[styles.tabBtnText, activeTab === 'strategy' && styles.tabBtnTextActive]}
+        {/* Tab Switcher: Strategy & Verdicts vs AI Stock Chat + History Button */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <View style={[styles.tabSwitcher, { flex: 1, marginBottom: 0, marginRight: 8 }]}>
+            <TouchableOpacity
+              style={[styles.tabBtn, activeTab === 'strategy' && styles.tabBtnActive]}
+              onPress={() => setActiveTab('strategy')}
+              activeOpacity={0.8}
             >
-              Strategy & Verdicts
-            </Text>
-          </TouchableOpacity>
+              <Ionicons
+                name="analytics"
+                size={14}
+                color={activeTab === 'strategy' ? '#7e37d8' : '#64748b'}
+              />
+              <Text
+                style={[styles.tabBtnText, activeTab === 'strategy' && styles.tabBtnTextActive]}
+              >
+                Strategy
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tabBtn, activeTab === 'chat' && styles.tabBtnActive]}
-            onPress={() => setActiveTab('chat')}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="chatbubbles"
-              size={15}
-              color={activeTab === 'chat' ? '#7e37d8' : '#64748b'}
-            />
-            <Text style={[styles.tabBtnText, activeTab === 'chat' && styles.tabBtnTextActive]}>
-              AI Stock Chat
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabBtn, activeTab === 'chat' && styles.tabBtnActive]}
+              onPress={() => setActiveTab('chat')}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="chatbubbles"
+                size={14}
+                color={activeTab === 'chat' ? '#7e37d8' : '#64748b'}
+              />
+              <Text style={[styles.tabBtnText, activeTab === 'chat' && styles.tabBtnTextActive]}>
+                AI Stock Chat
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#ffffff',
+                paddingHorizontal: 9,
+                paddingVertical: 7,
+                borderRadius: 10,
+                gap: 4,
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
+              }}
+              onPress={() => {
+                loadChatSessions();
+                setHistoryModalVisible(true);
+              }}
+              activeOpacity={0.7}
+              title="View Past Saved Chats"
+            >
+              <Ionicons name="time-outline" size={14} color="#7e37d8" />
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569' }}>History</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 10,
+                backgroundColor: '#f3e8ff',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onPress={handleNewChat}
+              activeOpacity={0.7}
+              title="Start New Chat"
+            >
+              <Ionicons name="add" size={18} color="#7e37d8" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ============================================================ */}
@@ -1228,6 +1395,135 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
               </View>
             </View>
 
+            {/* Multi-Stock Switcher Dropdown & Intelligence Card */}
+            {chosenStockObjects.length > 0 && (
+              <View style={{ marginHorizontal: 12, marginBottom: 12, backgroundColor: '#f8fafc', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="swap-horizontal" size={14} color="#7e37d8" />
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155' }}>
+                      Stock Switcher (Quick Intelligence):
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 10, color: '#64748b' }}>
+                    {selectedChatStockSymbol === 'ALL' ? 'Showing All Stocks' : `Active: ${selectedChatStockSymbol}`}
+                  </Text>
+                </View>
+
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                  <TouchableOpacity
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                      borderRadius: 8,
+                      backgroundColor: selectedChatStockSymbol === 'ALL' ? '#7e37d8' : '#ffffff',
+                      borderWidth: 1,
+                      borderColor: selectedChatStockSymbol === 'ALL' ? '#7e37d8' : '#cbd5e1',
+                    }}
+                    onPress={() => setSelectedChatStockSymbol('ALL')}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: selectedChatStockSymbol === 'ALL' ? '#ffffff' : '#475569' }}>
+                      📊 All ({chosenStockObjects.length})
+                    </Text>
+                  </TouchableOpacity>
+
+                  {chosenStockObjects.map((stk) => {
+                    const isSel = selectedChatStockSymbol === stk.symbolOrCode;
+                    const analysis = activeStockAnalyses.find((a) => a.symbolOrCode === stk.symbolOrCode);
+                    const icon = analysis?.verdict === 'AVERAGE_DOWN' ? '🟢' : analysis?.verdict === 'EXIT_OR_TRIM' ? '🔴' : '🔵';
+                    return (
+                      <TouchableOpacity
+                        key={stk._id || stk.symbolOrCode}
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 5,
+                          borderRadius: 8,
+                          backgroundColor: isSel ? '#7e37d8' : '#ffffff',
+                          borderWidth: 1,
+                          borderColor: isSel ? '#7e37d8' : '#cbd5e1',
+                        }}
+                        onPress={() => setSelectedChatStockSymbol(stk.symbolOrCode)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: isSel ? '#ffffff' : '#334155' }}>
+                          {icon} {stk.symbolOrCode}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                {/* Stock Intelligence Card when a single stock is selected */}
+                {selectedChatStockSymbol !== 'ALL' && (() => {
+                  const targetStock = chosenStockObjects.find((s) => s.symbolOrCode === selectedChatStockSymbol);
+                  if (!targetStock) return null;
+                  const buyPrice = Number(targetStock.averageBuyPrice || targetStock.buyPrice || 100);
+                  const curPrice = Number(targetStock.latestPrice || buyPrice);
+                  const pnlPct = buyPrice > 0 ? (((curPrice - buyPrice) / buyPrice) * 100).toFixed(1) : '0';
+                  const isLoss = Number(pnlPct) < 0;
+
+                  const analysis = activeStockAnalyses.find((a) => a.symbolOrCode === selectedChatStockSymbol);
+                  const targetP = analysis?.targetPrice || Math.round(curPrice * 1.15);
+                  const stopL = analysis?.stopLoss || Math.round(curPrice * 0.90);
+                  const buyZ = analysis?.buyZone || `₹${Math.round(curPrice * 0.95)} - ₹${Math.round(curPrice * 0.98)}`;
+                  const verdict = analysis?.verdictBadge || (isLoss ? '🟢 Average Down & Accumulate' : '🔵 Hold Long Term');
+
+                  return (
+                    <View style={{ marginTop: 10, backgroundColor: '#ffffff', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <View style={{ flex: 1, marginRight: 6 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '800', color: '#0f172a' }} numberOfLines={1}>
+                            {targetStock.instrumentName || targetStock.symbolOrCode} ({targetStock.symbolOrCode})
+                          </Text>
+                          <Text style={{ fontSize: 10, color: '#64748b' }}>
+                            Cost: ₹{buyPrice} • CMP: ₹{curPrice} ({!isLoss ? '+' : ''}{pnlPct}%)
+                          </Text>
+                        </View>
+                        <View style={{ backgroundColor: isLoss ? '#ecfdf5' : '#eff6ff', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: isLoss ? '#047857' : '#1d4ed8' }}>
+                            {verdict}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8 }}>
+                        <View style={{ flex: 1, backgroundColor: '#f0fdf4', padding: 6, borderRadius: 6, alignItems: 'center' }}>
+                          <Text style={{ fontSize: 9, color: '#166534', fontWeight: '600' }}>Target</Text>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#15803d' }}>₹{targetP}</Text>
+                        </View>
+                        <View style={{ flex: 1, backgroundColor: '#eff6ff', padding: 6, borderRadius: 6, alignItems: 'center' }}>
+                          <Text style={{ fontSize: 9, color: '#1e40af', fontWeight: '600' }}>Buy Zone</Text>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#1d4ed8' }}>{buyZ}</Text>
+                        </View>
+                        <View style={{ flex: 1, backgroundColor: '#fef2f2', padding: 6, borderRadius: 6, alignItems: 'center' }}>
+                          <Text style={{ fontSize: 9, color: '#991b1b', fontWeight: '600' }}>Stop Loss</Text>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#b91c1c' }}>₹{stopL}</Text>
+                        </View>
+                      </View>
+
+                      <View style={{ flexDirection: 'row', gap: 6 }}>
+                        <TouchableOpacity
+                          style={{ flex: 1, backgroundColor: '#f3e8ff', paddingVertical: 6, borderRadius: 6, alignItems: 'center' }}
+                          onPress={() => handleSendChatMessage(`Should I average down ${selectedChatStockSymbol} at current price of ₹${curPrice}?`)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={{ fontSize: 10, fontWeight: '600', color: '#7e37d8' }}>💬 Ask to Average</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{ flex: 1, backgroundColor: '#f1f5f9', paddingVertical: 6, borderRadius: 6, alignItems: 'center' }}
+                          onPress={() => handleSendChatMessage(`What is the 1-2 year target price and technical outlook for ${selectedChatStockSymbol}?`)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={{ fontSize: 10, fontWeight: '600', color: '#334155' }}>🎯 Ask Targets</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })()}
+              </View>
+            )}
+
             {/* Quick Prompts */}
             <Text style={styles.chatQuickPromptsTitle}>Quick Questions to Ask AI:</Text>
             <ScrollView
@@ -1325,6 +1621,18 @@ export default function AiStockAnalyzerScreen({ onNavigate }) {
           <Text style={styles.toastText}>{toastMessage}</Text>
         </View>
       )}
+
+      {/* Stock Chat History Modal */}
+      <StockChatHistoryModal
+        visible={historyModalVisible}
+        onClose={() => setHistoryModalVisible(false)}
+        sessions={chatSessions}
+        loading={loadingSessions}
+        currentSessionId={currentSessionId}
+        onSelectSession={handleSelectSession}
+        onDeleteSession={handleDeleteSession}
+        onNewChat={handleNewChat}
+      />
     </View>
   );
 }

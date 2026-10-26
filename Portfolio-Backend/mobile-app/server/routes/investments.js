@@ -6,6 +6,7 @@ const marketDataService = require('../services/marketDataService');
 const snapshotService = require('../services/snapshotService');
 const aiStockAnalyzerService = require('../services/aiStockAnalyzerService');
 const portfolioOcrService = require('../services/portfolioOcrService');
+const AiStockChat = require('../models/AiStockChat');
 
 // 1. GET /api/investments/holdings
 router.get('/holdings', async (req, res) => {
@@ -988,5 +989,106 @@ router.post('/ai-chat', async (req, res) => {
   }
 });
 
+// ==========================================
+// 13. AI STOCK CHAT HISTORY SESSIONS
+// ==========================================
+
+// GET /api/investments/ai-chat/sessions (List sessions with date and time)
+router.get('/ai-chat/sessions', async (req, res) => {
+  try {
+    const userId = req.query.userId || 'admin';
+    const sessions = await AiStockChat.find({ userId })
+      .select('title selectedStocks createdAt updatedAt messages')
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const formatted = sessions.map((s) => ({
+      _id: s._id,
+      title: s.title,
+      selectedStocks: s.selectedStocks || [],
+      messageCount: s.messages ? s.messages.length : 0,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    }));
+
+    res.json(formatted);
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to fetch chat sessions' });
+  }
+});
+
+// GET /api/investments/ai-chat/sessions/:id (Get full session details)
+router.get('/ai-chat/sessions/:id', async (req, res) => {
+  try {
+    const session = await AiStockChat.findById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ error: 'Chat session not found' });
+    }
+    res.json(session);
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to fetch chat session' });
+  }
+});
+
+// POST /api/investments/ai-chat/sessions (Save or update chat session)
+router.post('/ai-chat/sessions', async (req, res) => {
+  try {
+    const { sessionId, title, selectedStocks = [], messages = [], stockAnalyses = [] } = req.body;
+    const userId = req.body.userId || 'admin';
+
+    let displayTitle = title;
+    if (!displayTitle || !displayTitle.trim()) {
+      if (selectedStocks.length > 0) {
+        displayTitle = selectedStocks.map((s) => s.symbolOrCode || s.instrumentName).join(', ') + ' Analysis';
+      } else {
+        displayTitle = 'Stock Portfolio Chat';
+      }
+    }
+
+    let session;
+    if (sessionId) {
+      session = await AiStockChat.findByIdAndUpdate(
+        sessionId,
+        {
+          title: displayTitle.trim(),
+          selectedStocks,
+          messages,
+          stockAnalyses,
+          updatedAt: new Date(),
+        },
+        { new: true }
+      );
+    }
+
+    if (!session) {
+      session = await AiStockChat.create({
+        userId,
+        title: displayTitle.trim(),
+        selectedStocks,
+        messages,
+        stockAnalyses,
+      });
+    }
+
+    res.status(201).json(session);
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to save chat session' });
+  }
+});
+
+// DELETE /api/investments/ai-chat/sessions/:id (Delete chat session)
+router.delete('/ai-chat/sessions/:id', async (req, res) => {
+  try {
+    const deleted = await AiStockChat.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Chat session not found' });
+    }
+    res.json({ success: true, message: 'Chat session deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to delete chat session' });
+  }
+});
+
 module.exports = router;
+
 

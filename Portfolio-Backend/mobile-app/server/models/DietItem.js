@@ -9,6 +9,10 @@ const IngredientSchema = new mongoose.Schema(
       enum: ['tablespoon', 'teaspoon', 'gram', 'ml', 'scoop', 'cup', 'piece'],
       default: 'gram',
     },
+    calories: { type: Number, default: 0 },
+    protein: { type: Number, default: 0 },
+    carbs: { type: Number, default: 0 },
+    fats: { type: Number, default: 0 },
   },
   { _id: false }
 );

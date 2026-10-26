@@ -307,55 +307,59 @@ async function analyzeMultipleStocks(stocksList) {
 
 /**
  * Fallback AI Chat Generator when Groq LLM API is unavailable
+ * Evaluates ALL selected stocks simultaneously with target prices, stop-losses, and portfolio rebalancing
  */
 function generateChatFallback(question, selectedStocks = []) {
   if (!Array.isArray(selectedStocks) || selectedStocks.length === 0) {
-    return `### 💡 Portfolio Strategy Overview
+    return {
+      text: `### 💡 Portfolio Strategy Overview
 You currently do not have any specific stock selected for this query. 
 To get a precise recommendation on whether to **Average Down**, **Hold Long Term**, or **Exit/Trim**, select one or more stocks from your list above.
 
 **Key Disciplines:**
 1. **Average Down Only Quality**: Stagger accumulation in 2-3 tranches when fundamentally sound stocks drop 8-15% from your buy average.
 2. **Hold Compounding Leaders**: Give high-ROCE compounders at least 2-3 years to compound earnings.
-3. **Trim at Overextension**: When a holding crosses 30-40% quick gains or tests crucial technical resistance, booking 30-50% profit to protect capital is prudent.`;
+3. **Trim at Overextension**: When a holding crosses 30-40% quick gains or tests crucial technical resistance, booking 30-50% profit to protect capital is prudent.`,
+      stockAnalyses: [],
+    };
   }
 
-  const s = selectedStocks[0];
-  const buy = Number(s.averageBuyPrice || s.buyPrice || 100);
-  const cur = Number(s.latestPrice || buy);
-  const pnlPct = buy > 0 ? (((cur - buy) / buy) * 100).toFixed(1) : '0';
-  const name = s.instrumentName || s.symbolOrCode;
-  const isLoss = Number(pnlPct) < 0;
+  const stockAnalyses = selectedStocks.map((s) => generateSmartStockFallback(s));
 
-  let advice = '';
-  if (Number(pnlPct) < -8) {
-    advice = `### 🟢 Average Down Thesis for ${name} (${s.symbolOrCode})
-- **Your Buy Average:** ₹${buy}
-- **Current Price:** ₹${cur} (${pnlPct}%)
-- **Recommendation:** **Average Down / Accumulate**
-- **Action Plan:** The stock is trading at an attractive ${Math.abs(Number(pnlPct))}% discount to your acquisition cost. Allocate 40% of planned fresh capital now around ₹${Math.round(cur * 0.97)} - ₹${Math.round(cur)}, and keep remaining 60% if it tests deeper support near ₹${Math.round(cur * 0.92)}.
-- **Target Price:** ₹${Math.round(buy * 1.15)} (1-2 Year horizon)`;
-  } else if (Number(pnlPct) > 25) {
-    advice = `### 🔴 Exit / Profit Booking Thesis for ${name} (${s.symbolOrCode})
-- **Your Buy Average:** ₹${buy}
-- **Current Price:** ₹${cur} (+${pnlPct}%)
-- **Recommendation:** **Trim / Book Partial Profit**
-- **Action Plan:** You are sitting on a solid gain of ${pnlPct}%. Consider booking profit on 30-50% of your position at current levels (₹${cur}) to lock in gains. Place a trailing stop-loss on the remaining quantity at ₹${Math.round(cur * 0.93)} to ride further momentum.
-- **Next Target:** ₹${Math.round(cur * 1.10)}`;
-  } else {
-    advice = `### 🔵 Hold Long Term Thesis for ${name} (${s.symbolOrCode})
-- **Your Buy Average:** ₹${buy}
-- **Current Price:** ₹${cur} (${Number(pnlPct) >= 0 ? '+' : ''}${pnlPct}%)
-- **Recommendation:** **Hold Long Term**
-- **Action Plan:** The stock is trading comfortably near your cost basis. Company fundamentals and industry tailwinds remain supportive. Maintain your position and monitor quarterly earnings and volume breakouts.
-- **Key Support:** ₹${Math.round(cur * 0.91)} | **Target:** ₹${Math.round(cur * 1.20)}`;
+  const sections = stockAnalyses.map((item, idx) => {
+    const buy = item.averageBuyPrice;
+    const cur = item.latestPrice;
+    const pnlPct = Number(item.pnlPercent || 0).toFixed(1);
+    const sign = Number(pnlPct) >= 0 ? '+' : '';
+
+    return `### [Stock ${idx + 1}] ${item.instrumentName} (${item.symbolOrCode}) — ${item.verdictBadge}
+• **Your Cost Basis:** ₹${buy} | **Current Price:** ₹${cur} (${sign}${pnlPct}%)
+• **Target Price:** ₹${item.targetPrice} | **Stop Loss:** ₹${item.stopLoss}
+• **Accumulation Zone:** ${item.buyZone}
+• **Conviction:** ${item.conviction}% | **Risk:** ${item.riskRating}
+• **Action Plan:** ${item.actionPlan}
+• **Technical Setup:** ${item.technicalTrend}`;
+  });
+
+  let portfolioSynthesis = '';
+  if (stockAnalyses.length > 1) {
+    const averagePicks = stockAnalyses.filter((s) => s.verdict === 'AVERAGE_DOWN');
+    const exitPicks = stockAnalyses.filter((s) => s.verdict === 'EXIT_OR_TRIM');
+    const holdPicks = stockAnalyses.filter((s) => s.verdict === 'HOLD_LONG_TERM');
+
+    portfolioSynthesis = `\n\n### ⚖️ Multi-Stock Rebalancing Matrix (${stockAnalyses.length} Holdings Analyzed)
+• **Priority Accumulation (Dip Buys):** ${averagePicks.length > 0 ? averagePicks.map(p => `**${p.instrumentName}** (Zone: ${p.buyZone})`).join(', ') : 'None in deep discount zone.'}
+• **Capital Preservation / Trim:** ${exitPicks.length > 0 ? exitPicks.map(p => `**${p.instrumentName}** (Target: ₹${p.targetPrice})`).join(', ') : 'No urgent profit booking required.'}
+• **Core Long-Term Compounders:** ${holdPicks.length > 0 ? holdPicks.map(p => `**${p.instrumentName}**`).join(', ') : 'N/A'}
+
+💡 *Tip: Use the stock switcher dropdown above to toggle between analyzed holdings.*`;
   }
 
-  if (selectedStocks.length > 1) {
-    advice += `\n\n*(Note: Evaluated based on primary pick ${name}. You can ask about individual stocks or rebalancing between your ${selectedStocks.length} selected holdings).*`;
-  }
-
-  return advice;
+  const fullText = sections.join('\n\n') + portfolioSynthesis;
+  return {
+    text: fullText,
+    stockAnalyses,
+  };
 }
 
 /**
@@ -366,7 +370,12 @@ async function chatWithStockAi({ question, selectedStocks = [], history = [] }) 
     throw new Error('Question is required');
   }
 
-  // Format stock context
+  // Pre-calculate smart evaluations for all selected stocks
+  const stockAnalyses = Array.isArray(selectedStocks)
+    ? selectedStocks.map((s) => generateSmartStockFallback(s))
+    : [];
+
+  // Format stock context for LLM prompt
   let stockContext = 'No specific stocks selected.';
   if (Array.isArray(selectedStocks) && selectedStocks.length > 0) {
     stockContext = selectedStocks
@@ -397,6 +406,7 @@ CRITICAL FORMATTING INSTRUCTIONS:
 - Write all math, formulas, and calculations in clean plain text with standard Unicode characters (use "×" for multiplication, "/" for division, "≈" for approximately, "±" for plus-minus).
 - Always use the Indian Rupee symbol "₹" (e.g. ₹1,250) for all monetary values.
 - Structure responses clearly with Markdown headings (###), clean bullet points (•), and bold highlights (**bold**) for key metrics like Target Price, Stop Loss, and Buy Zones.
+- If multiple stocks are selected, evaluate each stock clearly under its own sub-heading before providing a comparative synthesis.
 
 GUIDELINES FOR YOUR ANALYSIS:
 1. Always ground your analysis in the user's real numbers (their buy average price, current market price, and profit/loss).
@@ -463,13 +473,15 @@ GUIDELINES FOR YOUR ANALYSIS:
     return {
       success: true,
       answer,
+      stockAnalyses,
     };
   } catch (err) {
     console.warn('[Stock Chat Fallback Triggered]', err.message);
-    const fallbackAnswer = generateChatFallback(question, selectedStocks);
+    const fallbackResult = generateChatFallback(question, selectedStocks);
     return {
       success: true,
-      answer: fallbackAnswer,
+      answer: fallbackResult.text,
+      stockAnalyses: fallbackResult.stockAnalyses,
       isFallback: true,
     };
   }

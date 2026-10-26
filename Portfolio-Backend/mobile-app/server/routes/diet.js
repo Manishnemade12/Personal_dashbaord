@@ -4,6 +4,7 @@ const DietItem = require('../models/DietItem');
 const Calendar = require('../models/Calendar');
 const CalendarEvent = require('../models/CalendarEvent');
 const ProjectApi = require('../models/portfolio/ProjectApi');
+const { calculateDietItemBreakdown, calculateSingleIngredientNutrition } = require('../services/nutritionCalculator');
 
 const GROQ_MODEL = process.env.GROK_MODEL || 'openai/gpt-oss-120b';
 
@@ -67,7 +68,7 @@ router.get('/ensure-calendar', async (req, res) => {
 
 /**
  * POST /api/diet/calculate-macros
- * Uses Grok LLM to compute Calories, Protein, Carbs, Fats from ingredients
+ * Uses Grok LLM to compute Calories, Protein, Carbs, Fats from ingredients + ingredient breakdown
  */
 router.post('/calculate-macros', async (req, res) => {
   try {
@@ -77,6 +78,7 @@ router.post('/calculate-macros', async (req, res) => {
       return res.status(400).json({ error: 'Please provide at least one ingredient.' });
     }
 
+    const calculatedBreakdown = calculateDietItemBreakdown(ingredients);
     const apiKey = await getApiKey();
     const formattedIngredients = ingredients
       .map((ing) => `- ${ing.quantity || 1} ${ing.unit || 'gram'} of ${ing.name || 'Ingredient'}`)
@@ -137,11 +139,12 @@ CRITICAL INSTRUCTION: You MUST return ONLY a clean JSON object without any markd
           return res.json({
             success: true,
             nutrients: {
-              calories: Math.round(Number(parsed.calories) || 0),
-              protein: Math.round(Number(parsed.protein) || 0),
-              carbs: Math.round(Number(parsed.carbs) || 0),
-              fats: Math.round(Number(parsed.fats) || 0),
+              calories: Math.round(Number(parsed.calories) || calculatedBreakdown.totals.calories),
+              protein: Math.round(Number(parsed.protein) || calculatedBreakdown.totals.protein),
+              carbs: Math.round(Number(parsed.carbs) || calculatedBreakdown.totals.carbs),
+              fats: Math.round(Number(parsed.fats) || calculatedBreakdown.totals.fats),
             },
+            breakdown: calculatedBreakdown.breakdown,
             analysis: parsed.analysis || 'Nutritional calculation completed successfully.',
           });
         }
@@ -150,63 +153,12 @@ CRITICAL INSTRUCTION: You MUST return ONLY a clean JSON object without any markd
       }
     }
 
-    // Heuristic fallback calculation if LLM is offline or no key
-    let estimatedCal = 0;
-    let estimatedProtein = 0;
-    let estimatedCarbs = 0;
-    let estimatedFats = 0;
-
-    ingredients.forEach((ing) => {
-      const n = (ing.name || '').toLowerCase();
-      const q = Number(ing.quantity) || 1;
-      const u = ing.unit || 'gram';
-
-      // Base conversion factor
-      let factor = q;
-      if (u === 'tablespoon') factor = q * 15;
-      else if (u === 'teaspoon') factor = q * 5;
-      else if (u === 'scoop') factor = q * 30;
-      else if (u === 'cup') factor = q * 120;
-      else if (u === 'piece') factor = q * 50;
-
-      if (n.includes('protein') || n.includes('whey')) {
-        estimatedCal += factor * 3.8;
-        estimatedProtein += factor * 0.75;
-      } else if (n.includes('peanut butter')) {
-        estimatedCal += factor * 5.8;
-        estimatedProtein += factor * 0.25;
-        estimatedFats += factor * 0.5;
-      } else if (n.includes('oat') || n.includes('grain')) {
-        estimatedCal += factor * 3.7;
-        estimatedProtein += factor * 0.13;
-        estimatedCarbs += factor * 0.65;
-      } else if (n.includes('milk') || n.includes('almond')) {
-        estimatedCal += factor * 0.5;
-        estimatedProtein += factor * 0.03;
-      } else if (n.includes('banana') || n.includes('apple') || n.includes('fruit')) {
-        estimatedCal += factor * 0.9;
-        estimatedCarbs += factor * 0.22;
-      } else if (n.includes('egg')) {
-        estimatedCal += q * 75;
-        estimatedProtein += q * 6.5;
-      } else if (n.includes('chicken') || n.includes('paneer')) {
-        estimatedCal += factor * 2.5;
-        estimatedProtein += factor * 0.22;
-      } else {
-        estimatedCal += factor * 1.5;
-        estimatedProtein += factor * 0.05;
-      }
-    });
-
+    // Heuristic fallback calculation
     res.json({
       success: true,
-      nutrients: {
-        calories: Math.max(50, Math.round(estimatedCal)),
-        protein: Math.max(2, Math.round(estimatedProtein)),
-        carbs: Math.round(estimatedCarbs),
-        fats: Math.round(estimatedFats),
-      },
-      analysis: 'Calculated nutritional values based on ingredient quantities and standard dietary benchmarks.',
+      nutrients: calculatedBreakdown.totals,
+      breakdown: calculatedBreakdown.breakdown,
+      analysis: 'Calculated precision nutritional values based on ingredient quantities and standard dietary benchmarks.',
     });
   } catch (err) {
     console.error('Error calculating macros:', err);
@@ -216,12 +168,20 @@ CRITICAL INSTRUCTION: You MUST return ONLY a clean JSON object without any markd
 
 /**
  * GET /api/diet/items
- * Get all saved diet items in library
+ * Get all saved diet items in library with enriched ingredientBreakdown
  */
 router.get('/items', async (req, res) => {
   try {
-    const items = await DietItem.find({ userId: 'admin' }).sort({ createdAt: -1 });
-    res.json(items);
+    const items = await DietItem.find({ userId: 'admin' }).sort({ createdAt: -1 }).lean();
+    const enriched = items.map((item) => {
+      const calculation = calculateDietItemBreakdown(item.ingredients || []);
+      return {
+        ...item,
+        ingredientBreakdown: calculation.breakdown,
+        nutrients: (item.nutrients && item.nutrients.calories > 0) ? item.nutrients : calculation.totals,
+      };
+    });
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch diet items.' });
   }
@@ -229,7 +189,7 @@ router.get('/items', async (req, res) => {
 
 /**
  * POST /api/diet/items
- * Create new diet item
+ * Create new diet item with per-ingredient nutrition breakdown saved
  */
 router.post('/items', async (req, res) => {
   try {
@@ -238,17 +198,34 @@ router.post('/items', async (req, res) => {
       return res.status(400).json({ error: 'Diet item name is required.' });
     }
 
+    const rawIngredients = Array.isArray(ingredients) ? ingredients : [];
+    const calculation = calculateDietItemBreakdown(rawIngredients);
+
+    const savedIngredients = calculation.breakdown.map((b) => ({
+      name: b.name,
+      quantity: b.quantity,
+      unit: b.unit,
+      calories: b.calories,
+      protein: b.protein,
+      carbs: b.carbs,
+      fats: b.fats,
+    }));
+
+    const finalNutrients = (nutrients && nutrients.calories > 0) ? nutrients : calculation.totals;
+
     const newItem = await DietItem.create({
       userId: 'admin',
       name: name.trim(),
       category: category || 'Breakfast',
       description: description ? description.trim() : '',
-      ingredients: Array.isArray(ingredients) ? ingredients : [],
-      nutrients: nutrients || { calories: 0, protein: 0, carbs: 0, fats: 0 },
+      ingredients: savedIngredients,
+      nutrients: finalNutrients,
       grokAnalysis: grokAnalysis || '',
     });
 
-    res.status(201).json(newItem);
+    const itemObj = newItem.toObject();
+    itemObj.ingredientBreakdown = calculation.breakdown;
+    res.status(201).json(itemObj);
   } catch (err) {
     res.status(500).json({ error: err.message || 'Failed to save diet item.' });
   }
@@ -259,8 +236,28 @@ router.post('/items', async (req, res) => {
  */
 router.put('/items/:id', async (req, res) => {
   try {
-    const updated = await DietItem.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updateData = { ...req.body };
+    if (Array.isArray(updateData.ingredients)) {
+      const calculation = calculateDietItemBreakdown(updateData.ingredients);
+      updateData.ingredients = calculation.breakdown.map((b) => ({
+        name: b.name,
+        quantity: b.quantity,
+        unit: b.unit,
+        calories: b.calories,
+        protein: b.protein,
+        carbs: b.carbs,
+        fats: b.fats,
+      }));
+      if (!updateData.nutrients || !updateData.nutrients.calories) {
+        updateData.nutrients = calculation.totals;
+      }
+    }
+
+    const updated = await DietItem.findByIdAndUpdate(req.params.id, updateData, { new: true }).lean();
     if (!updated) return res.status(404).json({ error: 'Diet item not found.' });
+
+    const calculation = calculateDietItemBreakdown(updated.ingredients || []);
+    updated.ingredientBreakdown = calculation.breakdown;
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message || 'Failed to update diet item.' });
