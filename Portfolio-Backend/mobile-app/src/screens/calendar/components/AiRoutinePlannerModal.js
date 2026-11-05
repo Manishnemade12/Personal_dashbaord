@@ -82,6 +82,8 @@ export default function AiRoutinePlannerModal({
   const [routineChatLoading, setRoutineChatLoading] = useState(false);
   const [allowCalendarChanges, setAllowCalendarChanges] = useState(false);
   const [routinePlanId, setRoutinePlanId] = useState(null);
+  const [draftChanges, setDraftChanges] = useState([]);
+  const [requiresCalendarReplace, setRequiresCalendarReplace] = useState(false);
 
   // Review & Cross-calendar state
   const [routineItems, setRoutineItems] = useState([]);
@@ -110,6 +112,8 @@ export default function AiRoutinePlannerModal({
       setRoutineChatInput('');
       setAllowCalendarChanges(false);
       setRoutinePlanId(null);
+      setDraftChanges([]);
+      setRequiresCalendarReplace(false);
       const d = selectedDate ? new Date(selectedDate) : new Date();
       const yyyy = d.getFullYear();
       const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -252,6 +256,7 @@ export default function AiRoutinePlannerModal({
         setPendingOperation('create');
         setRoutineItems(res.routine);
         setRoutinePlanId(res.planId || null);
+        setRequiresCalendarReplace(Boolean(res.requiresCalendarReplace));
         setRoutineChat([
           ...(res.messages || [{ role: 'assistant', text: 'Draft saved temporarily. Ask me to revise, regenerate, move, remove, or explain any event before accepting.' }]),
         ]);
@@ -285,13 +290,13 @@ export default function AiRoutinePlannerModal({
         routine: routineItems,
         targetDateStr,
         calendarId: selectedCalendarId,
-        executeOperations: allowCalendarChanges,
+        executeOperations: false,
         planId: routinePlanId,
       });
       if (Array.isArray(res?.routine)) setRoutineItems(res.routine);
       if (res?.planId) setRoutinePlanId(res.planId);
+      setDraftChanges(Array.isArray(res?.changes) ? res.changes : []);
       setRoutineChat((current) => [...current, { role: 'assistant', text: res.reply || 'Draft updated.' }]);
-      if (res?.calendarChanged && onRoutineCreated) onRoutineCreated();
     } catch (error) {
       setRoutineChat((current) => [...current, { role: 'assistant', text: error.message || 'I could not update this draft.' }]);
     } finally {
@@ -408,9 +413,16 @@ export default function AiRoutinePlannerModal({
         },
       }));
 
-      const res = await api.bulkCreateEvents({ events: payload });
+      const res = requiresCalendarReplace
+        ? { success: true, count: routineItems.length }
+        : await api.bulkCreateEvents({ events: payload });
       if (res && res.success) {
-        if (routinePlanId) await api.acceptAiRoutinePlan(routinePlanId);
+        if (routinePlanId && requiresCalendarReplace) {
+          // The accept endpoint performs the reviewed replace atomically.
+          await api.acceptAiRoutinePlan(routinePlanId);
+        } else if (routinePlanId) {
+          await api.acceptAiRoutinePlan(routinePlanId);
+        }
         const freqLabel =
           recurrenceFreq === 'daily'
             ? 'Every Day (Daily)'
@@ -1030,24 +1042,10 @@ export default function AiRoutinePlannerModal({
                     <Text style={{ color: '#5b21b6', fontSize: 12, fontWeight: '800', marginLeft: 6 }}>
                       Ask AI about this plan
                     </Text>
-                    <Text style={{ color: allowCalendarChanges ? '#b45309' : '#64748b', fontSize: 10, marginLeft: 6 }}>
-                      {allowCalendarChanges ? 'Database changes enabled' : 'Changes stay in draft'}
+                    <Text style={{ color: '#64748b', fontSize: 10, marginLeft: 6 }}>
+                      Changes stay in draft until Accept
                     </Text>
                   </View>
-                  <TouchableOpacity
-                    style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 7 }}
-                    onPress={() => setAllowCalendarChanges((value) => !value)}
-                    disabled={routineChatLoading}
-                  >
-                    <Ionicons
-                      name={allowCalendarChanges ? 'checkbox' : 'square-outline'}
-                      size={17}
-                      color={allowCalendarChanges ? '#7e37d8' : '#64748b'}
-                    />
-                    <Text style={{ color: allowCalendarChanges ? '#5b21b6' : '#475569', fontSize: 10, fontWeight: '700', marginLeft: 6 }}>
-                      Allow AI to change existing calendar events
-                    </Text>
-                  </TouchableOpacity>
                   <View style={{ maxHeight: 115, marginBottom: 7 }}>
                     <ScrollView nestedScrollEnabled>
                       {routineChat.map((message, index) => (
@@ -1090,10 +1088,20 @@ export default function AiRoutinePlannerModal({
                     </TouchableOpacity>
                   </View>
                   <Text style={{ color: '#64748b', fontSize: 9, marginTop: 6 }}>
-                    {allowCalendarChanges
-                      ? 'Database actions enabled: replace, move, remove, or recreate this selected calendar.'
-                      : 'Draft-only mode: calendar stays unchanged until you accept.'}
+                    Draft-only mode: review + / - changes, then Accept to write the selected calendar.
                   </Text>
+                  {draftChanges.length > 0 && (
+                    <View style={{ marginTop: 8, paddingTop: 7, borderTopWidth: 1, borderTopColor: '#e9d5ff' }}>
+                      <Text style={{ color: '#5b21b6', fontSize: 10, fontWeight: '800', marginBottom: 4 }}>
+                        Pending changes ({draftChanges.length})
+                      </Text>
+                      {draftChanges.map((change, index) => (
+                        <Text key={`${change.type}-${change.title}-${index}`} style={{ color: change.type === 'removed' ? '#b91c1c' : change.type === 'added' ? '#047857' : '#92400e', fontSize: 10, marginBottom: 2 }}>
+                          {change.type === 'removed' ? '- ' : change.type === 'added' ? '+ ' : '~ '}{change.title}
+                        </Text>
+                      ))}
+                    </View>
+                  )}
                 </View>
 
                 {/* Add Custom Slot */}

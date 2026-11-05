@@ -7,6 +7,7 @@ const CalendarAiPlanSchema = new mongoose.Schema(
     dateStr: { type: String, required: true },
     prompt: { type: String, default: '' },
     recurrenceRule: { type: Object, default: { frequency: 'none' } },
+    operation: { type: String, enum: ['create', 'replace'], default: 'create' },
     status: { type: String, enum: ['draft', 'accepted', 'discarded'], default: 'draft' },
     routine: { type: Array, default: [] },
     messages: { type: Array, default: [] },

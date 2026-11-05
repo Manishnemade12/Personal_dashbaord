@@ -713,7 +713,39 @@ Do not wrap in markdown fences. Output raw JSON only.`;
   };
 }
 
+async function interpretDraftMessage({ message, routine, recurrenceRule }) {
+  const apiKey = await getApiKey();
+  if (!apiKey) return null;
+  const prompt = `Interpret this calendar draft edit request. Return ONLY JSON.
+Message: "${message}"
+Recurrence: ${JSON.stringify(recurrenceRule || {})}
+Draft titles: ${routine.map((item) => item.title).join(' | ')}
+Schema:
+{"type":"shift-plan|replace-plan|move-event|remove-event|remove-all|explain|list|unknown","time":"HH:mm|null","target":"exact draft title or empty"}
+Use shift-plan for "start the draft plan from 8 am". Use replace-plan for delete/remove/replace plus create/regenerate/new plan.`;
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [{ role: 'system', content: 'You classify calendar draft edits. Output valid JSON only.' }, { role: 'user', content: prompt }],
+        temperature: 0,
+      }),
+    });
+    if (!response.ok) return null;
+    const content = (await response.json())?.choices?.[0]?.message?.content || '';
+    const parsed = JSON.parse(content.replace(/```json|```/gi, '').trim());
+    if (!parsed || typeof parsed.type !== 'string') return null;
+    return parsed;
+  } catch (error) {
+    console.warn(`[AI Draft Interpreter Fallback] ${error.message}`);
+    return null;
+  }
+}
+
 module.exports = {
   generateAiRoutine,
   isPassiveCoOccurringEvent,
+  interpretDraftMessage,
 };
