@@ -3,7 +3,9 @@ const router = express.Router();
 const CalendarEvent = require('../models/CalendarEvent');
 const NotificationLog = require('../models/NotificationLog');
 const Calendar = require('../models/Calendar');
+const CalendarAiPlan = require('../models/CalendarAiPlan');
 const aiRoutinePlannerService = require('../services/aiRoutinePlannerService');
+const { classifyDraftOperation, extractEventTarget } = require('../services/calendarDraftOperation');
 
 const toTimeString = (date) => {
   const value = new Date(date);
@@ -109,7 +111,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/calendar-events/ai-routine - Generate cross-calendar aware AI routine
 router.post('/ai-routine', async (req, res) => {
   try {
-    const {
+    let {
       calendarId,
       targetDateStr,
       userGoal,
@@ -130,6 +132,19 @@ router.post('/ai-routine', async (req, res) => {
       dietLibraryItemIds,
     });
 
+    if (Array.isArray(result?.routine) && result.routine.length > 0) {
+      const savedPlan = await CalendarAiPlan.create({
+        userId,
+        calendarId,
+        dateStr: targetDateStr,
+        prompt: userGoal,
+        recurrenceRule: recurrenceRule || { frequency: 'none' },
+        routine: result.routine,
+        messages: [{ role: 'assistant', text: 'Draft saved temporarily. Ask me to revise, regenerate, move, remove, or explain any event before accepting.' }],
+      });
+      result.planId = savedPlan._id;
+      result.messages = savedPlan.messages;
+    }
     res.json(result);
   } catch (error) {
     console.error('[AI Routine Route Error]', error);
@@ -140,32 +155,38 @@ router.post('/ai-routine', async (req, res) => {
 // Discuss or revise a draft routine. This endpoint never creates calendar events.
 router.post('/ai-routine-chat', async (req, res) => {
   try {
-    const {
+    let {
       message = '',
       routine = [],
       targetDateStr,
       calendarId,
       userId = 'admin',
       executeOperations = false,
+      planId,
     } = req.body;
+    // Chat only edits the temporary draft. Database writes happen after acceptance.
+    executeOperations = false;
     const text = String(message).trim();
     if (!text) return res.status(400).json({ error: 'Message is required.' });
-    if (!Array.isArray(routine)) return res.status(400).json({ error: 'Routine draft is required.' });
+    if (!Array.isArray(routine) && !planId) return res.status(400).json({ error: 'Routine draft is required.' });
+
+    let savedPlan = null;
+    if (planId) {
+      savedPlan = await CalendarAiPlan.findOne({ _id: planId, userId, status: 'draft' });
+      if (!savedPlan) return res.status(404).json({ error: 'Temporary AI draft was not found or is no longer active.' });
+      routine = savedPlan.routine;
+    }
 
     const lower = text.toLowerCase();
     let updatedRoutine = routine.map((item) => ({ ...item }));
     let reply = 'I can revise the draft without changing your calendar. Ask me to move, remove, or explain an event.';
     let operationResult = null;
-    const timeMatch = lower.match(/\b(?:to|at|around|from|starting\s+(?:at|from))\s+([01]?\d|2[0-3])(?::([0-5]\d))?\s*(am|pm)?\b/);
-    const wantsRecreate = /\b(delete|remove|clear|replace)\b/.test(lower) &&
-      /\b(create|recreate|regenerate|new|again|plan)\b/.test(lower) &&
-      Boolean(timeMatch);
+    const operation = classifyDraftOperation(text);
+    const timeMatch = operation.match;
+    const wantsRecreate = operation.type === 'replace-plan';
 
     if (wantsRecreate) {
-      let hour = Number(timeMatch[1]);
-      const minute = Number(timeMatch[2] || 0);
-      if (timeMatch[3] === 'pm' && hour < 12) hour += 12;
-      if (timeMatch[3] === 'am' && hour === 12) hour = 0;
+      const { hour, minute } = operation;
       const firstStart = updatedRoutine.length ? new Date(updatedRoutine[0].startAt) : null;
       const requestedStart = firstStart ? new Date(firstStart) : null;
       const shiftMs = requestedStart
@@ -205,10 +226,10 @@ router.post('/ai-routine-chat', async (req, res) => {
       } else {
         reply = `Recreated the draft timing from ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}. Enable “Allow calendar changes” to replace events in the selected calendar.`;
       }
-    } else if (/\b(remove|delete|drop|skip)\b/.test(lower)) {
+    } else if (operation.type === 'remove-all' || operation.type === 'remove-event') {
       const before = updatedRoutine.length;
-      const targetText = lower.replace(/\b(remove|delete|drop|skip)\b/g, '').replace(/\b(event|slot|routine|from|the|please)\b/g, '').trim();
-      if (/\b(all|everything)\b/.test(lower)) {
+      const targetText = extractEventTarget(text);
+      if (operation.type === 'remove-all') {
         updatedRoutine = [];
         if (executeOperations && calendarId) {
           const result = await CalendarEvent.deleteMany({ userId, calendarId });
@@ -234,16 +255,10 @@ router.post('/ai-routine-chat', async (req, res) => {
             : 'I removed the matching item from the draft. Enable “Allow calendar changes” to update existing database events too.'
           : 'I could not find a matching draft item. Try the exact event title.';
       }
-    } else if (timeMatch && /\b(move|shift|reschedule|schedule|start|begin)\b/.test(lower)) {
-      let hour = Number(timeMatch[1]);
-      const minute = Number(timeMatch[2] || 0);
-      if (timeMatch[3] === 'pm' && hour < 12) hour += 12;
-      if (timeMatch[3] === 'am' && hour === 12) hour = 0;
-      const isPlanStart = /\b(start|begin)\s+(?:the\s+)?(?:plan|routine)\b/.test(lower);
-      const targetText = lower
-        .replace(timeMatch[0], '')
-        .replace(/\b(move|shift|reschedule|schedule|start|begin|the|plan|routine|from|to|at|around|please)\b/g, '')
-        .trim();
+    } else if (operation.type === 'shift-plan' || operation.type === 'move-event') {
+      const { hour, minute } = operation;
+      const isPlanStart = operation.type === 'shift-plan';
+      const targetText = isPlanStart ? '' : extractEventTarget(text, timeMatch?.[0]);
       let changed = false;
       let shiftMs = 0;
       if (isPlanStart && updatedRoutine.length) {
@@ -303,23 +318,61 @@ router.post('/ai-routine-chat', async (req, res) => {
             ? `Shifted the entire draft so it starts at ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}. Enable “Allow calendar changes” to update the database too.`
             : `I moved the draft item to ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}. Enable “Allow calendar changes” to update the existing database event too.`
         : 'I could not find a matching draft item. Include part of its exact title.';
-    } else if (/\b(why|explain|conflict|overlap|busy)\b/.test(lower)) {
+    } else if (operation.type === 'explain') {
       reply = updatedRoutine.map((item) => `${item.title}: ${item.conflictResolution || item.coOccurrenceNote || 'No conflict noted.'}`).join(' ');
-    } else if (/\b(what|which|show|list)\b/.test(lower)) {
+    } else if (operation.type === 'list') {
       reply = updatedRoutine.length ? updatedRoutine.map((item) => `${item.title} at ${toTimeString(item.startAt)}`).join(' • ') : 'The draft is empty. Go back and generate a new routine.';
     }
+
+    if (savedPlan) {
+      savedPlan.routine = updatedRoutine;
+      savedPlan.messages.push(
+        { role: 'user', text },
+        { role: 'assistant', text: reply }
+      );
+      await savedPlan.save();
+    }
+
+    const beforeByTitle = new Map((routine || []).map((item) => [String(item.title || ''), item]));
+    const changes = [];
+    for (const item of updatedRoutine) {
+      const key = String(item.title || '');
+      const before = beforeByTitle.get(key);
+      if (!before) changes.push({ type: 'added', title: item.title, item });
+      else if (String(before.startAt) !== String(item.startAt) || String(before.endAt) !== String(item.endAt) || String(before.description || '') !== String(item.description || '')) {
+        changes.push({ type: 'updated', title: item.title, before, after: item });
+      }
+      beforeByTitle.delete(key);
+    }
+    for (const item of beforeByTitle.values()) changes.push({ type: 'removed', title: item.title, item });
 
     res.json({
       success: true,
       reply,
       targetDateStr,
       routine: updatedRoutine,
-      calendarChanged: Boolean(operationResult),
-      operationResult,
+      calendarChanged: false,
+      operationResult: null,
+      changes,
+      planId: savedPlan?._id || planId || null,
     });
   } catch (error) {
     console.error('[AI Routine Chat Error]', error);
     res.status(500).json({ error: error.message || 'Failed to update routine draft' });
+  }
+});
+
+router.post('/ai-routine-plan/:id/accept', async (req, res) => {
+  try {
+    const plan = await CalendarAiPlan.findOneAndUpdate(
+      { _id: req.params.id, userId: req.body.userId || 'admin', status: 'draft' },
+      { status: 'accepted' },
+      { new: true }
+    );
+    if (!plan) return res.status(404).json({ error: 'Temporary AI draft was not found.' });
+    res.json({ success: true, planId: plan._id, status: plan.status });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Failed to accept temporary AI draft.' });
   }
 });
 

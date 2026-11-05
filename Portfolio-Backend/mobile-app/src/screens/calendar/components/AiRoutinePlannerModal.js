@@ -81,6 +81,7 @@ export default function AiRoutinePlannerModal({
   const [routineChatInput, setRoutineChatInput] = useState('');
   const [routineChatLoading, setRoutineChatLoading] = useState(false);
   const [allowCalendarChanges, setAllowCalendarChanges] = useState(false);
+  const [routinePlanId, setRoutinePlanId] = useState(null);
 
   // Review & Cross-calendar state
   const [routineItems, setRoutineItems] = useState([]);
@@ -108,6 +109,7 @@ export default function AiRoutinePlannerModal({
       setRoutineChat([]);
       setRoutineChatInput('');
       setAllowCalendarChanges(false);
+      setRoutinePlanId(null);
       const d = selectedDate ? new Date(selectedDate) : new Date();
       const yyyy = d.getFullYear();
       const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -249,11 +251,9 @@ export default function AiRoutinePlannerModal({
       } else if (Array.isArray(res?.routine) && res.routine.length > 0) {
         setPendingOperation('create');
         setRoutineItems(res.routine);
+        setRoutinePlanId(res.planId || null);
         setRoutineChat([
-          {
-            role: 'assistant',
-            text: 'This is a draft only. Ask me to move, remove, explain, or adjust an event. Nothing changes in the calendar until you accept.',
-          },
+          ...(res.messages || [{ role: 'assistant', text: 'Draft saved temporarily. Ask me to revise, regenerate, move, remove, or explain any event before accepting.' }]),
         ]);
         setStep('review');
       } else {
@@ -286,8 +286,10 @@ export default function AiRoutinePlannerModal({
         targetDateStr,
         calendarId: selectedCalendarId,
         executeOperations: allowCalendarChanges,
+        planId: routinePlanId,
       });
       if (Array.isArray(res?.routine)) setRoutineItems(res.routine);
+      if (res?.planId) setRoutinePlanId(res.planId);
       setRoutineChat((current) => [...current, { role: 'assistant', text: res.reply || 'Draft updated.' }]);
       if (res?.calendarChanged && onRoutineCreated) onRoutineCreated();
     } catch (error) {
@@ -408,6 +410,7 @@ export default function AiRoutinePlannerModal({
 
       const res = await api.bulkCreateEvents({ events: payload });
       if (res && res.success) {
+        if (routinePlanId) await api.acceptAiRoutinePlan(routinePlanId);
         const freqLabel =
           recurrenceFreq === 'daily'
             ? 'Every Day (Daily)'

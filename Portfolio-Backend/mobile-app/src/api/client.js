@@ -171,6 +171,7 @@ export const api = {
     request(`/calendar-events/clear-all${calendarId ? `?calendarId=${encodeURIComponent(calendarId)}` : ''}`, { method: 'DELETE' }),
   generateAiRoutine: (data) => request('/calendar-events/ai-routine', { method: 'POST', body: data }),
   chatAiRoutine: (data) => request('/calendar-events/ai-routine-chat', { method: 'POST', body: data }),
+  acceptAiRoutinePlan: (id) => request(`/calendar-events/ai-routine-plan/${id}/accept`, { method: 'POST', body: {} }),
   bulkCreateEvents: (data) => request('/calendar-events/bulk', { method: 'POST', body: data }),
 
   // Reminders (/api/reminders)
