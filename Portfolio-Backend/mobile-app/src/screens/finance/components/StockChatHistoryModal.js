@@ -505,3 +505,4 @@ const modalStyles = StyleSheet.create({
     color: '#475569',
   },
 });
+
