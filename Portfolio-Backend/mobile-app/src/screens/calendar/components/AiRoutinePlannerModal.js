@@ -1007,16 +1007,10 @@ export default function AiRoutinePlannerModal({
                   );
                 })}
 
-                {/* Add Custom Slot */}
-                <TouchableOpacity style={styles.addSlotBtn} onPress={handleAddCustomSlot} activeOpacity={0.7}>
-                  <Ionicons name="add-circle-outline" size={16} color="#64748b" />
-                  <Text style={styles.addSlotText}>+ Add Custom Slot</Text>
-                </TouchableOpacity>
-
                 <View
                   style={{
-                    marginTop: 12,
-                    padding: 10,
+                    marginTop: 10,
+                    padding: 9,
                     borderRadius: 12,
                     borderWidth: 1,
                     borderColor: '#ddd6fe',
@@ -1026,10 +1020,10 @@ export default function AiRoutinePlannerModal({
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 7 }}>
                     <Ionicons name="chatbubbles-outline" size={16} color="#7e37d8" />
                     <Text style={{ color: '#5b21b6', fontSize: 12, fontWeight: '800', marginLeft: 6 }}>
-                      Discuss this draft
+                      Ask AI about this plan
                     </Text>
                     <Text style={{ color: '#64748b', fontSize: 10, marginLeft: 6 }}>
-                      Calendar unchanged
+                      Changes stay in draft
                     </Text>
                   </View>
                   <View style={{ maxHeight: 115, marginBottom: 7 }}>
@@ -1057,7 +1051,7 @@ export default function AiRoutinePlannerModal({
                       style={[styles.textInput, { flex: 1, minHeight: 38, maxHeight: 70, marginBottom: 0 }]}
                       value={routineChatInput}
                       onChangeText={setRoutineChatInput}
-                      placeholder="Move, remove, or ask a question..."
+                      placeholder="e.g. Move Deep Focus to 11 AM..."
                       placeholderTextColor="#94a3b8"
                       multiline
                     />
@@ -1074,9 +1068,15 @@ export default function AiRoutinePlannerModal({
                     </TouchableOpacity>
                   </View>
                   <Text style={{ color: '#64748b', fontSize: 9, marginTop: 6 }}>
-                    Try: “Move Deep Focus to 10 AM”, “Remove the workout”, or “Why is this time suitable?”
+                    Try: “Move Deep Focus to 10 AM” · “Remove the workout” · “Why this time?”
                   </Text>
                 </View>
+
+                {/* Add Custom Slot */}
+                <TouchableOpacity style={[styles.addSlotBtn, { marginTop: 8 }]} onPress={handleAddCustomSlot} activeOpacity={0.7}>
+                  <Ionicons name="add-circle-outline" size={16} color="#64748b" />
+                  <Text style={styles.addSlotText}>+ Add Custom Slot</Text>
+                </TouchableOpacity>
               </ScrollView>
 
               {/* Action Footer for Review */}
