@@ -60,3 +60,9 @@ From the Expo menu:
 - **Physical Device (Expo Go)**: Set URL to your computer's local Wi-Fi IP:
   `http://<YOUR_COMPUTER_IP>:5000/api`
 - **Offline Mode**: If the database or server is offline, the app automatically switches to an internal local database so you never experience crashes or blank screens!
+
+
+```jsx
+cd mobile-app
+npx eas-cli build -p android --profile preview
+```
