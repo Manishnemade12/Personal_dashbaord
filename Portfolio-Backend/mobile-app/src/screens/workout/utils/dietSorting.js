@@ -13,9 +13,25 @@ const getDateValue = (value) => {
   return Number.isFinite(timestamp) ? timestamp : Number.MAX_SAFE_INTEGER;
 };
 
+export const getTimeMinutes = (value) => {
+  const match = String(value || '').match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+  if (!match) return Number.MAX_SAFE_INTEGER;
+  let hour = Number(match[1]);
+  const minute = Number(match[2] || 0);
+  const meridiem = match[3]?.toLowerCase();
+  if (meridiem === 'pm' && hour < 12) hour += 12;
+  if (meridiem === 'am' && hour === 12) hour = 0;
+  return hour * 60 + minute;
+};
+
+export const getCategoryTimeMinutes = (category) =>
+  CATEGORY_START_MINUTES[category] ?? CATEGORY_START_MINUTES.Other;
+
 export const sortScheduledMeals = (meals = []) =>
   [...meals].sort((a, b) => {
-    const timeDifference = getDateValue(a.startAt) - getDateValue(b.startAt);
+    const timeDifference =
+      getTimeMinutes(a.timeStr) - getTimeMinutes(b.timeStr) ||
+      getDateValue(a.startAt) - getDateValue(b.startAt);
     if (timeDifference !== 0) return timeDifference;
     return String(a.title || '').localeCompare(String(b.title || ''));
   });

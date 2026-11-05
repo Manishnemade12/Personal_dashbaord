@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../api/client';
 import styles from '../styles/workoutStyles';
+import { getCategoryTimeMinutes, getTimeMinutes } from '../utils/dietSorting';
 
 export default function DietAiPlannerModal({
   visible,
@@ -29,6 +30,7 @@ export default function DietAiPlannerModal({
   const [chatLoading, setChatLoading] = useState(false);
   const [showMeals, setShowMeals] = useState(false);
   const [showPlan, setShowPlan] = useState(true);
+  const [selectedMealIds, setSelectedMealIds] = useState([]);
 
   const createReview = async () => {
     if (!inputText.trim()) {
@@ -40,10 +42,12 @@ export default function DietAiPlannerModal({
       const response = await api.reviewAiDietPlan({
         dateStr,
         prompt: inputText.trim(),
-        dietItemIds: dietItems.map((item) => item._id),
+        dietItemIds: selectedMealIds,
       });
       setRecommendations(
-        (response.recommendations || []).map((item) => ({
+        (response.recommendations || [])
+          .sort((a, b) => getTimeMinutes(a.timeStr) - getTimeMinutes(b.timeStr) || String(a.name || '').localeCompare(String(b.name || '')))
+          .map((item) => ({
           ...item,
           selected: item.defaultSelected !== false,
         }))
@@ -81,10 +85,15 @@ export default function DietAiPlannerModal({
       setRecommendations([]);
       setPlanId(null);
       setMessages([]);
+      setSelectedMealIds(dietItems.map((item) => item._id));
       setShowMeals(false);
       setShowPlan(true);
     }
   }, [visible, dateStr]);
+
+  useEffect(() => {
+    if (visible && !planId) setSelectedMealIds(dietItems.map((item) => item._id));
+  }, [visible, dietItems, planId]);
 
   const toggleRecommendation = (id) => {
     setRecommendations((current) =>
@@ -189,7 +198,7 @@ export default function DietAiPlannerModal({
             >
               <Ionicons name={showMeals ? 'chevron-down' : 'chevron-forward'} size={14} color="#047857" />
               <Text style={{ color: '#065f46', fontWeight: '800', fontSize: 12, marginLeft: 5 }}>
-                Meals <Text style={{ color: '#64748b', fontWeight: '600' }}>({recommendations.filter((item) => item.selected).length}/{recommendations.length})</Text>
+                Meals <Text style={{ color: '#64748b', fontWeight: '600' }}>({planId ? recommendations.filter((item) => item.selected).length : selectedMealIds.length}/{dietItems.length})</Text>
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -202,18 +211,30 @@ export default function DietAiPlannerModal({
               </Text>
             </TouchableOpacity>
 
-            {showMeals && dietItems.map((meal) => {
+            {showMeals && [...dietItems].sort((a, b) => {
+              const aTime = recommendations.find((item) => String(item.id) === String(a._id))?.timeStr;
+              const bTime = recommendations.find((item) => String(item.id) === String(b._id))?.timeStr;
+              return (aTime ? getTimeMinutes(aTime) : getCategoryTimeMinutes(a.category)) -
+                (bTime ? getTimeMinutes(bTime) : getCategoryTimeMinutes(b.category)) ||
+                String(a.name || '').localeCompare(String(b.name || ''));
+            }).map((meal) => {
               const recommendation = recommendations.find((item) => String(item.id) === String(meal._id));
+              const isSelected = planId ? recommendation?.selected : selectedMealIds.some((id) => String(id) === String(meal._id));
               return (
                 <TouchableOpacity
                   key={meal._id}
-                  onPress={() => recommendation && toggleRecommendation(recommendation.id)}
+                  onPress={() => {
+                    if (recommendation) toggleRecommendation(recommendation.id);
+                    else setSelectedMealIds((current) => current.includes(meal._id)
+                      ? current.filter((id) => id !== meal._id)
+                      : [...current, meal._id]);
+                  }}
                   style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7 }}
                 >
                   <Ionicons
-                    name={recommendation?.selected ? 'checkbox' : 'square-outline'}
+                    name={isSelected ? 'checkbox' : 'square-outline'}
                     size={19}
-                    color={recommendation?.selected ? '#059669' : '#94a3b8'}
+                    color={isSelected ? '#059669' : '#94a3b8'}
                   />
                   <Text style={{ marginLeft: 7, color: '#334155', fontSize: 11, flex: 1 }}>
                     {meal.name} · {meal.category}
@@ -221,7 +242,7 @@ export default function DietAiPlannerModal({
                 </TouchableOpacity>
               );
             })}
-            {showPlan && recommendations.map((item) => {
+            {showPlan && [...recommendations].sort((a, b) => getTimeMinutes(a.timeStr) - getTimeMinutes(b.timeStr) || String(a.name || '').localeCompare(String(b.name || ''))).map((item) => {
               const isAvoid = item.recommendation === 'avoid';
               return (
                 <View
