@@ -202,7 +202,7 @@ router.get('/items', async (req, res) => {
  */
 router.post('/ai-plan-review', async (req, res) => {
   try {
-    const { dateStr, prompt = '', dietItemIds = [] } = req.body;
+    const { dateStr, prompt = '', dietItemIds = [], existingPlanMeals = [] } = req.body;
     const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr || '')
       ? dateStr
       : new Date().toISOString().slice(0, 10);
@@ -257,11 +257,28 @@ router.post('/ai-plan-review', async (req, res) => {
         order: index,
       };
     });
+    const existingRecommendations = (Array.isArray(existingPlanMeals) ? existingPlanMeals : []).map((meal, index) => ({
+      id: `existing:${meal._id}`,
+      sourceEventId: meal._id,
+      name: meal.title,
+      category: 'Existing Diet Plan',
+      description: meal.description || '',
+      calories: Number(meal.calories || 0),
+      protein: Number(meal.protein || 0),
+      dateStr: targetDate,
+      timeStr: meal.timeStr || '08:00 AM',
+      recommendation: 'recommended',
+      defaultSelected: true,
+      reason: 'Fetched from your existing Diet Plan for review and revision.',
+      order: index,
+    }));
+    const allRecommendations = [...existingRecommendations, ...recommendations];
 
     const savedPlan = await DietAiPlan.create({
       dateStr: targetDate,
       prompt,
-      recommendations,
+      recommendations: allRecommendations,
+      sourceEventIds: existingRecommendations.map((item) => item.sourceEventId),
       messages: [
         {
           role: 'assistant',
@@ -276,7 +293,8 @@ router.post('/ai-plan-review', async (req, res) => {
       dateStr: targetDate,
       prompt,
       rules: DIET_PLANNER_RULES,
-      recommendations,
+      recommendations: allRecommendations,
+      sourceEventIds: savedPlan.sourceEventIds,
       messages: savedPlan.messages,
     });
   } catch (err) {
@@ -317,13 +335,13 @@ router.post('/ai-plan-chat', async (req, res) => {
 
 router.post('/ai-plan-accept', async (req, res) => {
   try {
-    const plan = await DietAiPlan.findOneAndUpdate(
+    const existingPlan = await DietAiPlan.findOne(
       { _id: req.body.planId, userId: 'admin' },
-      { status: 'accepted' },
-      { new: true }
     );
-    if (!plan) return res.status(404).json({ error: 'Draft diet plan not found.' });
-    res.json({ success: true, planId: plan._id, status: plan.status });
+    if (!existingPlan) return res.status(404).json({ error: 'Draft diet plan not found.' });
+    existingPlan.status = 'accepted';
+    await existingPlan.save();
+    res.json({ success: true, planId: existingPlan._id, status: existingPlan.status, sourceEventIds: existingPlan.sourceEventIds });
   } catch (err) {
     res.status(500).json({ error: err.message || 'Failed to accept diet plan.' });
   }

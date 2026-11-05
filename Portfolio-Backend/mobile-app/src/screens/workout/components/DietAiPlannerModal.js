@@ -8,6 +8,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../api/client';
@@ -21,6 +22,7 @@ export default function DietAiPlannerModal({
   dateStr,
   onAccepted,
 }) {
+  const { height: windowHeight } = useWindowDimensions();
   const [inputText, setInputText] = useState('');
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -31,6 +33,10 @@ export default function DietAiPlannerModal({
   const [showMeals, setShowMeals] = useState(false);
   const [showPlan, setShowPlan] = useState(true);
   const [selectedMealIds, setSelectedMealIds] = useState([]);
+  const [existingPlanMeals, setExistingPlanMeals] = useState([]);
+  const [selectedExistingMealIds, setSelectedExistingMealIds] = useState([]);
+  const [showExistingPlan, setShowExistingPlan] = useState(false);
+  const [existingPlanLoading, setExistingPlanLoading] = useState(false);
 
   const createReview = async () => {
     if (!inputText.trim()) {
@@ -43,6 +49,7 @@ export default function DietAiPlannerModal({
         dateStr,
         prompt: inputText.trim(),
         dietItemIds: selectedMealIds,
+        existingPlanMeals: existingPlanMeals.filter((meal) => selectedExistingMealIds.includes(String(meal._id))),
       });
       setRecommendations(
         (response.recommendations || [])
@@ -86,9 +93,28 @@ export default function DietAiPlannerModal({
       setPlanId(null);
       setMessages([]);
       setSelectedMealIds(dietItems.map((item) => item._id));
+      setExistingPlanMeals([]);
+      setSelectedExistingMealIds([]);
+      setShowExistingPlan(false);
       setShowMeals(false);
       setShowPlan(true);
     }
+  }, [visible, dateStr]);
+
+  useEffect(() => {
+    if (!visible) return;
+    setExistingPlanLoading(true);
+    api.getDailyDietPlan(dateStr)
+      .then((response) => {
+        const meals = Array.isArray(response?.meals) ? response.meals : [];
+        setExistingPlanMeals(meals);
+        setSelectedExistingMealIds(meals.map((meal) => String(meal._id)));
+      })
+      .catch(() => {
+        setExistingPlanMeals([]);
+        setSelectedExistingMealIds([]);
+      })
+      .finally(() => setExistingPlanLoading(false));
   }, [visible, dateStr]);
 
   useEffect(() => {
@@ -110,6 +136,11 @@ export default function DietAiPlannerModal({
     setAccepting(true);
     try {
       await api.acceptAiDietPlan({ planId });
+      for (const eventId of selected
+        .filter((item) => item.sourceEventId)
+        .map((item) => item.sourceEventId)) {
+        await api.deleteEvent(eventId);
+      }
       for (const item of selected) {
         await api.scheduleDietMeal({
           title: item.name,
@@ -133,7 +164,14 @@ export default function DietAiPlannerModal({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, { maxHeight: '90%' }]}>
+        <View
+          style={[
+            styles.modalContent,
+            windowHeight <= 700
+              ? { height: '96%', maxHeight: '96%' }
+              : { maxHeight: '90%' },
+          ]}
+        >
           <View style={styles.modalHeader}>
             <View style={{ flex: 1 }}>
               <Text style={styles.modalTitle}>AI Diet Planner</Text>
@@ -146,7 +184,11 @@ export default function DietAiPlannerModal({
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={[styles.modalBody, { flex: 1 }]}
+            contentContainerStyle={{ paddingBottom: 8 }}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 7 }}>
               <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#dcfce7', alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
                 <Ionicons name="sparkles" size={15} color="#059669" />
@@ -192,6 +234,33 @@ export default function DietAiPlannerModal({
                 {loading || chatLoading ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name={planId ? 'send' : 'sparkles'} size={17} color="#fff" />}
               </TouchableOpacity>
             </View>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa', marginBottom: 5 }}
+              onPress={() => setShowExistingPlan((value) => !value)}
+            >
+              <Ionicons name={showExistingPlan ? 'chevron-down' : 'chevron-forward'} size={14} color="#c2410c" />
+              <Text style={{ color: '#9a3412', fontWeight: '800', fontSize: 12, marginLeft: 5 }}>
+                Existing Diet Plan <Text style={{ color: '#64748b', fontWeight: '600' }}>({selectedExistingMealIds.length}/{existingPlanMeals.length})</Text>
+              </Text>
+              {existingPlanLoading && <ActivityIndicator size="small" color="#c2410c" style={{ marginLeft: 8 }} />}
+            </TouchableOpacity>
+            {showExistingPlan && existingPlanMeals.slice().sort((a, b) => getTimeMinutes(a.timeStr) - getTimeMinutes(b.timeStr)).map((meal) => {
+              const selected = selectedExistingMealIds.includes(String(meal._id));
+              return (
+                <TouchableOpacity
+                  key={String(meal._id)}
+                  onPress={() => setSelectedExistingMealIds((current) => selected
+                    ? current.filter((id) => id !== String(meal._id))
+                    : [...current, String(meal._id)])}
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7 }}
+                >
+                  <Ionicons name={selected ? 'checkbox' : 'square-outline'} size={19} color={selected ? '#c2410c' : '#94a3b8'} />
+                  <Text style={{ marginLeft: 7, color: '#334155', fontSize: 11, flex: 1 }}>
+                    {meal.timeStr} · {meal.title}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
             <TouchableOpacity
               style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', marginBottom: 5 }}
               onPress={() => setShowMeals((value) => !value)}

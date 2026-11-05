@@ -1046,7 +1046,7 @@ export default function AiRoutinePlannerModal({
                       Changes stay in draft until Accept
                     </Text>
                   </View>
-                  <View style={{ maxHeight: 115, marginBottom: 7 }}>
+                  <View style={{ height: 155, marginBottom: 9 }}>
                     <ScrollView nestedScrollEnabled>
                       {routineChat.map((message, index) => (
                         <View
@@ -1054,21 +1054,21 @@ export default function AiRoutinePlannerModal({
                           style={{
                             alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start',
                             maxWidth: '90%',
-                            paddingHorizontal: 8,
-                            paddingVertical: 6,
-                            marginBottom: 5,
+                            paddingHorizontal: 9,
+                            paddingVertical: 7,
+                            marginBottom: 6,
                             borderRadius: 9,
                             backgroundColor: message.role === 'user' ? '#ede9fe' : '#ffffff',
                           }}
                         >
-                          <Text style={{ color: '#334155', fontSize: 10 }}>{message.text}</Text>
+                          <Text style={{ color: '#334155', fontSize: 10, lineHeight: 15 }}>{message.text}</Text>
                         </View>
                       ))}
                     </ScrollView>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 7 }}>
                     <TextInput
-                      style={[styles.textInput, { flex: 1, minHeight: 38, maxHeight: 70, marginBottom: 0 }]}
+                      style={[styles.textInput, { flex: 0.78, minHeight: 42, maxHeight: 66, marginBottom: 0 }]}
                       value={routineChatInput}
                       onChangeText={setRoutineChatInput}
                       placeholder="e.g. Move Deep Focus to 11 AM..."
@@ -1076,7 +1076,7 @@ export default function AiRoutinePlannerModal({
                       multiline
                     />
                     <TouchableOpacity
-                      style={[styles.cardActionBtn, { height: 38, paddingHorizontal: 11, backgroundColor: '#7e37d8' }]}
+                      style={[styles.cardActionBtn, { height: 42, paddingHorizontal: 11, backgroundColor: '#7e37d8' }]}
                       onPress={handleRoutineChat}
                       disabled={routineChatLoading}
                     >

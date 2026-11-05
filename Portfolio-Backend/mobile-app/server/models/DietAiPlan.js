@@ -7,6 +7,7 @@ const DietAiPlanSchema = new mongoose.Schema(
     prompt: { type: String, default: '' },
     status: { type: String, enum: ['draft', 'accepted'], default: 'draft' },
     recommendations: { type: Array, default: [] },
+    sourceEventIds: { type: Array, default: [] },
     messages: { type: Array, default: [] },
   },
   { timestamps: true }
