@@ -7,6 +7,9 @@ const CLOUD_API_URL = 'https://personaldashbaord-mobile-app.vercel.app/api';
 const getInitialBaseUrl = () => {
   if (typeof window !== 'undefined' && window.location) {
     const { protocol, hostname, port } = window.location;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return `${protocol}//${hostname}:5000/api`;
+    }
     if (port === '5000') {
       return `${protocol}//${hostname}:${port}/api`;
     }
@@ -21,7 +24,11 @@ let API_BASE_URL = getInitialBaseUrl();
 export const initApiBaseUrl = async () => {
   try {
     const savedUrl = await AsyncStorage.getItem('CUSTOM_API_BASE_URL');
-    if (savedUrl && savedUrl.trim()) {
+    const isLocalWeb =
+      typeof window !== 'undefined' &&
+      window.location &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    if (savedUrl && savedUrl.trim() && !isLocalWeb) {
       API_BASE_URL = savedUrl.replace(/\/+$/, '');
       return API_BASE_URL;
     }
@@ -157,7 +164,8 @@ export const api = {
   createEvent: (data) => request('/calendar-events', { method: 'POST', body: data }),
   updateEvent: (id, data) => request(`/calendar-events/${id}`, { method: 'PUT', body: data }),
   deleteEvent: (id) => request(`/calendar-events/${id}`, { method: 'DELETE' }),
-  clearAllEvents: () => request('/calendar-events/clear-all', { method: 'DELETE' }),
+  clearAllEvents: (calendarId) =>
+    request(`/calendar-events/clear-all${calendarId ? `?calendarId=${encodeURIComponent(calendarId)}` : ''}`, { method: 'DELETE' }),
   generateAiRoutine: (data) => request('/calendar-events/ai-routine', { method: 'POST', body: data }),
   bulkCreateEvents: (data) => request('/calendar-events/bulk', { method: 'POST', body: data }),
 
@@ -273,6 +281,9 @@ export const api = {
   updateDietItem: (id, data) => request(`/diet/items/${id}`, { method: 'PUT', body: data }),
   deleteDietItem: (id) => request(`/diet/items/${id}`, { method: 'DELETE' }),
   calculateDietMacros: (data) => request('/diet/calculate-macros', { method: 'POST', body: data }),
+  reviewAiDietPlan: (data) => request('/diet/ai-plan-review', { method: 'POST', body: data }),
+  getDietCalorieHistory: (start, end) =>
+    request(`/diet/calorie-history?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`),
 
   // AI Stock Analyzer & Interactive Chat (/api/investments/*)
   analyzeStocksWithAi: (data) => request('/investments/ai-analyze', { method: 'POST', body: data }),
@@ -284,6 +295,3 @@ export const api = {
 };
 
 export default api;
-
-
-

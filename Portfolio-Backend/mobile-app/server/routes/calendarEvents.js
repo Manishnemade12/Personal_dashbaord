@@ -111,6 +111,7 @@ router.post('/ai-routine', async (req, res) => {
       planCategory,
       intensity,
       recurrenceRule,
+      dietLibraryItemIds,
       userId = 'admin',
     } = req.body;
     const result = await aiRoutinePlannerService.generateAiRoutine({
@@ -121,6 +122,7 @@ router.post('/ai-routine', async (req, res) => {
       planCategory,
       intensity,
       recurrenceRule,
+      dietLibraryItemIds,
     });
     res.json(result);
   } catch (error) {
@@ -284,11 +286,16 @@ router.put('/:id', async (req, res) => {
 router.delete('/clear-all', async (req, res) => {
   try {
     const userId = req.query.userId || 'admin';
-    await NotificationLog.deleteMany({ userId });
-    const evRes = await CalendarEvent.deleteMany({ userId });
+    const calendarId = req.query.calendarId;
+    const eventFilter = { userId };
+    if (calendarId) eventFilter.calendarId = calendarId;
+    const eventsToDelete = await CalendarEvent.find(eventFilter).select('_id').lean();
+    const eventIds = eventsToDelete.map((event) => event._id);
+    if (eventIds.length > 0) await NotificationLog.deleteMany({ eventId: { $in: eventIds } });
+    const evRes = await CalendarEvent.deleteMany(eventFilter);
     res.json({
       success: true,
-      message: 'All calendar events cleared',
+      message: calendarId ? 'Calendar events cleared' : 'All calendar events cleared',
       deletedEvents: evRes.deletedCount,
     });
   } catch (error) {

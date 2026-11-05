@@ -12,3 +12,5 @@ one more thing calnder me jab me ai routine faeture ka use karke operations karn
 ek or feature sirf diet caader ke liye add karde uisng that routine planner ki help se diet libliary ka things he vo acche se calander me place karne ka option de only and only for diet calander . jab diet calnder slecet karu tab diet libliary sleect karne ka opion ana chhaiye bas and osi hisab se me operations perform kar saku . 
 ek or feature dalna isme diet visuals . 
 ki pichle dino me diet calnder ke hsiab se mene kis day kitni calories cosnume ki iska visuals vaha show hoga acccoring to day . 
+
+

@@ -7,6 +7,12 @@ const ProjectApi = require('../models/portfolio/ProjectApi');
 const { calculateDietItemBreakdown, calculateSingleIngredientNutrition } = require('../services/nutritionCalculator');
 
 const GROQ_MODEL = process.env.GROK_MODEL || 'openai/gpt-oss-120b';
+const DIET_PLANNER_RULES = [
+  'Use the saved Diet Library items exactly; never invent meals.',
+  'Place breakfast near 08:00, lunch near 13:00, snacks near 16:30, post-workout near 18:30, and dinner near 20:30.',
+  'Flag meals above 1000 kcal or with an explicit user restriction as review/avoid, and explain the reason.',
+  'Never schedule anything before the user explicitly accepts the reviewed plan.',
+].join(' ');
 
 /**
  * Helper: Retrieve Grok / Groq API key from environment or ProjectApi vault
@@ -180,6 +186,75 @@ router.get('/items', async (req, res) => {
         ingredientBreakdown: calculation.breakdown,
         nutrients: (item.nutrients && item.nutrients.calories > 0) ? item.nutrients : calculation.totals,
       };
+    });
+
+    /**
+     * POST /api/diet/ai-plan-review
+     * Builds a review-only meal plan from the saved library. This endpoint never
+     * creates calendar events; scheduling happens only after the user accepts.
+     */
+    router.post('/ai-plan-review', async (req, res) => {
+      try {
+        const { dateStr, prompt = '', dietItemIds = [] } = req.body;
+        const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr || '')
+          ? dateStr
+          : new Date().toISOString().slice(0, 10);
+        const selectedIds = new Set(Array.isArray(dietItemIds) ? dietItemIds.map(String) : []);
+        let items = await DietItem.find({ userId: 'admin' }).sort({ createdAt: -1 }).lean();
+        if (selectedIds.size > 0) items = items.filter((item) => selectedIds.has(String(item._id)));
+
+        const preferenceText = String(prompt).toLowerCase();
+        const restrictions = [];
+        if (/\b(no\s+milk|dairy[-\s]?free|vegan)\b/.test(preferenceText)) restrictions.push('dairy');
+        if (/\b(no\s+banana|avoid\s+banana)\b/.test(preferenceText)) restrictions.push('banana');
+        if (/\b(no\s+peanut|peanut[-\s]?free)\b/.test(preferenceText)) restrictions.push('peanut');
+        const timeByCategory = {
+          Breakfast: '08:00',
+          Lunch: '13:00',
+          Snack: '16:30',
+          'Pre-Workout': '17:30',
+          'Post-Workout': '18:30',
+          Dinner: '20:30',
+          Other: '11:00',
+        };
+
+        const recommendations = items.map((item, index) => {
+          const ingredientsText = (item.ingredients || []).map((ingredient) => ingredient.name || '').join(' ').toLowerCase();
+          const calories = Number(item.nutrients?.calories || 0);
+          const matchedRestriction = restrictions.find((restriction) => ingredientsText.includes(restriction));
+          const reasons = [];
+          if (matchedRestriction) reasons.push(`Contains ${matchedRestriction}, which conflicts with your preference.`);
+          if (calories > 1000) reasons.push(`${calories} kcal is a very large single meal; review portion size first.`);
+          if (!reasons.length) reasons.push(`Fits the ${item.category || 'meal'} slot and uses a saved library recipe.`);
+          const avoid = Boolean(matchedRestriction);
+          return {
+            id: item._id,
+            name: item.name,
+            category: item.category || 'Other',
+            description: item.description || '',
+            calories,
+            protein: Number(item.nutrients?.protein || 0),
+            dateStr: targetDate,
+            timeStr: timeByCategory[item.category] || timeByCategory.Other,
+            recommendation: avoid ? 'avoid' : 'recommended',
+            defaultSelected: !avoid,
+            reason: reasons.join(' '),
+            plannerRules: DIET_PLANNER_RULES,
+            order: index,
+          };
+        });
+
+        res.json({
+          success: true,
+          dateStr: targetDate,
+          prompt,
+          rules: DIET_PLANNER_RULES,
+          recommendations,
+        });
+      } catch (err) {
+        console.error('Error creating AI diet plan review:', err);
+        res.status(500).json({ error: err.message || 'Failed to prepare diet plan review.' });
+      }
     });
     res.json(enriched);
   } catch (err) {
@@ -465,6 +540,54 @@ router.delete('/remove-meal/:eventId', async (req, res) => {
     res.json({ success: true, message: 'Meal removed from schedule.' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to remove meal.' });
+  }
+});
+
+/**
+ * GET /api/diet/calorie-history
+ * Returns planned and completed calories per day from Diet calendar events.
+ */
+router.get('/calorie-history', async (req, res) => {
+  try {
+    const dietCal = await ensureDietCalendar();
+    const end = req.query.end ? new Date(`${req.query.end}T23:59:59`) : new Date();
+    const start = req.query.start
+      ? new Date(`${req.query.start}T00:00:00`)
+      : new Date(end.getTime() - 13 * 24 * 60 * 60 * 1000);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return res.status(400).json({ error: 'Invalid start or end date.' });
+    }
+
+    const events = await CalendarEvent.find({
+      userId: 'admin',
+      calendarId: dietCal._id,
+      startAt: { $gte: start, $lte: end },
+    }).sort({ startAt: 1 }).lean();
+
+    const byDate = {};
+    for (const event of events) {
+      const eventDate = new Date(event.startAt);
+      const date = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`;
+      const match = String(event.description || '').match(/(\d+(?:\.\d+)?)\s*(?:kcal|calories)/i);
+      const calories = match ? Math.round(Number(match[1])) : 0;
+      if (!byDate[date]) byDate[date] = { date, plannedCalories: 0, completedCalories: 0, meals: 0, completedMeals: 0 };
+      byDate[date].plannedCalories += calories;
+      byDate[date].meals += 1;
+      if (event.status === 'completed') {
+        byDate[date].completedCalories += calories;
+        byDate[date].completedMeals += 1;
+      }
+    }
+
+    const history = [];
+    for (let cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+      const date = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+      history.push(byDate[date] || { date, plannedCalories: 0, completedCalories: 0, meals: 0, completedMeals: 0 });
+    }
+    res.json({ success: true, calendarId: dietCal._id, history });
+  } catch (err) {
+    console.error('Error fetching diet calorie history:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch calorie history.' });
   }
 });
 

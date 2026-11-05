@@ -66,6 +66,7 @@ export default function AiRoutinePlannerModal({
   existingEvents = [],
   onRoutineCreated,
 }) {
+  const generationRequestRef = React.useRef(0);
   const [step, setStep] = useState('setup'); // 'setup' | 'generating' | 'review'
   const [selectedCalendarId, setSelectedCalendarId] = useState('');
   const [targetDateStr, setTargetDateStr] = useState('');
@@ -79,6 +80,9 @@ export default function AiRoutinePlannerModal({
 
   // Review & Cross-calendar state
   const [routineItems, setRoutineItems] = useState([]);
+  const [pendingOperation, setPendingOperation] = useState('create');
+  const [dietItems, setDietItems] = useState([]);
+  const [selectedDietItemIds, setSelectedDietItemIds] = useState([]);
   const [detectedOtherEvents, setDetectedOtherEvents] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editTitle, setEditTitle] = useState('');
@@ -88,8 +92,15 @@ export default function AiRoutinePlannerModal({
 
   // Synchronize initial state when modal opens
   useEffect(() => {
+    if (!visible) {
+      generationRequestRef.current += 1;
+      setIsGenerating(false);
+      return;
+    }
     if (visible) {
       setStep('setup');
+      setPendingOperation('create');
+      setRoutineItems([]);
       const d = selectedDate ? new Date(selectedDate) : new Date();
       const yyyy = d.getFullYear();
       const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -107,6 +118,29 @@ export default function AiRoutinePlannerModal({
       }
     }
   }, [visible, selectedDate, calendars]);
+
+  const isDietCalendar = (calendarId) => {
+    const calendar = calendars.find((cal) => cal._id === calendarId);
+    return /diet|nutrition|meal/i.test(calendar?.name || calendar?.description || '');
+  };
+
+  useEffect(() => {
+    if (!visible || !isDietCalendar(selectedCalendarId)) {
+      setDietItems([]);
+      setSelectedDietItemIds([]);
+      return;
+    }
+    api.getDietItems()
+      .then((items) => {
+        const available = Array.isArray(items) ? items : [];
+        setDietItems(available);
+        setSelectedDietItemIds(available.map((item) => item._id));
+      })
+      .catch((error) => {
+        console.error('[Diet Library Load Error]', error);
+        Alert.alert('Diet Library', 'Could not load saved diet items.');
+      });
+  }, [visible, selectedCalendarId, calendars]);
 
   // Detect other calendars' events on target date for transparent live AI reference
   useEffect(() => {
@@ -148,6 +182,14 @@ export default function AiRoutinePlannerModal({
     }
   };
 
+  const handleSelectCalendar = (calendarId) => {
+    setSelectedCalendarId(calendarId);
+    if (isDietCalendar(calendarId)) {
+      setPlanCategory('diet');
+      setUserGoal('Schedule the selected meals from my Diet Library at optimal times throughout the day');
+    }
+  };
+
   // Toggle Day of Week for Weekly Recurrence
   const toggleDayOfWeek = (dayNum) => {
     setSelectedDaysOfWeek((prev) => {
@@ -162,6 +204,7 @@ export default function AiRoutinePlannerModal({
 
   // Generate Routine with AI API
   const handleGenerateRoutine = async () => {
+    if (isGenerating) return;
     if (!selectedCalendarId) {
       Alert.alert('Select Calendar', 'Please choose which calendar this routine should be created in.');
       return;
@@ -171,6 +214,8 @@ export default function AiRoutinePlannerModal({
       return;
     }
 
+    const requestId = generationRequestRef.current + 1;
+    generationRequestRef.current = requestId;
     setIsGenerating(true);
     setStep('generating');
 
@@ -180,6 +225,7 @@ export default function AiRoutinePlannerModal({
         targetDateStr,
         userGoal: userGoal.trim(),
         planCategory,
+        dietLibraryItemIds: isDietCalendar(selectedCalendarId) ? selectedDietItemIds : [],
         intensity,
         recurrenceRule: {
           frequency: recurrenceFreq === 'once' ? 'none' : recurrenceFreq,
@@ -187,19 +233,30 @@ export default function AiRoutinePlannerModal({
         },
       });
 
-      if (res && res.success && Array.isArray(res.routine) && res.routine.length > 0) {
+      if (requestId !== generationRequestRef.current) return;
+
+      if (res?.operation === 'clear-calendar') {
+        setPendingOperation('clear-calendar');
+        setRoutineItems([]);
+        setStep('review');
+      } else if (Array.isArray(res?.routine) && res.routine.length > 0) {
+        setPendingOperation('create');
         setRoutineItems(res.routine);
         setStep('review');
       } else {
-        Alert.alert('Routine Generation', 'Could not generate routine. Please try again with more details.');
+        const reason = res?.error || res?.message || 'The planner returned no routine items.';
+        Alert.alert('Routine Generation', reason);
         setStep('setup');
       }
     } catch (err) {
+      if (requestId !== generationRequestRef.current) return;
       console.error('[AI Routine Generation Error]', err);
       Alert.alert('Error', err.message || 'Failed to communicate with AI routine planner.');
       setStep('setup');
     } finally {
-      setIsGenerating(false);
+      if (requestId === generationRequestRef.current) {
+        setIsGenerating(false);
+      }
     }
   };
 
@@ -274,6 +331,23 @@ export default function AiRoutinePlannerModal({
 
   // Accept and save all verified routine events to calendar
   const handleAcceptRoutine = async () => {
+    if (pendingOperation === 'clear-calendar') {
+      setIsSaving(true);
+      try {
+        const res = await api.clearAllEvents(selectedCalendarId);
+        if (!res?.success) throw new Error(res?.error || 'Failed to clear calendar events');
+        Alert.alert('Calendar Cleared', `Removed ${res.deletedEvents || 0} events from ${selectedCalendar?.name || 'the selected calendar'}.`);
+        if (onRoutineCreated) onRoutineCreated();
+        onClose();
+      } catch (err) {
+        console.error('[Clear Calendar Error]', err);
+        Alert.alert('Clear Failed', err.message || 'Could not remove calendar events.');
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
     if (routineItems.length === 0) {
       Alert.alert('Empty Routine', 'Please add at least one routine event to save.');
       return;
@@ -369,7 +443,7 @@ export default function AiRoutinePlannerModal({
                         <TouchableOpacity
                           key={cal._id}
                           style={[styles.calendarPill, isSelected && styles.calendarPillActive]}
-                          onPress={() => setSelectedCalendarId(cal._id)}
+                          onPress={() => handleSelectCalendar(cal._id)}
                           activeOpacity={0.7}
                         >
                           <View style={[styles.calendarDot, { backgroundColor: cal.color || '#7e37d8' }]} />
@@ -384,13 +458,33 @@ export default function AiRoutinePlannerModal({
 
                 {/* Workout & Diet Integration Card if Diet Calendar / Category is Selected */}
                 {isDietSelected && (
-                  <View style={styles.dietConnectedBox}>
-                    <Ionicons name="restaurant" size={20} color="#059669" />
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={styles.dietConnectedTitle}>🥗 Workout & Diet Library Linked</Text>
-                      <Text style={styles.dietConnectedSubtitle}>
-                        AI will fetch your saved meals & recipes from the database (Shakes, Lunch, Dinner, etc.) and assign optimal meal timings across your day!
-                      </Text>
+                  <View>
+                    <View style={styles.dietConnectedBox}>
+                      <Ionicons name="restaurant" size={20} color="#059669" />
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.dietConnectedTitle}>🥗 Diet Library Planner</Text>
+                        <Text style={styles.dietConnectedSubtitle}>
+                          Select only the saved meals you want AI to place in this Diet calendar.
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={{ marginTop: 8, gap: 6 }}>
+                      {dietItems.length === 0 ? (
+                        <Text style={styles.fieldHelper}>No saved diet items found. Add meals in Workout & Diet first.</Text>
+                      ) : dietItems.map((item) => {
+                        const selected = selectedDietItemIds.includes(item._id);
+                        return (
+                          <TouchableOpacity
+                            key={item._id}
+                            onPress={() => setSelectedDietItemIds((prev) => selected ? prev.filter((id) => id !== item._id) : [...prev, item._id])}
+                            style={{ flexDirection: 'row', alignItems: 'center', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: selected ? '#34d399' : '#d1d5db', backgroundColor: selected ? '#ecfdf5' : '#fff' }}
+                          >
+                            <Ionicons name={selected ? 'checkbox' : 'square-outline'} size={18} color={selected ? '#059669' : '#94a3b8'} />
+                            <Text style={{ flex: 1, marginLeft: 7, color: '#334155', fontSize: 11, fontWeight: '700' }}>{item.name}</Text>
+                            <Text style={{ color: '#047857', fontSize: 10 }}>{item.nutrients?.calories || 0} kcal</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
                   </View>
                 )}
@@ -673,6 +767,7 @@ export default function AiRoutinePlannerModal({
                 <TouchableOpacity
                   style={styles.primaryBtn}
                   onPress={handleGenerateRoutine}
+                  disabled={isGenerating}
                   activeOpacity={0.8}
                 >
                   <Ionicons name="sparkles" size={15} color="#ffffff" />
@@ -715,9 +810,22 @@ export default function AiRoutinePlannerModal({
                     </Text>
                   </View>
                   <View style={styles.reviewCountBadge}>
-                    <Text style={styles.reviewCountText}>{routineItems.length} Events</Text>
+                    <Text style={styles.reviewCountText}>
+                      {pendingOperation === 'clear-calendar'
+                        ? `${existingEvents.filter((event) => String(event.calendarId?._id || event.calendarId) === String(selectedCalendarId)).length} Events to remove`
+                        : `${routineItems.length} Events`}
+                    </Text>
                   </View>
                 </View>
+
+                {pendingOperation === 'clear-calendar' ? (
+                  <View style={[styles.infoBanner, { backgroundColor: '#fff1f2', borderColor: '#fecdd3' }]}>
+                    <Ionicons name="warning-outline" size={18} color="#be123c" />
+                    <Text style={[styles.infoBannerText, { color: '#9f1239' }]}>
+                      This will permanently remove every existing event from the selected calendar. No new routine events will be added.
+                    </Text>
+                  </View>
+                ) : null}
 
                 {/* Multi-Calendar Notice */}
                 <View style={[styles.infoBanner, { backgroundColor: '#f5f3ff', borderColor: '#ddd6fe' }]}>
@@ -887,14 +995,20 @@ export default function AiRoutinePlannerModal({
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.primaryBtn, (routineItems.length === 0 || isSaving) && styles.primaryBtnDisabled]}
+                  style={[styles.primaryBtn, ((pendingOperation !== 'clear-calendar' && routineItems.length === 0) || isSaving) && styles.primaryBtnDisabled]}
                   onPress={handleAcceptRoutine}
-                  disabled={routineItems.length === 0 || isSaving}
+                  disabled={(pendingOperation !== 'clear-calendar' && routineItems.length === 0) || isSaving}
                   activeOpacity={0.8}
                 >
                   <Ionicons name="checkmark-circle" size={15} color="#ffffff" />
                   <Text style={styles.primaryBtnText}>
-                    {isSaving ? 'Scheduling...' : `Accept & Add Routine (${routineItems.length})`}
+                    {isSaving
+                      ? pendingOperation === 'clear-calendar'
+                        ? 'Removing...'
+                        : 'Scheduling...'
+                      : pendingOperation === 'clear-calendar'
+                      ? 'Confirm & Remove Events'
+                      : `Accept & Add Routine (${routineItems.length})`}
                   </Text>
                 </TouchableOpacity>
               </View>

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import styles from '../styles/workoutStyles';
+import { sortDietLibraryItems } from '../utils/dietSorting';
 
 const CATEGORIES = [
   'All',
@@ -28,11 +29,12 @@ export default function DietLibraryTab({
   onDeleteDietItem,
   onScheduleItem,
   onOpenBreakdown,
+  onOpenAiPlanner,
 }) {
   const [selectedCategory, setSelectedCategory] = React.useState('All');
   const [searchQuery, setSearchQuery] = React.useState('');
 
-  const filteredItems = (dietItems || []).filter((item) => {
+  const filteredItems = sortDietLibraryItems(dietItems || []).filter((item) => {
     const matchesCategory =
       selectedCategory === 'All' || item.category === selectedCategory;
     const q = searchQuery.toLowerCase().trim();
@@ -266,6 +268,28 @@ export default function DietLibraryTab({
         )}
         <View style={{ height: 40 }} />
       </ScrollView>
+      <TouchableOpacity
+        onPress={onOpenAiPlanner}
+        activeOpacity={0.85}
+        style={{
+          position: 'absolute',
+          right: 16,
+          bottom: 16,
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 13,
+          paddingVertical: 10,
+          borderRadius: 22,
+          backgroundColor: '#7e37d8',
+          shadowColor: '#000',
+          shadowOpacity: 0.18,
+          shadowRadius: 6,
+          elevation: 5,
+        }}
+      >
+        <Ionicons name="sparkles" size={15} color="#fff" />
+        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800', marginLeft: 6 }}>AI Plan</Text>
+      </TouchableOpacity>
     </View>
   );
 }

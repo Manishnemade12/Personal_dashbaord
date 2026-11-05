@@ -17,6 +17,7 @@ import CalendarViewControls from './components/CalendarViewControls';
 import CalendarViews from './components/CalendarViews';
 import CalendarModals from './components/CalendarModals';
 import AiRoutinePlannerModal from './components/AiRoutinePlannerModal';
+import DietCaloriesVisuals from './components/DietCaloriesVisuals';
 import styles from './styles/calendarStyles';
 import aiRoutineStyles from './styles/aiRoutineStyles';
 
@@ -508,6 +509,12 @@ export default function CalendarScreen({ onNavigate }) {
         activeId={activeCalendarFilter}
         onSelect={setActiveCalendarFilter}
         onAdd={() => openCalendarModal()}
+      />
+
+      <DietCaloriesVisuals
+        visible={activeCalendarFilter !== 'all' && /diet|nutrition|meal/i.test(
+          calendars.find((calendar) => calendar._id === activeCalendarFilter)?.name || ''
+        )}
       />
 
       {/* Quick Access Banner to Workout & Diet Tracker */}

@@ -11,10 +11,22 @@ import DietLibraryTab from './components/DietLibraryTab';
 import DietItemModal from './components/DietItemModal';
 import ScheduleMealModal from './components/ScheduleMealModal';
 import IngredientBreakdownModal from './components/IngredientBreakdownModal';
+import DietAiPlannerModal from './components/DietAiPlannerModal';
 import styles from './styles/workoutStyles';
 import api from '../../api/client';
+import { sortDietLibraryItems, sortScheduledMeals } from './utils/dietSorting';
 
-const getTodayDateStr = () => new Date().toISOString().slice(0, 10);
+const getTodayDateStr = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+    now.getDate()
+  ).padStart(2, '0')}`;
+};
+
+const formatLocalDate = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate()
+  ).padStart(2, '0')}`;
 
 export default function WorkoutDietScreen({ onNavigate, routeParams }) {
   // Active Tab: 'plan' (Today's Diet Plan) or 'library' (Diet Library & Recipes)
@@ -45,6 +57,7 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
 
   const [breakdownModalVisible, setBreakdownModalVisible] = useState(false);
   const [breakdownDietItem, setBreakdownDietItem] = useState(null);
+  const [aiPlannerVisible, setAiPlannerVisible] = useState(false);
 
   useEffect(() => {
     initScreen();
@@ -66,7 +79,7 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
     setLoadingPlan(true);
     try {
       const res = await api.getDailyDietPlan(dateStr);
-      setDailyPlan(res);
+      setDailyPlan(res ? { ...res, meals: sortScheduledMeals(res.meals) } : res);
     } catch (err) {
       console.warn('Error loading daily diet plan:', err.message);
     } finally {
@@ -78,7 +91,7 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
     setLoadingItems(true);
     try {
       const items = await api.getDietItems();
-      setDietItems(Array.isArray(items) ? items : []);
+      setDietItems(Array.isArray(items) ? sortDietLibraryItems(items) : []);
     } catch (err) {
       console.warn('Error loading diet items:', err.message);
     } finally {
@@ -91,14 +104,14 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
     const [y, m, d] = selectedDateStr.split('-').map(Number);
     const date = new Date(y, m - 1, d);
     date.setDate(date.getDate() - 1);
-    setSelectedDateStr(date.toISOString().slice(0, 10));
+    setSelectedDateStr(formatLocalDate(date));
   };
 
   const handleNextDay = () => {
     const [y, m, d] = selectedDateStr.split('-').map(Number);
     const date = new Date(y, m - 1, d);
     date.setDate(date.getDate() + 1);
-    setSelectedDateStr(date.toISOString().slice(0, 10));
+    setSelectedDateStr(formatLocalDate(date));
   };
 
   const handleToday = () => {
@@ -304,6 +317,7 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
               setBreakdownDietItem(item);
               setBreakdownModalVisible(true);
             }}
+            onOpenAiPlanner={() => setAiPlannerVisible(true)}
           />
         )}
       </View>
@@ -339,6 +353,16 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
         onScheduleMeal={(item) => {
           setPrefillDietItem(item);
           setScheduleModalVisible(true);
+        }}
+      />
+      <DietAiPlannerModal
+        visible={aiPlannerVisible}
+        onClose={() => setAiPlannerVisible(false)}
+        dietItems={dietItems}
+        dateStr={selectedDateStr}
+        onAccepted={() => {
+          loadDailyPlan(selectedDateStr);
+          setActiveTab('plan');
         }}
       />
     </View>

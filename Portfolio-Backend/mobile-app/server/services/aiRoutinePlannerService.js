@@ -2,6 +2,7 @@ const Calendar = require('../models/Calendar');
 const CalendarEvent = require('../models/CalendarEvent');
 const DietItem = require('../models/DietItem');
 const ProjectApi = require('../models/portfolio/ProjectApi');
+const { classifyRoutineOperation } = require('./routineOperation');
 
 const GROQ_MODEL = process.env.GROK_MODEL || 'llama-3.3-70b-versatile';
 
@@ -456,6 +457,7 @@ async function generateAiRoutine({
   planCategory = 'general',
   intensity = 'moderate',
   recurrenceRule = { frequency: 'none' },
+  dietLibraryItemIds = [],
 }) {
   // 1. Resolve Target Calendar
   let targetCalendar = null;
@@ -505,6 +507,28 @@ async function generateAiRoutine({
     `[AI Routine Planner] Found ${existingEvents.length} existing events across all calendars for ${cleanDateStr}`
   );
 
+  if (classifyRoutineOperation(userGoal) === 'clear-calendar') {
+    const calendarEvents = existingEvents.filter(
+      (ev) => String(ev.calendarId?._id || ev.calendarId) === String(targetCalendar._id)
+    );
+    return {
+      success: true,
+      operation: 'clear-calendar',
+      targetDate: cleanDateStr,
+      targetCalendar: { id: targetCalendar._id, name: targetCalendar.name, color: targetCalendar.color },
+      existingEventsCount: calendarEvents.length,
+      existingEventsSummary: calendarEvents.map((ev) => ({
+        _id: ev._id,
+        title: ev.title,
+        calendarName: ev.calendarId?.name || targetCalendar.name,
+        calendarColor: ev.calendarId?.color || targetCalendar.color,
+        startAt: ev.startAt,
+        endAt: ev.endAt,
+      })),
+      routine: [],
+    };
+  }
+
   // 3. Fetch user's saved meals from Workout & Diet library if Diet planning is requested
   const isDietPlan =
     planCategory === 'diet' ||
@@ -514,6 +538,10 @@ async function generateAiRoutine({
   let userDietItems = [];
   if (isDietPlan) {
     userDietItems = await DietItem.find({ userId }).sort({ createdAt: -1 });
+    if (Array.isArray(dietLibraryItemIds) && dietLibraryItemIds.length > 0) {
+      const selectedIds = new Set(dietLibraryItemIds.map(String));
+      userDietItems = userDietItems.filter((item) => selectedIds.has(String(item._id)));
+    }
     console.log(
       `[AI Routine Planner] Fetched ${userDietItems.length} saved meals from Workout & Diet DB for user "${userId}"`
     );
