@@ -188,77 +188,85 @@ router.get('/items', async (req, res) => {
       };
     });
 
-    /**
-     * POST /api/diet/ai-plan-review
-     * Builds a review-only meal plan from the saved library. This endpoint never
-     * creates calendar events; scheduling happens only after the user accepts.
-     */
-    router.post('/ai-plan-review', async (req, res) => {
-      try {
-        const { dateStr, prompt = '', dietItemIds = [] } = req.body;
-        const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr || '')
-          ? dateStr
-          : new Date().toISOString().slice(0, 10);
-        const selectedIds = new Set(Array.isArray(dietItemIds) ? dietItemIds.map(String) : []);
-        let items = await DietItem.find({ userId: 'admin' }).sort({ createdAt: -1 }).lean();
-        if (selectedIds.size > 0) items = items.filter((item) => selectedIds.has(String(item._id)));
-
-        const preferenceText = String(prompt).toLowerCase();
-        const restrictions = [];
-        if (/\b(no\s+milk|dairy[-\s]?free|vegan)\b/.test(preferenceText)) restrictions.push('dairy');
-        if (/\b(no\s+banana|avoid\s+banana)\b/.test(preferenceText)) restrictions.push('banana');
-        if (/\b(no\s+peanut|peanut[-\s]?free)\b/.test(preferenceText)) restrictions.push('peanut');
-        const timeByCategory = {
-          Breakfast: '08:00',
-          Lunch: '13:00',
-          Snack: '16:30',
-          'Pre-Workout': '17:30',
-          'Post-Workout': '18:30',
-          Dinner: '20:30',
-          Other: '11:00',
-        };
-
-        const recommendations = items.map((item, index) => {
-          const ingredientsText = (item.ingredients || []).map((ingredient) => ingredient.name || '').join(' ').toLowerCase();
-          const calories = Number(item.nutrients?.calories || 0);
-          const matchedRestriction = restrictions.find((restriction) => ingredientsText.includes(restriction));
-          const reasons = [];
-          if (matchedRestriction) reasons.push(`Contains ${matchedRestriction}, which conflicts with your preference.`);
-          if (calories > 1000) reasons.push(`${calories} kcal is a very large single meal; review portion size first.`);
-          if (!reasons.length) reasons.push(`Fits the ${item.category || 'meal'} slot and uses a saved library recipe.`);
-          const avoid = Boolean(matchedRestriction);
-          return {
-            id: item._id,
-            name: item.name,
-            category: item.category || 'Other',
-            description: item.description || '',
-            calories,
-            protein: Number(item.nutrients?.protein || 0),
-            dateStr: targetDate,
-            timeStr: timeByCategory[item.category] || timeByCategory.Other,
-            recommendation: avoid ? 'avoid' : 'recommended',
-            defaultSelected: !avoid,
-            reason: reasons.join(' '),
-            plannerRules: DIET_PLANNER_RULES,
-            order: index,
-          };
-        });
-
-        res.json({
-          success: true,
-          dateStr: targetDate,
-          prompt,
-          rules: DIET_PLANNER_RULES,
-          recommendations,
-        });
-      } catch (err) {
-        console.error('Error creating AI diet plan review:', err);
-        res.status(500).json({ error: err.message || 'Failed to prepare diet plan review.' });
-      }
-    });
     res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch diet items.' });
+  }
+});
+
+/**
+ * POST /api/diet/ai-plan-review
+ * Builds a review-only meal plan from the saved library. This endpoint never
+ * creates calendar events; scheduling happens only after the user accepts.
+ */
+router.post('/ai-plan-review', async (req, res) => {
+  try {
+    const { dateStr, prompt = '', dietItemIds = [] } = req.body;
+    const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr || '')
+      ? dateStr
+      : new Date().toISOString().slice(0, 10);
+    const selectedIds = new Set(Array.isArray(dietItemIds) ? dietItemIds.map(String) : []);
+    let items = await DietItem.find({ userId: 'admin' }).sort({ createdAt: -1 }).lean();
+    if (selectedIds.size > 0) items = items.filter((item) => selectedIds.has(String(item._id)));
+
+    const preferenceText = String(prompt).toLowerCase();
+    const restrictions = [];
+    if (/\b(no\s+(?:milk|dairy)|dairy[-\s]?free|vegan)\b/.test(preferenceText)) restrictions.push('dairy');
+    if (/\b(no\s+banana|avoid\s+banana)\b/.test(preferenceText)) restrictions.push('banana');
+    if (/\b(no\s+peanut|peanut[-\s]?free)\b/.test(preferenceText)) restrictions.push('peanut');
+    const timeByCategory = {
+      Breakfast: '08:00',
+      Lunch: '13:00',
+      Snack: '16:30',
+      'Pre-Workout': '17:30',
+      'Post-Workout': '18:30',
+      Dinner: '20:30',
+      Other: '11:00',
+    };
+
+    const recommendations = items.map((item, index) => {
+      const ingredientsText = (item.ingredients || []).map((ingredient) => ingredient.name || '').join(' ').toLowerCase();
+      const calories = Number(item.nutrients?.calories || 0);
+      const restrictionTerms = {
+        dairy: ['dairy', 'milk', 'whey', 'cheese', 'yogurt', 'curd'],
+        banana: ['banana'],
+        peanut: ['peanut'],
+      };
+      const matchedRestriction = restrictions.find((restriction) =>
+        (restrictionTerms[restriction] || [restriction]).some((term) => ingredientsText.includes(term))
+      );
+      const reasons = [];
+      if (matchedRestriction) reasons.push(`Contains ${matchedRestriction}, which conflicts with your preference.`);
+      if (calories > 1000) reasons.push(`${calories} kcal is a very large single meal; review portion size first.`);
+      if (!reasons.length) reasons.push(`Fits the ${item.category || 'meal'} slot and uses a saved library recipe.`);
+      const avoid = Boolean(matchedRestriction);
+      return {
+        id: item._id,
+        name: item.name,
+        category: item.category || 'Other',
+        description: item.description || '',
+        calories,
+        protein: Number(item.nutrients?.protein || 0),
+        dateStr: targetDate,
+        timeStr: timeByCategory[item.category] || timeByCategory.Other,
+        recommendation: avoid ? 'avoid' : 'recommended',
+        defaultSelected: !avoid,
+        reason: reasons.join(' '),
+        plannerRules: DIET_PLANNER_RULES,
+        order: index,
+      };
+    });
+
+    res.json({
+      success: true,
+      dateStr: targetDate,
+      prompt,
+      rules: DIET_PLANNER_RULES,
+      recommendations,
+    });
+  } catch (err) {
+    console.error('Error creating AI diet plan review:', err);
+    res.status(500).json({ error: err.message || 'Failed to prepare diet plan review.' });
   }
 });
 
