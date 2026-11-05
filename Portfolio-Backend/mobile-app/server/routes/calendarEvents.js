@@ -140,7 +140,14 @@ router.post('/ai-routine', async (req, res) => {
 // Discuss or revise a draft routine. This endpoint never creates calendar events.
 router.post('/ai-routine-chat', async (req, res) => {
   try {
-    const { message = '', routine = [], targetDateStr } = req.body;
+    const {
+      message = '',
+      routine = [],
+      targetDateStr,
+      calendarId,
+      userId = 'admin',
+      executeOperations = false,
+    } = req.body;
     const text = String(message).trim();
     if (!text) return res.status(400).json({ error: 'Message is required.' });
     if (!Array.isArray(routine)) return res.status(400).json({ error: 'Routine draft is required.' });
@@ -148,41 +155,153 @@ router.post('/ai-routine-chat', async (req, res) => {
     const lower = text.toLowerCase();
     let updatedRoutine = routine.map((item) => ({ ...item }));
     let reply = 'I can revise the draft without changing your calendar. Ask me to move, remove, or explain an event.';
-    const timeMatch = lower.match(/\b(?:to|at|around)\s+([01]?\d|2[0-3])(?::([0-5]\d))?\s*(am|pm)?\b/);
+    let operationResult = null;
+    const timeMatch = lower.match(/\b(?:to|at|around|from|starting\s+(?:at|from))\s+([01]?\d|2[0-3])(?::([0-5]\d))?\s*(am|pm)?\b/);
+    const wantsRecreate = /\b(delete|remove|clear|replace)\b/.test(lower) &&
+      /\b(create|recreate|regenerate|new|again|plan)\b/.test(lower) &&
+      Boolean(timeMatch);
 
-    if (/\b(remove|delete|drop|skip)\b/.test(lower)) {
-      const before = updatedRoutine.length;
-      const targetText = lower.replace(/\b(remove|delete|drop|skip)\b/g, '').replace(/\b(event|slot|routine|from|the|please)\b/g, '').trim();
-      if (/\b(all|everything)\b/.test(lower)) {
-        updatedRoutine = [];
-        reply = 'All draft routine items were removed. The calendar is still unchanged until you accept.';
-      } else {
-        updatedRoutine = updatedRoutine.filter((item) => !targetText || !`${item.title || ''} ${item.description || ''}`.toLowerCase().includes(targetText));
-        reply = updatedRoutine.length < before
-          ? 'I removed the matching item from the draft. Your calendar is still unchanged.'
-          : 'I could not find a matching draft item. Try the exact event title.';
-      }
-    } else if (timeMatch && /\b(move|shift|reschedule|schedule)\b/.test(lower)) {
+    if (wantsRecreate) {
       let hour = Number(timeMatch[1]);
       const minute = Number(timeMatch[2] || 0);
       if (timeMatch[3] === 'pm' && hour < 12) hour += 12;
       if (timeMatch[3] === 'am' && hour === 12) hour = 0;
+      const firstStart = updatedRoutine.length ? new Date(updatedRoutine[0].startAt) : null;
+      const requestedStart = firstStart ? new Date(firstStart) : null;
+      const shiftMs = requestedStart
+        ? (requestedStart.setHours(hour, minute, 0, 0), requestedStart.getTime() - firstStart.getTime())
+        : 0;
+
+      updatedRoutine = updatedRoutine.map((item) => {
+        const start = new Date(item.startAt);
+        const end = new Date(item.endAt);
+        const duration = Math.max(end.getTime() - start.getTime(), 30 * 60 * 1000);
+        start.setTime(start.getTime() + shiftMs);
+        return { ...item, startAt: start, endAt: new Date(start.getTime() + duration), calendarId: item.calendarId || calendarId };
+      });
+
+      if (executeOperations && calendarId) {
+        const deleted = await CalendarEvent.deleteMany({ userId, calendarId });
+        const created = [];
+        for (const item of updatedRoutine) {
+          if (!item.title || !item.startAt) continue;
+          const event = await CalendarEvent.create({
+            userId,
+            calendarId,
+            title: String(item.title).trim(),
+            description: item.description || '',
+            startAt: new Date(item.startAt),
+            endAt: new Date(item.endAt || new Date(item.startAt).getTime() + 60 * 60 * 1000),
+            priority: item.priority || 'medium',
+            status: 'scheduled',
+            recurrenceRule: item.recurrenceRule || { frequency: 'none' },
+            reminders: [{ offsetMinutes: 15, isEnabled: true }],
+          });
+          await syncNotificationLogs(event);
+          created.push(event);
+        }
+        operationResult = { type: 'replace-plan', deleted: deleted.deletedCount || 0, created: created.length };
+        reply = `Deleted ${operationResult.deleted} existing event${operationResult.deleted === 1 ? '' : 's'} and recreated ${operationResult.created} draft event${operationResult.created === 1 ? '' : 's'} from ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}.`;
+      } else {
+        reply = `Recreated the draft timing from ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}. Enable “Allow calendar changes” to replace events in the selected calendar.`;
+      }
+    } else if (/\b(remove|delete|drop|skip)\b/.test(lower)) {
+      const before = updatedRoutine.length;
+      const targetText = lower.replace(/\b(remove|delete|drop|skip)\b/g, '').replace(/\b(event|slot|routine|from|the|please)\b/g, '').trim();
+      if (/\b(all|everything)\b/.test(lower)) {
+        updatedRoutine = [];
+        if (executeOperations && calendarId) {
+          const result = await CalendarEvent.deleteMany({ userId, calendarId });
+          operationResult = { type: 'delete-all', count: result.deletedCount || 0 };
+          reply = `Removed ${operationResult.count} event${operationResult.count === 1 ? '' : 's'} from the calendar and cleared the draft.`;
+        } else {
+          reply = 'All draft routine items were removed. Enable “Allow calendar changes” to remove existing database events too.';
+        }
+      } else {
+        updatedRoutine = updatedRoutine.filter((item) => !targetText || !`${item.title || ''} ${item.description || ''}`.toLowerCase().includes(targetText));
+        if (executeOperations && calendarId && targetText) {
+          const search = new RegExp(targetText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+          const result = await CalendarEvent.deleteMany({
+            userId,
+            calendarId,
+            $or: [{ title: search }, { description: search }],
+          });
+          operationResult = { type: 'delete', count: result.deletedCount || 0 };
+        }
+        reply = updatedRoutine.length < before
+          ? operationResult
+            ? `Removed ${operationResult.count} matching database event${operationResult.count === 1 ? '' : 's'} and updated the draft.`
+            : 'I removed the matching item from the draft. Enable “Allow calendar changes” to update existing database events too.'
+          : 'I could not find a matching draft item. Try the exact event title.';
+      }
+    } else if (timeMatch && /\b(move|shift|reschedule|schedule|start|begin)\b/.test(lower)) {
+      let hour = Number(timeMatch[1]);
+      const minute = Number(timeMatch[2] || 0);
+      if (timeMatch[3] === 'pm' && hour < 12) hour += 12;
+      if (timeMatch[3] === 'am' && hour === 12) hour = 0;
+      const isPlanStart = /\b(start|begin)\s+(?:the\s+)?(?:plan|routine)\b/.test(lower);
       const targetText = lower
         .replace(timeMatch[0], '')
-        .replace(/\b(move|shift|reschedule|schedule|to|at|around|please)\b/g, '')
+        .replace(/\b(move|shift|reschedule|schedule|start|begin|the|plan|routine|from|to|at|around|please)\b/g, '')
         .trim();
       let changed = false;
+      let shiftMs = 0;
+      if (isPlanStart && updatedRoutine.length) {
+        const firstStart = new Date(updatedRoutine[0].startAt);
+        const requestedStart = new Date(firstStart);
+        requestedStart.setHours(hour, minute, 0, 0);
+        shiftMs = requestedStart.getTime() - firstStart.getTime();
+      }
       updatedRoutine = updatedRoutine.map((item) => {
         if (targetText && !`${item.title || ''} ${item.description || ''}`.toLowerCase().includes(targetText)) return item;
         const start = new Date(item.startAt);
         const end = new Date(item.endAt);
         const duration = Math.max(end.getTime() - start.getTime(), 30 * 60 * 1000);
-        start.setHours(hour, minute, 0, 0);
+        if (isPlanStart) {
+          start.setTime(start.getTime() + shiftMs);
+        } else {
+          start.setHours(hour, minute, 0, 0);
+        }
         changed = true;
         return { ...item, startAt: start, endAt: new Date(start.getTime() + duration) };
       });
+      if (executeOperations && calendarId && changed) {
+        const search = targetText
+          ? new RegExp(targetText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+          : null;
+        const draftTitles = updatedRoutine
+          .map((item) => String(item.title || '').trim())
+          .filter(Boolean)
+          .map((title) => new RegExp(title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
+        const existingEvents = await CalendarEvent.find({
+          userId,
+          calendarId,
+          $or: search
+            ? [{ title: search }, { description: search }]
+            : draftTitles.map((title) => ({ title })),
+        }).sort({ startAt: 1 });
+        for (const existing of existingEvents) {
+          const start = new Date(existing.startAt);
+          const end = new Date(existing.endAt);
+          const duration = Math.max(end.getTime() - start.getTime(), 30 * 60 * 1000);
+          if (isPlanStart) {
+            start.setTime(start.getTime() + shiftMs);
+          } else {
+            start.setHours(hour, minute, 0, 0);
+          }
+          existing.startAt = start;
+          existing.endAt = new Date(start.getTime() + duration);
+          await existing.save();
+          await syncNotificationLogs(existing);
+          operationResult = { type: 'move', count: existingEvents.length };
+        }
+      }
       reply = changed
-        ? `I moved the matching draft item to ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}. The calendar is still unchanged.`
+        ? operationResult
+          ? `${isPlanStart ? 'Shifted the draft plan' : 'Moved the draft'} and updated ${operationResult.count} matching calendar event${operationResult.count === 1 ? '' : 's'}.`
+          : isPlanStart
+            ? `Shifted the entire draft so it starts at ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}. Enable “Allow calendar changes” to update the database too.`
+            : `I moved the draft item to ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}. Enable “Allow calendar changes” to update the existing database event too.`
         : 'I could not find a matching draft item. Include part of its exact title.';
     } else if (/\b(why|explain|conflict|overlap|busy)\b/.test(lower)) {
       reply = updatedRoutine.map((item) => `${item.title}: ${item.conflictResolution || item.coOccurrenceNote || 'No conflict noted.'}`).join(' ');
@@ -190,7 +309,14 @@ router.post('/ai-routine-chat', async (req, res) => {
       reply = updatedRoutine.length ? updatedRoutine.map((item) => `${item.title} at ${toTimeString(item.startAt)}`).join(' • ') : 'The draft is empty. Go back and generate a new routine.';
     }
 
-    res.json({ success: true, reply, targetDateStr, routine: updatedRoutine, calendarChanged: false });
+    res.json({
+      success: true,
+      reply,
+      targetDateStr,
+      routine: updatedRoutine,
+      calendarChanged: Boolean(operationResult),
+      operationResult,
+    });
   } catch (error) {
     console.error('[AI Routine Chat Error]', error);
     res.status(500).json({ error: error.message || 'Failed to update routine draft' });

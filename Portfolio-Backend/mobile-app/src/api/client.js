@@ -90,6 +90,9 @@ const request = async (endpoint, options = {}) => {
     if (error.message && error.message.includes('Network request failed')) {
       throw new Error(`Cannot reach server at ${API_BASE_URL}. Make sure phone & laptop are on same Wi-Fi, or configure Server URL.`);
     }
+    if (error.message && /failed to fetch/i.test(error.message)) {
+      throw new Error(`Cannot reach server at ${API_BASE_URL}. Make sure the local backend is running and try again.`);
+    }
     console.error(`[API Request Error] ${endpoint}:`, error.message);
     throw error;
   }

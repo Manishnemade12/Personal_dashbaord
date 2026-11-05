@@ -80,6 +80,7 @@ export default function AiRoutinePlannerModal({
   const [routineChat, setRoutineChat] = useState([]);
   const [routineChatInput, setRoutineChatInput] = useState('');
   const [routineChatLoading, setRoutineChatLoading] = useState(false);
+  const [allowCalendarChanges, setAllowCalendarChanges] = useState(false);
 
   // Review & Cross-calendar state
   const [routineItems, setRoutineItems] = useState([]);
@@ -106,6 +107,7 @@ export default function AiRoutinePlannerModal({
       setRoutineItems([]);
       setRoutineChat([]);
       setRoutineChatInput('');
+      setAllowCalendarChanges(false);
       const d = selectedDate ? new Date(selectedDate) : new Date();
       const yyyy = d.getFullYear();
       const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -282,9 +284,12 @@ export default function AiRoutinePlannerModal({
         message,
         routine: routineItems,
         targetDateStr,
+        calendarId: selectedCalendarId,
+        executeOperations: allowCalendarChanges,
       });
       if (Array.isArray(res?.routine)) setRoutineItems(res.routine);
       setRoutineChat((current) => [...current, { role: 'assistant', text: res.reply || 'Draft updated.' }]);
+      if (res?.calendarChanged && onRoutineCreated) onRoutineCreated();
     } catch (error) {
       setRoutineChat((current) => [...current, { role: 'assistant', text: error.message || 'I could not update this draft.' }]);
     } finally {
@@ -1022,10 +1027,24 @@ export default function AiRoutinePlannerModal({
                     <Text style={{ color: '#5b21b6', fontSize: 12, fontWeight: '800', marginLeft: 6 }}>
                       Ask AI about this plan
                     </Text>
-                    <Text style={{ color: '#64748b', fontSize: 10, marginLeft: 6 }}>
-                      Changes stay in draft
+                    <Text style={{ color: allowCalendarChanges ? '#b45309' : '#64748b', fontSize: 10, marginLeft: 6 }}>
+                      {allowCalendarChanges ? 'Database changes enabled' : 'Changes stay in draft'}
                     </Text>
                   </View>
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 7 }}
+                    onPress={() => setAllowCalendarChanges((value) => !value)}
+                    disabled={routineChatLoading}
+                  >
+                    <Ionicons
+                      name={allowCalendarChanges ? 'checkbox' : 'square-outline'}
+                      size={17}
+                      color={allowCalendarChanges ? '#7e37d8' : '#64748b'}
+                    />
+                    <Text style={{ color: allowCalendarChanges ? '#5b21b6' : '#475569', fontSize: 10, fontWeight: '700', marginLeft: 6 }}>
+                      Allow AI to change existing calendar events
+                    </Text>
+                  </TouchableOpacity>
                   <View style={{ maxHeight: 115, marginBottom: 7 }}>
                     <ScrollView nestedScrollEnabled>
                       {routineChat.map((message, index) => (
@@ -1068,7 +1087,9 @@ export default function AiRoutinePlannerModal({
                     </TouchableOpacity>
                   </View>
                   <Text style={{ color: '#64748b', fontSize: 9, marginTop: 6 }}>
-                    Try: “Move Deep Focus to 10 AM” · “Remove the workout” · “Why this time?”
+                    {allowCalendarChanges
+                      ? 'Database actions enabled: replace, move, remove, or recreate this selected calendar.'
+                      : 'Draft-only mode: calendar stays unchanged until you accept.'}
                   </Text>
                 </View>
 
