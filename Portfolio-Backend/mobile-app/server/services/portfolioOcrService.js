@@ -1,5 +1,6 @@
 const InvestmentHolding = require('../models/InvestmentHolding');
 const ProjectApi = require('../models/portfolio/ProjectApi');
+const { SYSTEM_PROMPTS, buildOcrPrompt } = require('../prompts/aiPrompts');
 
 const GROQ_MODEL = process.env.GROK_MODEL || 'openai/gpt-oss-120b';
 
@@ -189,43 +190,12 @@ async function parseHoldingsWithLlm(ocrText) {
     throw new Error('No Groq LLM API key available');
   }
 
-  const prompt = `You are an elite Chief Investment Officer and precision financial OCR parser for Indian stock brokers (Zerodha Kite, Groww, Angel One, Upstox, IndMoney, Dhan, etc.).
-
-Analyze this raw OCR text extracted from brokerage portfolio screenshot(s):
-"""
-${ocrText.slice(0, 5000)}
-"""
-
-CRITICAL EXTRACTION RULES (INDIAN STOCK BROKERS):
-1. "buyPrice" vs "latestPrice":
-   - "buyPrice" is strictly the user's AVERAGE PURCHASE COST (labeled as "Avg.", "Avg. cost", "Avg price", "Purchase price", "Cost price", "Avg:", or shown inline like "Qty. 10 • Avg. 2800" -> buyPrice=2800).
-   - "latestPrice" is the CURRENT MARKET PRICE (LTP) (labeled as "LTP", "Last Price", "CMP", "Market price", or shown like "LTP 2650 (-5.4%)" -> latestPrice=2650).
-   - STRICT CONSTRAINT: NEVER set buyPrice equal to LTP if an average buy price or avg cost is visible! If both are visible, buyPrice MUST be the average purchase cost, and latestPrice MUST be the LTP.
-2. "quantity":
-   - "quantity" is strictly the positive integer number of shares or units held (labeled as "Qty", "Qty.", "Shares", "Units", or "50 shares").
-   - NEVER use P&L amount, day change, total investment amount, or percentage numbers as quantity!
-   - If total invested amount and average buy price are shown, quantity = Math.round(Invested / buyPrice).
-3. "symbolOrCode":
-   - Clean ticker (e.g. RELIANCE, TCS, INFY, HDFCBANK, TATAMOTORS, SBIN). Strip any .NS or .BO suffix.
-4. Output format:
-   Return ONLY a valid JSON array of objects with schema:
-[
-  {
-    "symbolOrCode": "TATAMOTORS",
-    "instrumentName": "Tata Motors Ltd",
-    "quantity": 25,
-    "buyPrice": 948.5,
-    "latestPrice": 978.2,
-    "assetClass": "Equity",
-    "subCategory": "Stocks"
-  }
-]
-Do not wrap in markdown fences. Output raw JSON only.`;
+  const prompt = buildOcrPrompt(ocrText);
 
   const payload = {
     model: GROQ_MODEL,
     messages: [
-      { role: 'system', content: 'You extract structured stock holdings from brokerage OCR text into JSON without confusing LTP with Buy Price.' },
+      { role: 'system', content: SYSTEM_PROMPTS.ocr },
       { role: 'user', content: prompt },
     ],
     temperature: 0.1,

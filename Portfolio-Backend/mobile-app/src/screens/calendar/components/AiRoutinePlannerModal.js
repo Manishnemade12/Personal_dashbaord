@@ -14,6 +14,10 @@ import { api } from '../../../api/client';
 import styles from '../styles/aiRoutineStyles';
 import { isEventMatchingDate } from './CalendarViews';
 import TimePickerField from '../../../components/common/TimePickerField';
+import {
+  AI_ROUTINE_CATEGORIES,
+  AI_ROUTINE_SUGGESTIONS,
+} from '../../../constants/aiPrompts';
 
 const formatTimeLabel = (dateInput) => {
   if (!dateInput) return '';
@@ -22,20 +26,8 @@ const formatTimeLabel = (dateInput) => {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-const CATEGORIES = [
-  { id: 'study', label: 'Study & Exams', icon: 'book-outline', template: '4-hour deep study session: DSA, theory revision & challenge problems with short breaks' },
-  { id: 'diet', label: 'Diet & Nutrition', icon: 'restaurant-outline', template: 'High-protein clean diet routine: hydration, pre/post workout nutrition & meal timings' },
-  { id: 'workout', label: 'Workout & Fitness', icon: 'barbell-outline', template: 'Daily fitness schedule: mobility warm-up, heavy strength training, and recovery walk' },
-  { id: 'work', label: 'Work & Projects', icon: 'briefcase-outline', template: 'Focused deep work sprint: priority tasks, code review, and goal execution' },
-  { id: 'general', label: 'General Routine', icon: 'sparkles-outline', template: 'Balanced daily routine with prioritized focus blocks, hydration, and breaks' },
-];
-
-const SUGGESTIONS = [
-  { label: '📚 4h DSA + Coding Sprint', category: 'study', text: '4 hours DSA: Trees, Dynamic Programming & LeetCode problems with breaks' },
-  { label: '🥗 High-Protein Diet & Hydration', category: 'diet', text: '5-meal high-protein diet routine with hydration and shake reminders' },
-  { label: '🏋️ Morning Workout & Cardio', category: 'workout', text: 'Morning workout: dynamic warm-up, strength lifting & evening 5k walk' },
-  { label: '💼 Full-Day Deep Work Sprint', category: 'work', text: 'Deep work sprint: finish priority roadmap milestones and review pull requests' },
-];
+const CATEGORIES = AI_ROUTINE_CATEGORIES;
+const SUGGESTIONS = AI_ROUTINE_SUGGESTIONS;
 
 const RECURRENCE_OPTIONS = [
   { id: 'daily', label: 'Every Day', icon: 'repeat' },

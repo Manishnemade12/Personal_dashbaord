@@ -6,6 +6,7 @@ const Calendar = require('../models/Calendar');
 const CalendarEvent = require('../models/CalendarEvent');
 const ProjectApi = require('../models/portfolio/ProjectApi');
 const { calculateDietItemBreakdown, calculateSingleIngredientNutrition } = require('../services/nutritionCalculator');
+const { SYSTEM_PROMPTS, buildNutritionPrompt } = require('../prompts/aiPrompts');
 
 const GROQ_MODEL = process.env.GROK_MODEL || 'openai/gpt-oss-120b';
 const DIET_PLANNER_RULES = [
@@ -91,29 +92,11 @@ router.post('/calculate-macros', async (req, res) => {
       .map((ing) => `- ${ing.quantity || 1} ${ing.unit || 'gram'} of ${ing.name || 'Ingredient'}`)
       .join('\n');
 
-    const prompt = `You are a certified sports nutritionist and precision dietary analyst.
-Calculate the exact nutritional macro-nutrients for the following meal recipe:
-
-Meal Name: "${name || 'Custom Diet Item'}"
-Category: "${category || 'General'}"
-Ingredients:
-${formattedIngredients}
-
-Determine the accurate:
-1. Total Calories (in kcal)
-2. Total Protein (in grams)
-3. Total Carbohydrates (in grams)
-4. Total Fats (in grams)
-5. A concise 1-2 sentence nutritional benefit summary.
-
-CRITICAL INSTRUCTION: You MUST return ONLY a clean JSON object without any markdown code fences, backticks, or other text:
-{
-  "calories": 380,
-  "protein": 28,
-  "carbs": 42,
-  "fats": 8,
-  "analysis": "Rich in lean protein and complex carbs, ideal for muscle synthesis and sustained stamina."
-}`;
+    const prompt = buildNutritionPrompt({
+      name,
+      category,
+      ingredients: formattedIngredients,
+    });
 
     if (apiKey) {
       try {
@@ -129,7 +112,7 @@ CRITICAL INSTRUCTION: You MUST return ONLY a clean JSON object without any markd
               {
                 role: 'system',
                 content:
-                  'You are a professional nutrition calculation engine. Output only valid JSON without explanation.',
+                  SYSTEM_PROMPTS.nutrition,
               },
               { role: 'user', content: prompt },
             ],

@@ -1,4 +1,5 @@
 const ProjectApi = require('../models/portfolio/ProjectApi');
+const { SYSTEM_PROMPTS, buildStockPrompt, buildStockChatSystemPrompt } = require('../prompts/aiPrompts');
 
 const GROQ_MODEL = process.env.GROK_MODEL || 'openai/gpt-oss-120b';
 
@@ -37,7 +38,7 @@ async function callGrokLlm(prompt, model = GROQ_MODEL) {
       {
         role: 'system',
         content:
-          'You are an elite Chief Investment Officer and SEBI-registered portfolio manager specializing in Indian equity markets (NSE/BSE). You evaluate user stock holdings objectively based on current market trends, valuation, entry price, and technical momentum to provide explicit Buy/Average, Hold, or Exit recommendations.',
+          SYSTEM_PROMPTS.stock,
       },
       {
         role: 'user',
@@ -157,50 +158,7 @@ async function analyzeSingleStock(stock) {
   const investedVal = Number(stock.investedValue || 0).toFixed(2);
   const curVal = Number(stock.currentValue || 0).toFixed(2);
 
-  const prompt = `
-Analyze this Indian stock holding for the user's personal investment portfolio.
-
-STOCK & USER POSITION DATA:
-- Company Name: "${stock.instrumentName || stock.symbolOrCode}"
-- Symbol / Ticker: "${stock.symbolOrCode}"
-- Asset Class: "${stock.assetClass || 'Equity'}" (${stock.subCategory || 'Stocks'})
-- User Quantity Held: ${qty} shares
-- User Average Buy Price: ₹${buyPrice}
-- Current Market Price: ₹${curPrice}
-- Total Invested Amount: ₹${investedVal}
-- Current Market Value: ₹${curVal}
-- Net Profit / Loss: ₹${pnl} (${pnlPct}%)
-- Today Day Change: ${stock.dayChange >= 0 ? '+' : ''}${stock.dayChange || 0} (${stock.dayChangePercent || 0}%)
-
-ANALYSIS GOAL:
-You must decide which of the following 3 actions the user should take right now:
-1. "AVERAGE_DOWN" -> If the stock has good long-term potential, is trading at a discount or dip, and user should buy more to lower their average cost.
-2. "HOLD_LONG_TERM" -> If the company is strong, fairly priced or compounding, and the user should patiently hold for multi-year wealth creation.
-3. "EXIT_OR_TRIM" -> If user has made massive profits and should book partial/full profits, OR if the stock is facing structural headwinds/downtrend and user should cut losses.
-
-Return a JSON object with this EXACT schema:
-{
-  "symbolOrCode": "${stock.symbolOrCode}",
-  "instrumentName": "${stock.instrumentName || stock.symbolOrCode}",
-  "averageBuyPrice": ${buyPrice},
-  "latestPrice": ${curPrice},
-  "pnl": ${pnl},
-  "pnlPercent": ${pnlPct},
-  "verdict": "AVERAGE_DOWN" | "HOLD_LONG_TERM" | "EXIT_OR_TRIM",
-  "verdictBadge": "🟢 Average Down & Accumulate" | "🔵 Hold Long Term" | "🔴 Exit / Book Partial Profit",
-  "conviction": 85,
-  "targetPrice": 1250,
-  "buyZone": "₹900 - ₹930",
-  "stopLoss": 840,
-  "actionPlan": "Detailed step-by-step guidance on how user should manage this holding (e.g. tranche buying, stop-loss trigger, or profit-taking level)",
-  "fundamentalThesis": "2-3 sentences explaining business moat, earnings growth, and valuation",
-  "technicalTrend": "1-2 sentences on current trend, support levels, and RSI/moving average structure",
-  "catalysts": ["Short point 1", "Short point 2"],
-  "risks": ["Risk point 1", "Risk point 2"],
-  "riskRating": "Low" | "Medium" | "High",
-  "timeHorizon": "1-3 Months" | "6-12 Months" | "1-2 Years" | "3+ Years"
-}
-Do not wrap in markdown fences. Output raw JSON only.`;
+  const prompt = buildStockPrompt(stock);
 
   try {
     const parsed = await callGrokLlm(prompt);
@@ -396,24 +354,7 @@ async function chatWithStockAi({ question, selectedStocks = [], history = [] }) 
       .join('\n\n');
   }
 
-  const systemPrompt = `You are an elite Chief Investment Officer and SEBI-registered portfolio manager specializing in Indian equity markets (NSE/BSE).
-You are discussing the user's specific stock portfolio holdings with them.
-The user's currently selected stocks with exact entry and current prices:
-${stockContext}
-
-CRITICAL FORMATTING INSTRUCTIONS:
-- NEVER OUTPUT RAW LATEX SYNTAX. Do NOT use \\frac, \\times, \\text{}, $$, \\approx, \\pm, \\cdot, or LaTeX delimiters.
-- Write all math, formulas, and calculations in clean plain text with standard Unicode characters (use "×" for multiplication, "/" for division, "≈" for approximately, "±" for plus-minus).
-- Always use the Indian Rupee symbol "₹" (e.g. ₹1,250) for all monetary values.
-- Structure responses clearly with Markdown headings (###), clean bullet points (•), and bold highlights (**bold**) for key metrics like Target Price, Stop Loss, and Buy Zones.
-- If multiple stocks are selected, evaluate each stock clearly under its own sub-heading before providing a comparative synthesis.
-
-GUIDELINES FOR YOUR ANALYSIS:
-1. Always ground your analysis in the user's real numbers (their buy average price, current market price, and profit/loss).
-2. Explicitly advise whether to AVERAGE DOWN (if fundamentally solid and trading at a dip), HOLD (for long term compounding), or EXIT/TRIM (to book profits or cut losses).
-3. Provide realistic target price levels, key support zones for averaging, and sensible stop-loss levels.
-4. Keep the tone professional, objective, actionable, and encouraging.
-5. If the user asks in Hindi or Hinglish, answer in fluent, respectful Hinglish or Hindi as requested. Otherwise answer in clear English.`;
+  const systemPrompt = buildStockChatSystemPrompt(stockContext);
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -493,4 +434,3 @@ module.exports = {
   chatWithStockAi,
   generateChatFallback,
 };
-

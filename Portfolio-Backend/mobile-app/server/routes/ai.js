@@ -6,6 +6,7 @@ const Skills = require('../models/portfolio/Skills');
 const Education = require('../models/portfolio/Education');
 const ProjectApi = require('../models/portfolio/ProjectApi');
 const AiColdEmailConversation = require('../models/AiColdEmailConversation');
+const { SYSTEM_PROMPTS, buildColdEmailPrompt } = require('../prompts/aiPrompts');
 
 const GROQ_MODEL = process.env.GROK_MODEL || 'openai/gpt-oss-120b';
 
@@ -185,8 +186,7 @@ async function callGrokLlm(prompt, model = GROQ_MODEL) {
     messages: [
       {
         role: 'system',
-        content:
-          'You are an elite, modern tech professional writing authentic, high-impact cold emails. You write like a genuine human software engineer communicating with engineering managers, founders, and technical recruiters. You NEVER use generic AI buzzwords or robotic clichés.',
+        content: SYSTEM_PROMPTS.coldEmail,
       },
       {
         role: 'user',
@@ -669,62 +669,14 @@ router.post('/conversations/:id/generate', async (req, res) => {
     const toneGuide = toneInstructions[chosenTone] || toneInstructions.pitch;
 
     // Strict Anti-AI Flagging Prompt
-    const prompt = `You are a real human software developer drafting an authentic cold outreach email for a job opening.
-
-CANDIDATE AUTHENTIC RESUME / PORTFOLIO:
-- Full Name: ${candidate.name}
-- Current Profession: ${candidate.profession}
-- Email: ${candidate.email}
-- Phone: ${candidate.phone}
-- Portfolio: ${candidate.portfolio}
-- GitHub: ${candidate.github}
-
-EXACT CANDIDATE RESUME TEXT (USE SPECIFIC FACTS, METRICS & TOOLS FROM HERE ONLY):
-"""
-${
-  candidate.resumeText
-    ? candidate.resumeText
-    : `Candidate Skills: ${candidate.skills.join(', ') || 'React, Next.js, Node.js, Express, MongoDB, PostgreSQL, TypeScript, Docker, CI/CD'}.
-Projects: ${candidate.projects.map((p) => `${p.title}: ${p.description}`).join(' | ') || 'Lumen AI, FinanceAI, Melsta Studio intern'}.
-Education: ${candidate.education || 'B.Tech CSE, G H Raisoni College'}.`
-}
-"""
-
-TARGET APPLICATION:
-- Target Company: "${targetCompany || 'Target Company'}"
-- Target Role: "${targetRole || 'Software Engineer'}"
-- Recruiter Email: "${targetRecipient}"
-- Job Description / Requirements:
-"""
-${finalJdText || `Role: ${targetRole || 'Full Stack Developer'} at ${targetCompany || 'your company'}`}
-"""
-
-TONE: ${toneGuide}
-
-CRITICAL ANTI-AI DETECTION & HUMAN WRITING RULES:
-1. NEVER use AI clichés like:
-   - "I hope this email finds you well"
-   - "I am writing to express my enthusiastic interest in..."
-   - "In today's fast-paced digital world..."
-   - "My unique blend of skills makes me the ideal candidate..."
-   - "Please find my resume attached for your kind perusal"
-2. Start directly with a natural human salutation (e.g. "Hi [Company] team," or "Hi [Hiring Manager],").
-3. Use a clear, direct hook explaining why you are reaching out for this specific position.
-4. Highlight 2-3 specific bullet points formatted with "-- " dashes citing candidate's REAL achievements, numbers, and tools from their resume (e.g. Lumen AI, Melsta Studio, FinanceAI, Codeforces rating, open-source fixes).
-5. Include the candidate portfolio URL (${candidate.portfolio}).
-6. Propose a brief, low-friction call (e.g. "Would you be open to a quick 10-minute sync this week?").
-7. End with a human signature separator "-- " followed by candidate name, contact, and links.
-
-Return ONLY pure JSON matching this exact structure:
-{
-  "subject": "string",
-  "recipient": "string",
-  "company": "string",
-  "role": "string",
-  "emailBody": "string",
-  "keyHighlights": ["string", "string"]
-}
-Do not wrap in markdown fences. Output raw JSON only.`;
+    const prompt = buildColdEmailPrompt({
+      candidate,
+      targetCompany,
+      targetRole,
+      targetRecipient,
+      toneGuide,
+      jobDescription: finalJdText,
+    });
 
     let generated;
     try {

@@ -3,6 +3,11 @@ const CalendarEvent = require('../models/CalendarEvent');
 const DietItem = require('../models/DietItem');
 const ProjectApi = require('../models/portfolio/ProjectApi');
 const { classifyRoutineOperation } = require('./routineOperation');
+const {
+  SYSTEM_PROMPTS,
+  buildCalendarRoutinePrompt,
+  buildCalendarDraftPrompt,
+} = require('../prompts/aiPrompts');
 
 const GROQ_MODEL = process.env.GROK_MODEL || 'llama-3.3-70b-versatile';
 
@@ -573,46 +578,23 @@ You MUST schedule these EXACT meals from the user's Workout & Diet library into 
 Assign realistic, healthy timings throughout the day for each meal (e.g. Breakfast around 08:30, Lunch around 13:00, Snack around 16:30, Post-Workout around 19:00, Dinner around 20:30, etc.) without conflicting with other calendar events. Include the category and macro summary in the description.`
           : '';
 
-      const prompt = `You are a brilliant AI Personal Executive & Daily Schedule Architect.
-Your task is to create a realistic, high-impact routine for the user on date: ${cleanDateStr}.
-
-TARGET CALENDAR: "${targetCalendar.name}"
-USER GOAL / FOCUS: "${userGoal || 'Productive balanced schedule'}"
-CATEGORY: "${planCategory}"
-INTENSITY: "${intensity}"
-RECURRENCE: "${recurrenceRule?.frequency || 'once'}"
-
-EXISTING SCHEDULE ACROSS ALL OTHER CALENDARS (READ CAREFULLY):
-${existingEventsFormatted.length > 0 ? existingEventsFormatted.join('\n') : 'No existing events scheduled for this day across other calendars.'}
-${dietMealsPromptSection}
-
-CRITICAL SCHEDULING RULES (MULTI-CALENDAR AWARENESS):
-1. Distinguish between HARD EXCLUSIVE CONFLICTS vs COMPATIBLE CO-OCCURRING TASKS:
-   - "HARD_CONFLICT_EXCLUSIVE" (e.g. Work Meetings, Zoom Calls, Exams, Driving): DO NOT schedule new focus blocks over these. Schedule before or after.
-   - "CO_OCCURRING_PASSIVE_CAN_OVERLAP" (e.g. Diet Shake reminder at 09:00, drinking water, vitamins, background habits): The user CAN do both simultaneously!
-     * RULE: If a study block is 09:00 - 10:00 and a Diet shake is at 09:00, KEEP study at 09:00! DO NOT push study to 09:15! Attach a note that they can sip the shake while studying.
-2. Structure output as realistic time blocks between 07:00 and 22:30.
-3. Return ONLY a valid JSON array of objects with schema:
-[
-  {
-    "title": "Data Structures: Trees & Graphs",
-    "description": "Deep dive into binary search trees and practice 2 problems",
-    "startTime": "09:00",
-    "endTime": "10:30",
-    "priority": "high",
-    "coOccurrenceNote": "Co-occurs with 09:00 AM Shake (Diet) — Enjoy drink while studying",
-    "conflictResolution": null
-  }
-]
-Do not wrap in markdown fences. Output raw JSON only.`;
-
+      const prompt = buildCalendarRoutinePrompt({
+        date: cleanDateStr,
+        calendarName: targetCalendar.name,
+        userGoal,
+        category: planCategory,
+        intensity,
+        recurrence: recurrenceRule?.frequency || 'once',
+        existingEvents: existingEventsFormatted.length > 0 ? existingEventsFormatted.join('\n') : '',
+        dietSection: dietMealsPromptSection,
+      });
       const payload = {
         model: GROQ_MODEL,
         messages: [
           {
             role: 'system',
             content:
-              'You are an expert calendar scheduler that balances deep work with existing multi-calendar commitments without unnecessarily rescheduling parallel habits.',
+              SYSTEM_PROMPTS.calendarRoutine,
           },
           { role: 'user', content: prompt },
         ],
@@ -716,20 +698,18 @@ Do not wrap in markdown fences. Output raw JSON only.`;
 async function interpretDraftMessage({ message, routine, recurrenceRule }) {
   const apiKey = await getApiKey();
   if (!apiKey) return null;
-  const prompt = `Interpret this calendar draft edit request. Return ONLY JSON.
-Message: "${message}"
-Recurrence: ${JSON.stringify(recurrenceRule || {})}
-Draft titles: ${routine.map((item) => item.title).join(' | ')}
-Schema:
-{"type":"shift-plan|replace-plan|move-event|remove-event|remove-all|explain|list|unknown","time":"HH:mm|null","target":"exact draft title or empty"}
-Use shift-plan for "start the draft plan from 8 am". Use replace-plan for delete/remove/replace plus create/regenerate/new plan.`;
+  const prompt = buildCalendarDraftPrompt({
+    message,
+    recurrenceRule,
+    titles: routine.map((item) => item.title).join(' | '),
+  });
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: GROQ_MODEL,
-        messages: [{ role: 'system', content: 'You classify calendar draft edits. Output valid JSON only.' }, { role: 'user', content: prompt }],
+        messages: [{ role: 'system', content: SYSTEM_PROMPTS.calendarDraft }, { role: 'user', content: prompt }],
         temperature: 0,
       }),
     });
