@@ -167,6 +167,7 @@ export const api = {
   clearAllEvents: (calendarId) =>
     request(`/calendar-events/clear-all${calendarId ? `?calendarId=${encodeURIComponent(calendarId)}` : ''}`, { method: 'DELETE' }),
   generateAiRoutine: (data) => request('/calendar-events/ai-routine', { method: 'POST', body: data }),
+  chatAiRoutine: (data) => request('/calendar-events/ai-routine-chat', { method: 'POST', body: data }),
   bulkCreateEvents: (data) => request('/calendar-events/bulk', { method: 'POST', body: data }),
 
   // Reminders (/api/reminders)
@@ -282,6 +283,8 @@ export const api = {
   deleteDietItem: (id) => request(`/diet/items/${id}`, { method: 'DELETE' }),
   calculateDietMacros: (data) => request('/diet/calculate-macros', { method: 'POST', body: data }),
   reviewAiDietPlan: (data) => request('/diet/ai-plan-review', { method: 'POST', body: data }),
+  chatAiDietPlan: (data) => request('/diet/ai-plan-chat', { method: 'POST', body: data }),
+  acceptAiDietPlan: (data) => request('/diet/ai-plan-accept', { method: 'POST', body: data }),
   getDietCalorieHistory: (start, end) =>
     request(`/diet/calorie-history?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`),
 

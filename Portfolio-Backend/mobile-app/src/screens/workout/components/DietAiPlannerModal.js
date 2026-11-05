@@ -20,17 +20,26 @@ export default function DietAiPlannerModal({
   dateStr,
   onAccepted,
 }) {
-  const [prompt, setPrompt] = useState('');
+  const [inputText, setInputText] = useState('');
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [accepting, setAccepting] = useState(false);
+  const [planId, setPlanId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [showMeals, setShowMeals] = useState(false);
+  const [showPlan, setShowPlan] = useState(true);
 
   const createReview = async () => {
+    if (!inputText.trim()) {
+      Alert.alert('Tell the AI what you need', 'Add a preference such as vegetarian, no dairy, or workout at 6 PM.');
+      return;
+    }
     setLoading(true);
     try {
       const response = await api.reviewAiDietPlan({
         dateStr,
-        prompt,
+        prompt: inputText.trim(),
         dietItemIds: dietItems.map((item) => item._id),
       });
       setRecommendations(
@@ -39,6 +48,11 @@ export default function DietAiPlannerModal({
           selected: item.defaultSelected !== false,
         }))
       );
+      setPlanId(response.planId);
+      setMessages(response.messages || [{
+        role: 'assistant',
+        text: 'I prepared a draft from your saved Diet Library. Review it, ask questions, and accept only what you want to schedule.',
+      }]);
     } catch (error) {
       Alert.alert('AI Diet Planner', error.message || 'Could not prepare the diet plan review.');
     } finally {
@@ -46,8 +60,30 @@ export default function DietAiPlannerModal({
     }
   };
 
+  const sendMessage = async () => {
+    if (!inputText.trim() || !planId) return;
+    const text = inputText.trim();
+    setInputText('');
+    setChatLoading(true);
+    try {
+      const response = await api.chatAiDietPlan({ planId, message: text });
+      setMessages(response.messages || []);
+    } catch (error) {
+      Alert.alert('AI Diet Planner', error.message || 'Could not discuss this draft plan.');
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (visible) createReview();
+    if (visible) {
+      setInputText('');
+      setRecommendations([]);
+      setPlanId(null);
+      setMessages([]);
+      setShowMeals(false);
+      setShowPlan(true);
+    }
   }, [visible, dateStr]);
 
   const toggleRecommendation = (id) => {
@@ -64,6 +100,7 @@ export default function DietAiPlannerModal({
     }
     setAccepting(true);
     try {
+      await api.acceptAiDietPlan({ planId });
       for (const item of selected) {
         await api.scheduleDietMeal({
           title: item.name,
@@ -101,31 +138,97 @@ export default function DietAiPlannerModal({
           </View>
 
           <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-            <Text style={styles.formLabel}>Tell AI your preferences</Text>
-            <TextInput
-              style={[styles.formInput, { minHeight: 65, textAlignVertical: 'top' }]}
-              multiline
-              value={prompt}
-              onChangeText={setPrompt}
-              placeholder="Example: vegetarian, no dairy, light dinner, workout at 6 PM"
-              placeholderTextColor="#94a3b8"
-            />
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 7 }}>
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#dcfce7', alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+                <Ionicons name="sparkles" size={15} color="#059669" />
+              </View>
+              <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 14 }}>
+                {planId ? 'Ask about this draft' : 'Tell AI your diet goal'}
+              </Text>
+            </View>
+            <View style={{ maxHeight: 110, marginBottom: 7 }}>
+              <ScrollView>
+                {messages.map((message, index) => (
+                  <View
+                    key={`${index}-${message.role}`}
+                    style={{
+                      alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start',
+                      maxWidth: '90%',
+                      paddingVertical: 6,
+                      paddingHorizontal: 9,
+                      marginBottom: 5,
+                      borderRadius: 10,
+                      backgroundColor: message.role === 'user' ? '#ede9fe' : '#f1f5f9',
+                    }}
+                  >
+                    <Text style={{ color: '#334155', fontSize: 11, lineHeight: 16 }}>{message.text}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 9 }}>
+              <TextInput
+                style={[styles.formInput, { flex: 1, minHeight: 42, maxHeight: 70, paddingVertical: 10 }]}
+                multiline={!planId}
+                value={inputText}
+                onChangeText={setInputText}
+                placeholder={planId ? 'Ask: why was this meal flagged?' : 'Example: vegetarian, no dairy, dinner at 8 PM'}
+                placeholderTextColor="#94a3b8"
+              />
+              <TouchableOpacity
+                style={{ width: 42, height: 42, borderRadius: 10, marginLeft: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: '#059669' }}
+                onPress={planId ? sendMessage : createReview}
+                disabled={loading || chatLoading}
+              >
+                {loading || chatLoading ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name={planId ? 'send' : 'sparkles'} size={17} color="#fff" />}
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity
-              style={[styles.saveBtn, { marginBottom: 10 }]}
-              onPress={createReview}
-              disabled={loading}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', marginBottom: 5 }}
+              onPress={() => setShowMeals((value) => !value)}
             >
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Discuss / Refresh Suggestions</Text>}
+              <Ionicons name={showMeals ? 'chevron-down' : 'chevron-forward'} size={14} color="#047857" />
+              <Text style={{ color: '#065f46', fontWeight: '800', fontSize: 12, marginLeft: 5 }}>
+                Meals <Text style={{ color: '#64748b', fontWeight: '600' }}>({recommendations.filter((item) => item.selected).length}/{recommendations.length})</Text>
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', marginBottom: 7 }}
+              onPress={() => setShowPlan((value) => !value)}
+            >
+              <Ionicons name={showPlan ? 'chevron-down' : 'chevron-forward'} size={14} color="#2563eb" />
+              <Text style={{ color: '#1e40af', fontWeight: '800', fontSize: 12, marginLeft: 5 }}>
+                AI draft plan <Text style={{ color: '#64748b', fontWeight: '600' }}>({recommendations.length} meals)</Text>
+              </Text>
             </TouchableOpacity>
 
-            {recommendations.map((item) => {
+            {showMeals && dietItems.map((meal) => {
+              const recommendation = recommendations.find((item) => String(item.id) === String(meal._id));
+              return (
+                <TouchableOpacity
+                  key={meal._id}
+                  onPress={() => recommendation && toggleRecommendation(recommendation.id)}
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7 }}
+                >
+                  <Ionicons
+                    name={recommendation?.selected ? 'checkbox' : 'square-outline'}
+                    size={19}
+                    color={recommendation?.selected ? '#059669' : '#94a3b8'}
+                  />
+                  <Text style={{ marginLeft: 7, color: '#334155', fontSize: 11, flex: 1 }}>
+                    {meal.name} · {meal.category}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            {showPlan && recommendations.map((item) => {
               const isAvoid = item.recommendation === 'avoid';
               return (
                 <View
                   key={String(item.id)}
                   style={{
-                    padding: 10,
-                    marginBottom: 8,
+                    padding: 8,
+                    marginBottom: 6,
                     borderRadius: 10,
                     borderWidth: 1,
                     borderColor: isAvoid ? '#fecaca' : item.selected ? '#86efac' : '#cbd5e1',
@@ -141,7 +244,7 @@ export default function DietAiPlannerModal({
                       />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 13 }}>{item.name}</Text>
+                      <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 12 }}>{item.name}</Text>
                       <Text style={{ color: '#64748b', fontSize: 10, marginTop: 2 }}>
                         {item.category} • {item.timeStr} • {item.calories} kcal • {item.protein}g protein
                       </Text>
@@ -150,7 +253,7 @@ export default function DietAiPlannerModal({
                       {isAvoid ? 'REVIEW' : 'FIT'}
                     </Text>
                   </View>
-                  <Text style={{ color: isAvoid ? '#991b1b' : '#166534', fontSize: 10, marginTop: 7 }}>
+                  <Text style={{ color: isAvoid ? '#991b1b' : '#166534', fontSize: 10, marginTop: 5, lineHeight: 14 }}>
                     {item.reason}
                   </Text>
                   {isAvoid && (

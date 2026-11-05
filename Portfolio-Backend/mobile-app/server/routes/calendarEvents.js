@@ -5,6 +5,11 @@ const NotificationLog = require('../models/NotificationLog');
 const Calendar = require('../models/Calendar');
 const aiRoutinePlannerService = require('../services/aiRoutinePlannerService');
 
+const toTimeString = (date) => {
+  const value = new Date(date);
+  return `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`;
+};
+
 // Helper to schedule notification logs
 const syncNotificationLogs = async (event) => {
   try {
@@ -124,10 +129,71 @@ router.post('/ai-routine', async (req, res) => {
       recurrenceRule,
       dietLibraryItemIds,
     });
+
     res.json(result);
   } catch (error) {
     console.error('[AI Routine Route Error]', error);
     res.status(500).json({ error: error.message || 'Failed to generate AI routine' });
+  }
+});
+
+// Discuss or revise a draft routine. This endpoint never creates calendar events.
+router.post('/ai-routine-chat', async (req, res) => {
+  try {
+    const { message = '', routine = [], targetDateStr } = req.body;
+    const text = String(message).trim();
+    if (!text) return res.status(400).json({ error: 'Message is required.' });
+    if (!Array.isArray(routine)) return res.status(400).json({ error: 'Routine draft is required.' });
+
+    const lower = text.toLowerCase();
+    let updatedRoutine = routine.map((item) => ({ ...item }));
+    let reply = 'I can revise the draft without changing your calendar. Ask me to move, remove, or explain an event.';
+    const timeMatch = lower.match(/\b(?:to|at|around)\s+([01]?\d|2[0-3])(?::([0-5]\d))?\s*(am|pm)?\b/);
+
+    if (/\b(remove|delete|drop|skip)\b/.test(lower)) {
+      const before = updatedRoutine.length;
+      const targetText = lower.replace(/\b(remove|delete|drop|skip)\b/g, '').replace(/\b(event|slot|routine|from|the|please)\b/g, '').trim();
+      if (/\b(all|everything)\b/.test(lower)) {
+        updatedRoutine = [];
+        reply = 'All draft routine items were removed. The calendar is still unchanged until you accept.';
+      } else {
+        updatedRoutine = updatedRoutine.filter((item) => !targetText || !`${item.title || ''} ${item.description || ''}`.toLowerCase().includes(targetText));
+        reply = updatedRoutine.length < before
+          ? 'I removed the matching item from the draft. Your calendar is still unchanged.'
+          : 'I could not find a matching draft item. Try the exact event title.';
+      }
+    } else if (timeMatch && /\b(move|shift|reschedule|schedule)\b/.test(lower)) {
+      let hour = Number(timeMatch[1]);
+      const minute = Number(timeMatch[2] || 0);
+      if (timeMatch[3] === 'pm' && hour < 12) hour += 12;
+      if (timeMatch[3] === 'am' && hour === 12) hour = 0;
+      const targetText = lower
+        .replace(timeMatch[0], '')
+        .replace(/\b(move|shift|reschedule|schedule|to|at|around|please)\b/g, '')
+        .trim();
+      let changed = false;
+      updatedRoutine = updatedRoutine.map((item) => {
+        if (targetText && !`${item.title || ''} ${item.description || ''}`.toLowerCase().includes(targetText)) return item;
+        const start = new Date(item.startAt);
+        const end = new Date(item.endAt);
+        const duration = Math.max(end.getTime() - start.getTime(), 30 * 60 * 1000);
+        start.setHours(hour, minute, 0, 0);
+        changed = true;
+        return { ...item, startAt: start, endAt: new Date(start.getTime() + duration) };
+      });
+      reply = changed
+        ? `I moved the matching draft item to ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}. The calendar is still unchanged.`
+        : 'I could not find a matching draft item. Include part of its exact title.';
+    } else if (/\b(why|explain|conflict|overlap|busy)\b/.test(lower)) {
+      reply = updatedRoutine.map((item) => `${item.title}: ${item.conflictResolution || item.coOccurrenceNote || 'No conflict noted.'}`).join(' ');
+    } else if (/\b(what|which|show|list)\b/.test(lower)) {
+      reply = updatedRoutine.length ? updatedRoutine.map((item) => `${item.title} at ${toTimeString(item.startAt)}`).join(' • ') : 'The draft is empty. Go back and generate a new routine.';
+    }
+
+    res.json({ success: true, reply, targetDateStr, routine: updatedRoutine, calendarChanged: false });
+  } catch (error) {
+    console.error('[AI Routine Chat Error]', error);
+    res.status(500).json({ error: error.message || 'Failed to update routine draft' });
   }
 });
 

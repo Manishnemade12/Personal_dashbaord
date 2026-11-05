@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const DietItem = require('../models/DietItem');
+const DietAiPlan = require('../models/DietAiPlan');
 const Calendar = require('../models/Calendar');
 const CalendarEvent = require('../models/CalendarEvent');
 const ProjectApi = require('../models/portfolio/ProjectApi');
@@ -257,16 +258,74 @@ router.post('/ai-plan-review', async (req, res) => {
       };
     });
 
+    const savedPlan = await DietAiPlan.create({
+      dateStr: targetDate,
+      prompt,
+      recommendations,
+      messages: [
+        {
+          role: 'assistant',
+          text: 'I prepared a draft from your saved Diet Library. Review the meals, ask questions, then accept only what you want to schedule.',
+        },
+      ],
+    });
+
     res.json({
       success: true,
+      planId: savedPlan._id,
       dateStr: targetDate,
       prompt,
       rules: DIET_PLANNER_RULES,
       recommendations,
+      messages: savedPlan.messages,
     });
   } catch (err) {
     console.error('Error creating AI diet plan review:', err);
     res.status(500).json({ error: err.message || 'Failed to prepare diet plan review.' });
+  }
+});
+
+router.post('/ai-plan-chat', async (req, res) => {
+  try {
+    const { planId, message = '' } = req.body;
+    const plan = await DietAiPlan.findOne({ _id: planId, userId: 'admin' });
+    if (!plan) return res.status(404).json({ error: 'Draft diet plan not found.' });
+    const text = String(message).trim();
+    if (!text) return res.status(400).json({ error: 'Message is required.' });
+    const lower = text.toLowerCase();
+    let reply = 'You can select or deselect any meal below. The plan stays temporary until you press Accept & Schedule.';
+    if (/\bwhy|reason|avoid|suitable|fit\b/.test(lower)) {
+      const reviewItems = plan.recommendations.filter((item) => item.recommendation === 'avoid');
+      reply = reviewItems.length
+        ? `${reviewItems.map((item) => `${item.name}: ${item.reason}`).join(' ')} You can still select one manually if you want to schedule it.`
+        : 'No meal is currently flagged as unsuitable. I still recommend checking portions and your personal dietary restrictions before accepting.';
+    } else if (/\btime|when|schedule\b/.test(lower)) {
+      reply = plan.recommendations.map((item) => `${item.name} at ${item.timeStr}`).join(' • ');
+    } else if (/\bcalorie|kcal|protein\b/.test(lower)) {
+      const calories = plan.recommendations.reduce((sum, item) => sum + (item.defaultSelected ? item.calories : 0), 0);
+      const protein = plan.recommendations.reduce((sum, item) => sum + (item.defaultSelected ? item.protein : 0), 0);
+      reply = `The currently recommended meals total about ${calories} kcal and ${protein}g protein.`;
+    }
+    plan.messages.push({ role: 'user', text }, { role: 'assistant', text: reply });
+    await plan.save();
+    res.json({ success: true, reply, messages: plan.messages });
+  } catch (err) {
+    console.error('Error chatting about AI diet plan:', err);
+    res.status(500).json({ error: err.message || 'Failed to discuss the draft plan.' });
+  }
+});
+
+router.post('/ai-plan-accept', async (req, res) => {
+  try {
+    const plan = await DietAiPlan.findOneAndUpdate(
+      { _id: req.body.planId, userId: 'admin' },
+      { status: 'accepted' },
+      { new: true }
+    );
+    if (!plan) return res.status(404).json({ error: 'Draft diet plan not found.' });
+    res.json({ success: true, planId: plan._id, status: plan.status });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to accept diet plan.' });
   }
 });
 

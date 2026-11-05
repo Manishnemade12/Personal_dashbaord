@@ -77,6 +77,9 @@ export default function AiRoutinePlannerModal({
   const [intensity, setIntensity] = useState('moderate');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [routineChat, setRoutineChat] = useState([]);
+  const [routineChatInput, setRoutineChatInput] = useState('');
+  const [routineChatLoading, setRoutineChatLoading] = useState(false);
 
   // Review & Cross-calendar state
   const [routineItems, setRoutineItems] = useState([]);
@@ -101,6 +104,8 @@ export default function AiRoutinePlannerModal({
       setStep('setup');
       setPendingOperation('create');
       setRoutineItems([]);
+      setRoutineChat([]);
+      setRoutineChatInput('');
       const d = selectedDate ? new Date(selectedDate) : new Date();
       const yyyy = d.getFullYear();
       const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -242,6 +247,12 @@ export default function AiRoutinePlannerModal({
       } else if (Array.isArray(res?.routine) && res.routine.length > 0) {
         setPendingOperation('create');
         setRoutineItems(res.routine);
+        setRoutineChat([
+          {
+            role: 'assistant',
+            text: 'This is a draft only. Ask me to move, remove, explain, or adjust an event. Nothing changes in the calendar until you accept.',
+          },
+        ]);
         setStep('review');
       } else {
         const reason = res?.error || res?.message || 'The planner returned no routine items.';
@@ -257,6 +268,27 @@ export default function AiRoutinePlannerModal({
       if (requestId === generationRequestRef.current) {
         setIsGenerating(false);
       }
+    }
+  };
+
+  const handleRoutineChat = async () => {
+    const message = routineChatInput.trim();
+    if (!message || routineChatLoading || pendingOperation === 'clear-calendar') return;
+    setRoutineChatInput('');
+    setRoutineChat((current) => [...current, { role: 'user', text: message }]);
+    setRoutineChatLoading(true);
+    try {
+      const res = await api.chatAiRoutine({
+        message,
+        routine: routineItems,
+        targetDateStr,
+      });
+      if (Array.isArray(res?.routine)) setRoutineItems(res.routine);
+      setRoutineChat((current) => [...current, { role: 'assistant', text: res.reply || 'Draft updated.' }]);
+    } catch (error) {
+      setRoutineChat((current) => [...current, { role: 'assistant', text: error.message || 'I could not update this draft.' }]);
+    } finally {
+      setRoutineChatLoading(false);
     }
   };
 
@@ -980,6 +1012,71 @@ export default function AiRoutinePlannerModal({
                   <Ionicons name="add-circle-outline" size={16} color="#64748b" />
                   <Text style={styles.addSlotText}>+ Add Custom Slot</Text>
                 </TouchableOpacity>
+
+                <View
+                  style={{
+                    marginTop: 12,
+                    padding: 10,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: '#ddd6fe',
+                    backgroundColor: '#faf5ff',
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 7 }}>
+                    <Ionicons name="chatbubbles-outline" size={16} color="#7e37d8" />
+                    <Text style={{ color: '#5b21b6', fontSize: 12, fontWeight: '800', marginLeft: 6 }}>
+                      Discuss this draft
+                    </Text>
+                    <Text style={{ color: '#64748b', fontSize: 10, marginLeft: 6 }}>
+                      Calendar unchanged
+                    </Text>
+                  </View>
+                  <View style={{ maxHeight: 115, marginBottom: 7 }}>
+                    <ScrollView nestedScrollEnabled>
+                      {routineChat.map((message, index) => (
+                        <View
+                          key={`${index}-${message.role}`}
+                          style={{
+                            alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start',
+                            maxWidth: '90%',
+                            paddingHorizontal: 8,
+                            paddingVertical: 6,
+                            marginBottom: 5,
+                            borderRadius: 9,
+                            backgroundColor: message.role === 'user' ? '#ede9fe' : '#ffffff',
+                          }}
+                        >
+                          <Text style={{ color: '#334155', fontSize: 10 }}>{message.text}</Text>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 7 }}>
+                    <TextInput
+                      style={[styles.textInput, { flex: 1, minHeight: 38, maxHeight: 70, marginBottom: 0 }]}
+                      value={routineChatInput}
+                      onChangeText={setRoutineChatInput}
+                      placeholder="Move, remove, or ask a question..."
+                      placeholderTextColor="#94a3b8"
+                      multiline
+                    />
+                    <TouchableOpacity
+                      style={[styles.cardActionBtn, { height: 38, paddingHorizontal: 11, backgroundColor: '#7e37d8' }]}
+                      onPress={handleRoutineChat}
+                      disabled={routineChatLoading}
+                    >
+                      {routineChatLoading ? (
+                        <ActivityIndicator size="small" color="#ffffff" />
+                      ) : (
+                        <Ionicons name="send" size={14} color="#ffffff" />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={{ color: '#64748b', fontSize: 9, marginTop: 6 }}>
+                    Try: “Move Deep Focus to 10 AM”, “Remove the workout”, or “Why is this time suitable?”
+                  </Text>
+                </View>
               </ScrollView>
 
               {/* Action Footer for Review */}
