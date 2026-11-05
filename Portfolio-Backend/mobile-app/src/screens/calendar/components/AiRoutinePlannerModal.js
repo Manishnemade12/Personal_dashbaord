@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../../api/client';
 import styles from '../styles/aiRoutineStyles';
 import { isEventMatchingDate } from './CalendarViews';
+import TimePickerField from '../../../components/common/TimePickerField';
 
 const formatTimeLabel = (dateInput) => {
   if (!dateInput) return '';
@@ -913,21 +914,11 @@ export default function AiRoutinePlannerModal({
                         <View style={{ flexDirection: 'row', gap: 8 }}>
                           <View style={{ flex: 1 }}>
                             <Text style={styles.fieldHelper}>Start Time (HH:MM)</Text>
-                            <TextInput
-                              style={styles.textInput}
-                              value={editStartTime}
-                              onChangeText={setEditStartTime}
-                              placeholder="09:00"
-                            />
+                            <TimePickerField value={editStartTime} onChange={setEditStartTime} label="Start time" />
                           </View>
                           <View style={{ flex: 1 }}>
                             <Text style={styles.fieldHelper}>End Time (HH:MM)</Text>
-                            <TextInput
-                              style={styles.textInput}
-                              value={editEndTime}
-                              onChangeText={setEditEndTime}
-                              placeholder="10:30"
-                            />
+                            <TimePickerField value={editEndTime} onChange={setEditEndTime} label="End time" />
                           </View>
                         </View>
                         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 6 }}>

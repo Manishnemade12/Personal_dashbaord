@@ -8,6 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import TimePickerField from './TimePickerField';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -301,62 +302,17 @@ export default function GenericDateTimePicker({
             })}
           </ScrollView>
 
-          {/* Interactive Stepper Time Display */}
+          {/* Tap a time to choose hour, minute, and AM/PM. */}
           <View style={localStyles.timePickerRow}>
-            {/* Start Time Box */}
             <View style={localStyles.timeBlock}>
               <Text style={localStyles.timeBlockLabel}>START TIME</Text>
-              <View style={localStyles.timeControlRow}>
-                {/* Hour */}
-                <View style={localStyles.digitStepper}>
-                  <TouchableOpacity
-                    style={localStyles.digitArrow}
-                    onPress={() => adjustStartTime(1, 0)}
-                  >
-                    <Ionicons name="chevron-up" size={12} color="#334155" />
-                  </TouchableOpacity>
-                  <Text style={localStyles.digitText}>
-                    {String(startParsed.h12).padStart(2, '0')}
-                  </Text>
-                  <TouchableOpacity
-                    style={localStyles.digitArrow}
-                    onPress={() => adjustStartTime(-1, 0)}
-                  >
-                    <Ionicons name="chevron-down" size={12} color="#334155" />
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={localStyles.colonText}>:</Text>
-
-                {/* Minute (15 min steps) */}
-                <View style={localStyles.digitStepper}>
-                  <TouchableOpacity
-                    style={localStyles.digitArrow}
-                    onPress={() => adjustStartTime(0, 15)}
-                  >
-                    <Ionicons name="chevron-up" size={12} color="#334155" />
-                  </TouchableOpacity>
-                  <Text style={localStyles.digitText}>
-                    {String(startParsed.m).padStart(2, '0')}
-                  </Text>
-                  <TouchableOpacity
-                    style={localStyles.digitArrow}
-                    onPress={() => adjustStartTime(0, -15)}
-                  >
-                    <Ionicons name="chevron-down" size={12} color="#334155" />
-                  </TouchableOpacity>
-                </View>
-
-                {/* AM / PM Toggle */}
-                <TouchableOpacity
-                  style={localStyles.amPmBtn}
-                  onPress={toggleStartAmPm}
-                >
-                  <Text style={localStyles.amPmText}>
-                    {startParsed.isPm ? 'PM' : 'AM'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              <TimePickerField value={startTimeStr} onChange={(value) => {
+                onChangeStartTime(value);
+                if (onChangeEndTime) {
+                  const [hour, minute] = value.split(':').map(Number);
+                  onChangeEndTime(`${String((hour + 1) % 24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+                }
+              }} label="Start time" />
             </View>
 
             {/* Separator Arrow */}
@@ -367,16 +323,9 @@ export default function GenericDateTimePicker({
               style={{ alignSelf: 'center', marginTop: 12 }}
             />
 
-            {/* End Time Summary Badge */}
             <View style={localStyles.timeBlock}>
               <Text style={localStyles.timeBlockLabel}>END TIME</Text>
-              <View style={[localStyles.timeControlRow, { paddingVertical: 10 }]}>
-                <Text style={[localStyles.digitText, { fontSize: 14 }]}>
-                  {String(endParsed.h12).padStart(2, '0')}:
-                  {String(endParsed.m).padStart(2, '0')}{' '}
-                  {endParsed.isPm ? 'PM' : 'AM'}
-                </Text>
-              </View>
+              <TimePickerField value={endTimeStr} onChange={onChangeEndTime} label="End time" />
             </View>
           </View>
         </View>

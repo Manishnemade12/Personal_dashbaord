@@ -300,7 +300,7 @@ export default function DietItemModal({
                 <>
                   <Ionicons name="sparkles" size={16} color="#ffffff" />
                   <Text style={styles.grokCalculateBtnText}>
-                    ⚡ Calculate Calories & Protein with Grok AI
+                    ⚡ Calculate Calories & Protein
                   </Text>
                 </>
               )}

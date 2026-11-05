@@ -155,20 +155,6 @@ export default function SidebarDrawer({
                   >
                     Calendar
                   </Text>
-                  <View
-                    style={{
-                      backgroundColor: '#ecfdf5',
-                      borderWidth: 1,
-                      borderColor: '#a7f3d0',
-                      paddingHorizontal: 5,
-                      paddingVertical: 1,
-                      borderRadius: 4,
-                    }}
-                  >
-                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#059669' }}>
-                      WORKOUT
-                    </Text>
-                  </View>
                 </View>
               </View>
               <Ionicons
@@ -198,14 +184,9 @@ export default function SidebarDrawer({
                       color={isCalendarActive ? '#7e37d8' : '#64748b'}
                     />
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.subMenuText, isCalendarActive && styles.subMenuTextActive]}>
-                      Schedule & Events
-                    </Text>
-                    <Text style={{ fontSize: 10, color: '#94a3b8' }}>
-                      Events, reminders & calendar views
-                    </Text>
-                  </View>
+                  <Text style={[styles.subMenuText, isCalendarActive && styles.subMenuTextActive]}>
+                    Schedule & Events
+                  </Text>
                 </TouchableOpacity>
 
                 {/* Child 2: Today's Diet Plan */}
@@ -224,35 +205,14 @@ export default function SidebarDrawer({
                       color={isWorkoutDietActive ? '#10b981' : '#059669'}
                     />
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text
-                        style={[
-                          styles.subMenuText,
-                          isWorkoutDietActive && styles.subMenuTextActive,
-                        ]}
-                      >
-                        Today's Diet Plan
-                      </Text>
-                      <View
-                        style={{
-                          backgroundColor: '#ecfdf5',
-                          borderWidth: 1,
-                          borderColor: '#a7f3d0',
-                          paddingHorizontal: 4,
-                          paddingVertical: 1,
-                          borderRadius: 3,
-                        }}
-                      >
-                        <Text style={{ fontSize: 8, fontWeight: '800', color: '#059669' }}>
-                          CHECKLIST
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={{ fontSize: 10, color: '#059669', fontWeight: '500' }}>
-                      Daily routine, meal times & tracking
-                    </Text>
-                  </View>
+                  <Text
+                    style={[
+                      styles.subMenuText,
+                      isWorkoutDietActive && styles.subMenuTextActive,
+                    ]}
+                  >
+                    Today's Diet Plan
+                  </Text>
                 </TouchableOpacity>
 
                 {/* Child 3: Diet Items & Recipes */}
@@ -271,35 +231,14 @@ export default function SidebarDrawer({
                       color={isWorkoutDietActive ? '#10b981' : '#059669'}
                     />
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text
-                        style={[
-                          styles.subMenuText,
-                          isWorkoutDietActive && styles.subMenuTextActive,
-                        ]}
-                      >
-                        Diet Items & Recipes
-                      </Text>
-                      <View
-                        style={{
-                          backgroundColor: '#f5f3ff',
-                          borderWidth: 1,
-                          borderColor: '#ddd6fe',
-                          paddingHorizontal: 4,
-                          paddingVertical: 1,
-                          borderRadius: 3,
-                        }}
-                      >
-                        <Text style={{ fontSize: 8, fontWeight: '800', color: '#7e37d8' }}>
-                          GROK AI
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={{ fontSize: 10, color: '#64748b' }}>
-                      Ingredients, calories & protein auto-calc
-                    </Text>
-                  </View>
+                  <Text
+                    style={[
+                      styles.subMenuText,
+                      isWorkoutDietActive && styles.subMenuTextActive,
+                    ]}
+                  >
+                    Diet Items & Recipes
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
