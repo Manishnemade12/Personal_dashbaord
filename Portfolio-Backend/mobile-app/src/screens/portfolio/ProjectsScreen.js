@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { colors } from '../../styles/theme';
 import { api } from '../../api/client';
+import { PortfolioDao } from '../../db/dao/PortfolioDao';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader, FilterTabs, SearchInput, EmptyState } from '../../components/common';
 import styles from './styles/projectsStyles';
@@ -25,8 +26,25 @@ export default function ProjectsScreen({ onNavigate, initialFilter = 'publish' }
 
   const fetchProjects = async () => {
     try {
-      const data = await api.getProjects();
-      setProjects(Array.isArray(data) ? data : []);
+      // 1. Read from local SQLite first
+      const localProjects = await PortfolioDao.getProjects();
+      if (localProjects && localProjects.length > 0) {
+        setProjects(localProjects);
+      }
+
+      // 2. Fetch remote in background if reachable
+      try {
+        const data = await api.getProjects();
+        if (Array.isArray(data)) {
+          for (const p of data) {
+            await PortfolioDao.saveProject(p, true);
+          }
+          const updated = await PortfolioDao.getProjects();
+          setProjects(updated);
+        }
+      } catch (netErr) {
+        console.log('[Projects Offline] Operating on local SQLite');
+      }
     } catch (err) {
       console.log('Error fetching projects:', err);
     } finally {
@@ -50,8 +68,9 @@ export default function ProjectsScreen({ onNavigate, initialFilter = 'publish' }
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.deleteProject(id);
+              await PortfolioDao.deleteProject(id);
               fetchProjects();
+              api.deleteProject(id).catch(() => {});
             } catch (e) {
               Alert.alert('Error', 'Failed to delete project.');
             }

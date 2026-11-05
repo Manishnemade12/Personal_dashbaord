@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { colors, spacing, radii, typography, layout } from '../../styles/theme';
 import { api } from '../../api/client';
+import { PortfolioDao } from '../../db/dao/PortfolioDao';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader, ImageUploader } from '../../components/common';
 
@@ -60,15 +61,29 @@ export default function BlogFormScreen({ blog, onBack, onSuccess }) {
         status: isPublish ? 'publish' : 'draft',
       };
 
-      if (isEditing) {
+      const blogDataToSave = {
+        title: payload.title,
+        slug: payload.slug,
+        content: payload.description,
+        tags: payload.tags,
+        coverImage: payload.images && payload.images.length > 0 ? payload.images[0] : '',
+        status: payload.status,
+        client_id: blog?.client_id || (blog?._id && !blog._id.startsWith('6') ? blog._id : undefined),
+        server_id: blog?.server_id || (blog?._id && blog._id.startsWith('6') ? blog._id : undefined),
+      };
+
+      // 1. Save locally in SQLite
+      await PortfolioDao.saveBlog(blogDataToSave);
+
+      // 2. Background remote save if reachable
+      if (isEditing && blog?._id && blog._id.startsWith('6')) {
         payload._id = blog._id;
-        await api.updateBlog(payload);
-        Alert.alert('Success', 'Blog updated successfully!');
+        api.updateBlog(payload).catch(() => {});
       } else {
-        await api.createBlog(payload);
-        Alert.alert('Success', 'Blog created successfully!');
+        api.createBlog(payload).catch(() => {});
       }
 
+      Alert.alert('Success', 'Blog article saved locally & queued for sync!');
       if (onSuccess) onSuccess();
     } catch (err) {
       Alert.alert('Error', err.message || 'Failed to save blog');

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { colors } from '../../styles/theme';
 import { api } from '../../api/client';
+import { PortfolioDao } from '../../db/dao/PortfolioDao';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader, FilterTabs, SearchInput, EmptyState } from '../../components/common';
 import styles from './styles/blogsStyles';
@@ -24,8 +25,25 @@ export default function BlogsScreen({ onNavigate, initialFilter = 'publish' }) {
 
   const fetchBlogs = async () => {
     try {
-      const data = await api.getBlogs();
-      setBlogs(Array.isArray(data) ? data : []);
+      // 1. Read from local SQLite first
+      const localBlogs = await PortfolioDao.getBlogs();
+      if (localBlogs && localBlogs.length > 0) {
+        setBlogs(localBlogs);
+      }
+
+      // 2. Refresh from server in background if reachable
+      try {
+        const data = await api.getBlogs();
+        if (Array.isArray(data)) {
+          for (const b of data) {
+            await PortfolioDao.saveBlog(b, true);
+          }
+          const updated = await PortfolioDao.getBlogs();
+          setBlogs(updated);
+        }
+      } catch (netErr) {
+        console.log('[Blogs Offline] Operating on local SQLite');
+      }
     } catch (err) {
       console.log('Error fetching blogs:', err);
     } finally {
@@ -49,8 +67,9 @@ export default function BlogsScreen({ onNavigate, initialFilter = 'publish' }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.deleteBlog(id);
+              await PortfolioDao.deleteBlog(id);
               fetchBlogs();
+              api.deleteBlog(id).catch(() => {});
             } catch (e) {
               Alert.alert('Error', 'Failed to delete blog.');
             }

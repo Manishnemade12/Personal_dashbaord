@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const syncPlugin = require('./plugins/syncPlugin');
 
 const IngredientSchema = new mongoose.Schema(
   {
@@ -38,5 +39,7 @@ const DietItemSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+DietItemSchema.plugin(syncPlugin);
 
 module.exports = mongoose.models.DietItem || mongoose.model('DietItem', DietItemSchema);

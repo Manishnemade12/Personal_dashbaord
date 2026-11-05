@@ -299,6 +299,11 @@ export const api = {
   getStockChatSession: (id) => request(`/investments/ai-chat/sessions/${id}`),
   saveStockChatSession: (data) => request('/investments/ai-chat/sessions', { method: 'POST', body: data }),
   deleteStockChatSession: (id) => request(`/investments/ai-chat/sessions/${id}`, { method: 'DELETE' }),
+
+  // Bidirectional Synchronization Engine (/api/sync/*)
+  pushSyncMutations: (data) => request('/sync/push', { method: 'POST', body: data }),
+  pullSyncChanges: (since = null) =>
+    request(`/sync/pull${since ? `?since=${encodeURIComponent(since)}` : ''}`),
 };
 
 export default api;

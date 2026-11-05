@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { colors, spacing, radii, typography, layout } from '../../styles/theme';
 import { api } from '../../api/client';
+import { PortfolioDao } from '../../db/dao/PortfolioDao';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader, ImageUploader } from '../../components/common';
 
@@ -70,15 +71,29 @@ export default function ProjectFormScreen({ project, onBack, onSuccess }) {
         status: isPublish ? 'publish' : 'draft',
       };
 
-      if (isEditing) {
+      const projectDataToSave = {
+        title: payload.title,
+        description: payload.description,
+        techStack: payload.tags,
+        liveUrl: payload.livepreview,
+        image: payload.images && payload.images.length > 0 ? payload.images[0] : '',
+        status: payload.status,
+        client_id: project?.client_id || (project?._id && !project._id.startsWith('6') ? project._id : undefined),
+        server_id: project?.server_id || (project?._id && project._id.startsWith('6') ? project._id : undefined),
+      };
+
+      // 1. Save locally in SQLite
+      await PortfolioDao.saveProject(projectDataToSave);
+
+      // 2. Background remote save if online
+      if (isEditing && project?._id && project._id.startsWith('6')) {
         payload._id = project._id;
-        await api.updateProject(payload);
-        Alert.alert('Success', 'Project updated successfully!');
+        api.updateProject(payload).catch(() => {});
       } else {
-        await api.createProject(payload);
-        Alert.alert('Success', 'Project created successfully!');
+        api.createProject(payload).catch(() => {});
       }
 
+      Alert.alert('Success', 'Project saved locally & queued for sync!');
       if (onSuccess) onSuccess();
     } catch (err) {
       Alert.alert('Error', err.message || 'Failed to save project');

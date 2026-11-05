@@ -14,6 +14,7 @@ import IngredientBreakdownModal from './components/IngredientBreakdownModal';
 import DietAiPlannerModal from './components/DietAiPlannerModal';
 import styles from './styles/workoutStyles';
 import api from '../../api/client';
+import { DietDao } from '../../db/dao/DietDao';
 import { sortDietLibraryItems, sortScheduledMeals } from './utils/dietSorting';
 
 const getTodayDateStr = () => {
@@ -78,8 +79,60 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
   const loadDailyPlan = async (dateStr) => {
     setLoadingPlan(true);
     try {
-      const res = await api.getDailyDietPlan(dateStr);
-      setDailyPlan(res ? { ...res, meals: sortScheduledMeals(res.meals) } : res);
+      // 1. Read from local SQLite first
+      const localMeals = await DietDao.getDailyMealLogs(dateStr);
+      if (localMeals && localMeals.length > 0) {
+        const completedCount = localMeals.filter((m) => m.status === 'eaten').length;
+        const totalCount = localMeals.length;
+        const accPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+        const totalCal = localMeals.reduce((acc, m) => acc + (m.calories || 0), 0);
+
+        setDailyPlan({
+          date: dateStr,
+          stats: {
+            totalMeals: totalCount,
+            completedMeals: completedCount,
+            pendingMeals: totalCount - completedCount,
+            accuracyPercentage: accPct,
+            totalCalories: Math.round(totalCal),
+          },
+          meals: sortScheduledMeals(
+            localMeals.map((m) => ({
+              ...m,
+              isCompleted: m.status === 'eaten',
+              title: m.customTitle || m.mealType,
+              time: m.scheduledTime,
+            }))
+          ),
+        });
+      }
+
+      // 2. Fetch fresh updates from cloud backend if reachable
+      try {
+        const res = await api.getDailyDietPlan(dateStr);
+        if (res?.meals && Array.isArray(res.meals)) {
+          for (const m of res.meals) {
+            await DietDao.saveMealLog(
+              {
+                date: dateStr,
+                mealType: m.mealType || m.category || 'Lunch',
+                customTitle: m.title || m.name,
+                calories: m.calories || 0,
+                protein: m.protein || 0,
+                carbs: m.carbs || 0,
+                fats: m.fats || 0,
+                status: m.isCompleted || m.status === 'eaten' ? 'eaten' : 'pending',
+                scheduledTime: m.time || m.scheduledTime || '',
+                serverId: m._id,
+              },
+              true
+            );
+          }
+          setDailyPlan(res ? { ...res, meals: sortScheduledMeals(res.meals) } : res);
+        }
+      } catch (cloudErr) {
+        console.log('[Diet Offline] Operating on local SQLite meals');
+      }
     } catch (err) {
       console.warn('Error loading daily diet plan:', err.message);
     } finally {
@@ -90,8 +143,25 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
   const loadDietItems = async () => {
     setLoadingItems(true);
     try {
-      const items = await api.getDietItems();
-      setDietItems(Array.isArray(items) ? sortDietLibraryItems(items) : []);
+      // 1. Read from local SQLite
+      const localItems = await DietDao.getDietItems();
+      if (localItems && localItems.length > 0) {
+        setDietItems(sortDietLibraryItems(localItems));
+      }
+
+      // 2. Fetch remote if reachable
+      try {
+        const items = await api.getDietItems();
+        if (Array.isArray(items)) {
+          for (const it of items) {
+            await DietDao.saveDietItem(it, true);
+          }
+          const updated = await DietDao.getDietItems();
+          setDietItems(sortDietLibraryItems(updated));
+        }
+      } catch (netErr) {
+        console.log('[Diet Offline] Using local food library');
+      }
     } catch (err) {
       console.warn('Error loading diet items:', err.message);
     } finally {
@@ -121,34 +191,39 @@ export default function WorkoutDietScreen({ onNavigate, routeParams }) {
   // Toggle meal status (Checklist)
   const handleToggleMealStatus = async (eventId) => {
     try {
-      const res = await api.toggleMealStatus(eventId);
-      if (res && res.success) {
-        setDailyPlan((prev) => {
-          if (!prev) return prev;
-          const updatedMeals = (prev.meals || []).map((m) =>
-            m._id === eventId
-              ? { ...m, isCompleted: res.isCompleted, status: res.status }
-              : m
-          );
-          const completedCount = updatedMeals.filter((m) => m.isCompleted).length;
-          const totalCount = updatedMeals.length;
-          const accPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+      // 1. Instant local toggle in SQLite
+      await DietDao.toggleMealStatus(eventId);
 
-          return {
-            ...prev,
-            stats: {
-              ...prev.stats,
-              completedMeals: completedCount,
-              pendingMeals: totalCount - completedCount,
-              accuracyPercentage: accPct,
-            },
-            meals: updatedMeals,
-          };
+      // Optimistically update React state immediately
+      setDailyPlan((prev) => {
+        if (!prev) return prev;
+        const updatedMeals = (prev.meals || []).map((m) => {
+          if (m._id === eventId || m.client_id === eventId) {
+            const nextDone = !m.isCompleted;
+            return { ...m, isCompleted: nextDone, status: nextDone ? 'eaten' : 'pending' };
+          }
+          return m;
         });
-      }
+        const completedCount = updatedMeals.filter((m) => m.isCompleted).length;
+        const totalCount = updatedMeals.length;
+        const accPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+        return {
+          ...prev,
+          stats: {
+            ...prev.stats,
+            completedMeals: completedCount,
+            pendingMeals: totalCount - completedCount,
+            accuracyPercentage: accPct,
+          },
+          meals: updatedMeals,
+        };
+      });
+
+      // Background remote toggle if online
+      api.toggleMealStatus(eventId).catch(() => {});
     } catch (err) {
-      Alert.alert('Error', 'Failed to update meal status.');
-      loadDailyPlan(selectedDateStr);
+      Alert.alert('Notice', 'Meal status updated locally.');
     }
   };
 

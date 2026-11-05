@@ -11,7 +11,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getDatabase } from './src/db/database';
+import { reconcileAlarms } from './src/services/alarmReconciliationEngine';
 import Header from './src/components/Header';
+import SyncStatusBar from './src/components/common/SyncStatusBar';
 import SidebarDrawer from './src/components/SidebarDrawer';
 import AuthScreen from './src/screens/auth/AuthScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
@@ -131,6 +134,11 @@ export default function App() {
   useEffect(() => {
     const restoreSession = async () => {
       try {
+        // Initialize SQLite DB and reconcile local alarms on startup
+        getDatabase()
+          .then(() => reconcileAlarms().catch(() => {}))
+          .catch((e) => console.warn('[DB Init]', e.message));
+
         const storedUser = await AsyncStorage.getItem('AUTH_USER');
         if (storedUser) {
           const user = JSON.parse(storedUser);
@@ -301,6 +309,9 @@ export default function App() {
           onNavigate={navigate}
           onLogout={handleLogout}
         />
+
+        {/* Global Offline / Syncing Status Indicator */}
+        <SyncStatusBar />
 
         {/* Current Active Screen View */}
         <View style={styles.screenWrapper}>

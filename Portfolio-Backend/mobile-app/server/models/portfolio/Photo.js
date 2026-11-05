@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const syncPlugin = require('../plugins/syncPlugin');
 
 const photoSchema = new mongoose.Schema(
   {
@@ -9,5 +10,7 @@ const photoSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+photoSchema.plugin(syncPlugin);
 
 module.exports = mongoose.models.Photo || mongoose.model('Photo', photoSchema);

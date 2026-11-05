@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const syncPlugin = require('./plugins/syncPlugin');
 
 const InvestmentHoldingSchema = new mongoose.Schema(
   {
@@ -56,5 +57,7 @@ const InvestmentHoldingSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+InvestmentHoldingSchema.plugin(syncPlugin);
 
 module.exports = mongoose.model('InvestmentHolding', InvestmentHoldingSchema);

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const syncPlugin = require('./plugins/syncPlugin');
 
 const FinanceBudgetSchema = new mongoose.Schema(
   {
@@ -31,5 +32,6 @@ const FinanceBudgetSchema = new mongoose.Schema(
 
 // Unique compound index per user and month
 FinanceBudgetSchema.index({ userId: 1, month: 1 }, { unique: true });
+FinanceBudgetSchema.plugin(syncPlugin);
 
 module.exports = mongoose.model('FinanceBudget', FinanceBudgetSchema);

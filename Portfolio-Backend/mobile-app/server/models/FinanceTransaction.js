@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const syncPlugin = require('./plugins/syncPlugin');
 
 const SubItemSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
@@ -65,5 +66,7 @@ const FinanceTransactionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+FinanceTransactionSchema.plugin(syncPlugin);
 
 module.exports = mongoose.model('FinanceTransaction', FinanceTransactionSchema);

@@ -1,16 +1,19 @@
 import { Platform } from 'react-native';
-import { api } from '../api/client';
 import * as Notifications from 'expo-notifications';
 
-// Configure notification behavior on native mobile
+// Configure foreground notification presentation behavior
 if (Platform.OS !== 'web') {
   try {
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
+      handleNotification: async (notification) => {
+        const isAlarm = notification?.request?.content?.data?.isAlarm;
+        return {
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+          priority: isAlarm ? Notifications.AndroidNotificationPriority.MAX : Notifications.AndroidNotificationPriority.HIGH,
+        };
+      },
     });
   } catch (e) {
     console.log('[NotificationService] setNotificationHandler error:', e);
@@ -20,37 +23,50 @@ if (Platform.OS !== 'web') {
 class NotificationService {
   constructor() {
     this.listeners = new Set();
-    this.intervalId = null;
     this.hasPermission = false;
-    this.deliveredKeys = new Set();
-    this.initNativeChannel();
+    this.initNativeChannels();
   }
 
-  // Setup Android notification channel for native APK
-  async initNativeChannel() {
+  // Setup Android notification channels for both loud alarms and standard reminders
+  async initNativeChannels() {
     if (Platform.OS === 'android') {
       try {
-        await Notifications.setNotificationChannelAsync('calendar-reminders', {
-          name: 'Event & Meal Reminders',
-          description: 'High-priority notifications for calendar events and diet plan alarms',
+        // 1. High-priority Loud Alarm Channel (Bypasses DND, max urgency)
+        await Notifications.setNotificationChannelAsync('calendar-alarms', {
+          name: 'Scheduled Alarms & Rings',
+          description: 'Loud alarms for starting calendar events and diet routines',
           importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 300, 200, 300],
-          lightColor: '#7e37d8',
-          enableLights: true,
-          enableVibrate: true,
+          vibrationPattern: [0, 500, 250, 500, 250, 1000],
           sound: 'default',
-          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+          enableLights: true,
+          lightColor: '#7e37d8',
+          enableVibrate: true,
           bypassDnd: true,
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+          audioAttributes: {
+            usage: Notifications.AndroidAudioUsage.ALARM,
+            contentType: Notifications.AndroidAudioContentType.SONIFICATION,
+          },
+        });
+
+        // 2. Standard Event Reminders Channel (15m, 1h notice)
+        await Notifications.setNotificationChannelAsync('calendar-reminders', {
+          name: 'Advance Reminders',
+          description: 'Advance notices for upcoming events',
+          importance: Notifications.AndroidImportance.HIGH,
+          vibrationPattern: [0, 250, 250, 250],
+          sound: 'default',
+          enableVibrate: true,
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
         });
       } catch (e) {
-        console.log('[NotificationService] Android channel error:', e);
+        console.log('[NotificationService] Android channel setup error:', e);
       }
     }
   }
 
-  // Request notification permissions across Web and Native Mobile
+  // Request permissions across Native Mobile and Web
   async requestPermission() {
-    // 1. Native Mobile (Expo Android / iOS)
     if (Platform.OS !== 'web') {
       try {
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -72,7 +88,6 @@ class NotificationService {
       }
     }
 
-    // 2. Web Browser
     if (Platform.OS === 'web' && typeof window !== 'undefined' && 'Notification' in window) {
       try {
         const permission = await window.Notification.requestPermission();
@@ -85,43 +100,47 @@ class NotificationService {
     return false;
   }
 
-  // Schedule a local notification on the mobile device or web timer
-  async scheduleLocalReminder(title, body, scheduledDate, eventData = {}) {
+  // Direct schedule into Native OS AlarmManager (works 100% offline!)
+  async scheduleLocalReminder(title, body, scheduledDate, eventData = {}, offsetMinutes = 0) {
     if (!scheduledDate) return null;
 
     const targetDateObj = new Date(scheduledDate);
-    const targetTime = targetDateObj.getTime();
-    const now = Date.now();
-    const diffSeconds = Math.round((targetTime - now) / 1000);
-
+    const diffSeconds = Math.round((targetDateObj.getTime() - Date.now()) / 1000);
     if (diffSeconds <= 0) return null;
 
-    // Mobile native scheduling via expo-notifications
     if (Platform.OS !== 'web') {
       try {
-        await this.initNativeChannel();
+        await this.initNativeChannels();
+        const isAlarm = offsetMinutes === 0;
+        const channelId = isAlarm ? 'calendar-alarms' : 'calendar-reminders';
+
         const notifId = await Notifications.scheduleNotificationAsync({
           content: {
             title,
             body,
-            data: { eventId: eventData._id || '' },
+            data: {
+              clientEventId: eventData.client_id || eventData._id || '',
+              offsetMinutes,
+              isAlarm,
+            },
             sound: 'default',
-            priority: Notifications.AndroidNotificationPriority.MAX,
-            vibrate: [0, 300, 200, 300],
-            channelId: 'calendar-reminders',
+            priority: isAlarm
+              ? Notifications.AndroidNotificationPriority.MAX
+              : Notifications.AndroidNotificationPriority.HIGH,
+            vibrate: isAlarm ? [0, 500, 250, 500, 250, 1000] : [0, 250, 250, 250],
+            channelId,
           },
           trigger: targetDateObj,
         });
         return notifId;
       } catch (e) {
-        console.log('[NotificationService] Mobile schedule error:', e);
+        console.log('[NotificationService] Native schedule error:', e);
       }
     }
 
     return null;
   }
 
-  // Cancel scheduled native notification
   async cancelNotification(notificationId) {
     if (Platform.OS !== 'web' && notificationId) {
       try {
@@ -130,7 +149,7 @@ class NotificationService {
     }
   }
 
-  // Register listener for in-app alert toasts
+  // In-App Toast & Alert Dispatcher
   addListener(callback) {
     this.listeners.add(callback);
     return () => this.listeners.delete(callback);
@@ -146,39 +165,22 @@ class NotificationService {
     });
   }
 
-  // Deliver an immediate notification (Web + Mobile + In-App)
+  // Display immediate notification (e.g. for testing or instantaneous alerts)
   async showNotification(title, body, eventData = {}) {
-    // 1. Mobile Native Immediate Notification
     if (Platform.OS !== 'web') {
       try {
         await Notifications.scheduleNotificationAsync({
           content: {
             title,
             body,
-            data: { eventId: eventData?._id || '' },
+            data: { eventId: eventData?.client_id || eventData?._id || '' },
             sound: true,
           },
-          trigger: null, // triggers immediately
+          trigger: null,
         });
       } catch (e) {}
     }
 
-    // 2. Web OS Notification
-    if (
-      Platform.OS === 'web' &&
-      typeof window !== 'undefined' &&
-      'Notification' in window &&
-      window.Notification.permission === 'granted'
-    ) {
-      try {
-        new window.Notification(title, {
-          body,
-          icon: '/favicon.ico',
-        });
-      } catch (e) {}
-    }
-
-    // 3. In-App Notification Dispatch
     this.notifyListeners({
       title,
       body,
@@ -186,50 +188,7 @@ class NotificationService {
       time: new Date(),
     });
   }
-
-  // Start polling watcher for due reminders
-  startReminderWatcher() {
-    if (this.intervalId) return;
-
-    this.checkDueReminders();
-
-    // Check every 30 seconds
-    this.intervalId = setInterval(() => {
-      this.checkDueReminders();
-    }, 30000);
-  }
-
-  stopReminderWatcher() {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
-  }
-
-  async checkDueReminders() {
-    try {
-      const logs = await api.getUpcomingReminders();
-      if (!Array.isArray(logs)) return;
-
-      const now = Date.now();
-
-      for (const log of logs) {
-        if (log.status !== 'pending') continue;
-
-        const scheduledTime = new Date(log.scheduledFor).getTime();
-        // If scheduled within the last 15 minutes up to next 1 minute
-        if (scheduledTime <= now + 60000 && !this.deliveredKeys.has(log.deduplicationKey)) {
-          this.deliveredKeys.add(log.deduplicationKey);
-          await this.showNotification(log.title, log.body, log.eventId);
-
-          // Mark as delivered on server
-          api.dismissReminder(log._id).catch(() => {});
-        }
-      }
-    } catch (e) {
-      // Ignore background fetch failure
-    }
-  }
 }
 
 export const notificationService = new NotificationService();
+export default notificationService;

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const syncPlugin = require('../plugins/syncPlugin');
 
 const skillSchema = new mongoose.Schema(
   {
@@ -10,5 +11,7 @@ const skillSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+skillSchema.plugin(syncPlugin);
 
 module.exports = mongoose.models.Skills || mongoose.model('Skills', skillSchema);

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const syncPlugin = require('../plugins/syncPlugin');
 
 const projectSchema = new mongoose.Schema(
   {
@@ -16,5 +17,7 @@ const projectSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+projectSchema.plugin(syncPlugin);
 
 module.exports = mongoose.models.Project || mongoose.model('Project', projectSchema);

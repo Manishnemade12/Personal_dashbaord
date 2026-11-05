@@ -4,4 +4,3 @@ like jo calnder ke events jo server se fetch huye he vo internally work karne ch
 this is one of the complex feature so forst create deeply plan for it in docs by exploring and planning for each and every faeture form auth to all features peresent in that application . 
 create multipl files for it 
 
-. 

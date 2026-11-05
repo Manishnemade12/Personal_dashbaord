@@ -1,0 +1,107 @@
+import * as SQLite from 'expo-sqlite';
+import { Platform } from 'react-native';
+import { CREATE_TABLES_SQL, SCHEMA_VERSION } from './schema';
+
+let dbInstance = null;
+let initPromise = null;
+
+/**
+ * Initialize and open the local SQLite database.
+ * Executes table creations and migration scripts sequentially.
+ */
+export const getDatabase = async () => {
+  if (dbInstance) return dbInstance;
+  if (initPromise) return initPromise;
+
+  initPromise = (async () => {
+    try {
+      const db = await SQLite.openDatabaseAsync('portfolio_local.db');
+
+      // Enable foreign keys and Write-Ahead Logging (WAL) for maximum mobile performance
+      try {
+        await db.execAsync('PRAGMA foreign_keys = ON;');
+        await db.execAsync('PRAGMA journal_mode = WAL;');
+      } catch (pragmaErr) {
+        console.warn('[SQLite PRAGMA Warning]', pragmaErr.message);
+      }
+
+      // Execute table creation statements
+      for (const sql of CREATE_TABLES_SQL) {
+        try {
+          await db.execAsync(sql);
+        } catch (tableErr) {
+          console.error('[SQLite Table Creation Error]', tableErr.message, sql);
+        }
+      }
+
+      // Verify migration record
+      try {
+        const migrationRow = await db.getFirstAsync(
+          'SELECT version FROM _schema_migrations WHERE version = ?',
+          [SCHEMA_VERSION]
+        );
+        if (!migrationRow) {
+          await db.runAsync(
+            'INSERT INTO _schema_migrations (version, applied_at) VALUES (?, ?)',
+            [SCHEMA_VERSION, new Date().toISOString()]
+          );
+        }
+      } catch (migErr) {
+        console.warn('[SQLite Migration Record Error]', migErr.message);
+      }
+
+      dbInstance = db;
+      return dbInstance;
+    } catch (err) {
+      console.error('[SQLite Init Failed]', err);
+      throw err;
+    } finally {
+      initPromise = null;
+    }
+  })();
+
+  return initPromise;
+};
+
+/**
+ * Execute SQL statement with parameters
+ */
+export const executeSql = async (sql, params = []) => {
+  const db = await getDatabase();
+  return await db.runAsync(sql, params);
+};
+
+/**
+ * Fetch all matching rows
+ */
+export const queryAll = async (sql, params = []) => {
+  const db = await getDatabase();
+  return await db.getAllAsync(sql, params);
+};
+
+/**
+ * Fetch single matching row
+ */
+export const queryFirst = async (sql, params = []) => {
+  const db = await getDatabase();
+  return await db.getFirstAsync(sql, params);
+};
+
+/**
+ * Execute block within an ACID transaction
+ */
+export const withTransaction = async (action) => {
+  const db = await getDatabase();
+  return await db.withTransactionAsync(async () => {
+    return await action(db);
+  });
+};
+
+export default {
+  getDatabase,
+  executeSql,
+  queryAll,
+  queryFirst,
+  withTransaction,
+};
+

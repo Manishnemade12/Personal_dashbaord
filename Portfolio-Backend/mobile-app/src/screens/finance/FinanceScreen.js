@@ -11,6 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { api } from '../../api/client';
+import { FinanceDao } from '../../db/dao/FinanceDao';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import styles from './styles/financeStyles';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, PAYMENT_MODES } from './constants/financeOptions.js';
@@ -74,17 +75,46 @@ export default function FinanceScreen({ onNavigate }) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [sumRes, txsRes] = await Promise.all([
-        api.getFinanceSummary(monthStr),
-        api.getFinanceTransactions({ month: monthStr }),
+      // 1. Instantly read transactions and calculate financial summaries locally in SQLite
+      const [localSummary, localTxs] = await Promise.all([
+        FinanceDao.getMonthlySummary(monthStr),
+        FinanceDao.getTransactions({ month: monthStr }),
       ]);
-      setSummary(sumRes);
-      setTransactions(Array.isArray(txsRes) ? txsRes : []);
 
-      if (sumRes) {
-        setBudgetIncome(String(sumRes.monthlyIncome || ''));
-        setBudgetLimit(String(sumRes.spendingLimit || ''));
-        setBudgetInvestmentTarget(String(sumRes.investmentTarget || ''));
+      if (localTxs && localTxs.length > 0) {
+        setTransactions(localTxs);
+        setSummary((prev) => ({
+          ...prev,
+          totalIncome: localSummary.totalIncome,
+          totalExpense: localSummary.totalExpense,
+          netBalance: localSummary.netBalance,
+          categoryExpenses: localSummary.categoryExpenses,
+        }));
+      }
+
+      // 2. Fetch fresh updates from server in background if available
+      try {
+        const [sumRes, txsRes] = await Promise.all([
+          api.getFinanceSummary(monthStr),
+          api.getFinanceTransactions({ month: monthStr }),
+        ]);
+
+        if (Array.isArray(txsRes)) {
+          for (const tx of txsRes) {
+            await FinanceDao.insertTransaction(tx, true);
+          }
+          const updatedTxs = await FinanceDao.getTransactions({ month: monthStr });
+          setTransactions(updatedTxs);
+        }
+
+        if (sumRes) {
+          setSummary(sumRes);
+          setBudgetIncome(String(sumRes.monthlyIncome || ''));
+          setBudgetLimit(String(sumRes.spendingLimit || ''));
+          setBudgetInvestmentTarget(String(sumRes.investmentTarget || ''));
+        }
+      } catch (netErr) {
+        console.log('[Finance Offline] Operating on local SQLite database');
       }
     } catch (err) {
       console.log('Error loading finance data:', err);
@@ -227,12 +257,17 @@ export default function FinanceScreen({ onNavigate }) {
         subItems: formattedSubItems,
       };
 
-      if (editingTx?._id) {
-        await api.updateFinanceTransaction(editingTx._id, payload);
-        Alert.alert('Updated', 'Transaction updated successfully');
+      if (editingTx?.client_id || editingTx?._id) {
+        const targetId = editingTx.client_id || editingTx._id;
+        await FinanceDao.updateTransaction(targetId, payload);
+        if (editingTx._id && editingTx._id.startsWith('6')) {
+          api.updateFinanceTransaction(editingTx._id, payload).catch(() => {});
+        }
+        Alert.alert('Updated', 'Transaction updated locally & queued for sync');
       } else {
-        await api.createFinanceTransaction(payload);
-        Alert.alert('Added', 'Transaction added successfully');
+        await FinanceDao.insertTransaction(payload);
+        api.createFinanceTransaction(payload).catch(() => {});
+        Alert.alert('Added', 'Transaction saved locally & queued for sync');
       }
 
       setTxModalVisible(false);
@@ -252,7 +287,8 @@ export default function FinanceScreen({ onNavigate }) {
         style: 'destructive',
         onPress: async () => {
           try {
-            await api.deleteFinanceTransaction(id);
+            await FinanceDao.deleteTransaction(id);
+            api.deleteFinanceTransaction(id).catch(() => {});
             loadData();
           } catch (e) {
             Alert.alert('Error', 'Failed to delete transaction');
@@ -265,12 +301,17 @@ export default function FinanceScreen({ onNavigate }) {
   const handleSaveBudget = async () => {
     setSavingBudget(true);
     try {
-      await api.saveFinanceBudget({
+      const budgetPayload = {
         month: monthStr,
+        totalBudget: Number(budgetLimit) || 0,
         monthlyIncome: Number(budgetIncome) || 0,
         spendingLimit: Number(budgetLimit) || 0,
         investmentTarget: Number(budgetInvestmentTarget) || 0,
-      });
+      };
+
+      await FinanceDao.saveBudget(budgetPayload);
+      api.saveFinanceBudget(budgetPayload).catch(() => {});
+
       Alert.alert('Success', 'Monthly budget targets updated');
       setBudgetModalVisible(false);
       loadData();

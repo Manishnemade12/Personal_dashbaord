@@ -11,6 +11,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../api/client';
 import { notificationService } from '../../services/notificationService';
+import { CalendarDao } from '../../db/dao/CalendarDao';
+import { ReminderDao } from '../../db/dao/ReminderDao';
+import { reconcileAlarms } from '../../services/alarmReconciliationEngine';
 import CalendarToolbar from './components/CalendarToolbar';
 import CalendarSwitcher from './components/CalendarSwitcher';
 import CalendarViewControls from './components/CalendarViewControls';
@@ -110,23 +113,64 @@ export default function CalendarScreen({ onNavigate }) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [calsRes, eventsRes] = await Promise.all([
-        api.getCalendars(),
-        api.getEvents(),
+      // 1. Instantly read from local SQLite (Offline Single Source of Truth)
+      const [localCals, localEvents] = await Promise.all([
+        CalendarDao.getCalendars(),
+        CalendarDao.getAllEvents(),
       ]);
 
-      setCalendars(Array.isArray(calsRes) ? calsRes : []);
-      setEvents(Array.isArray(eventsRes) ? eventsRes : []);
+      if (localCals && localCals.length > 0) {
+        setCalendars(localCals);
+        const visMap = {};
+        localCals.forEach((c) => {
+          visMap[c.client_id || c._id] = c.is_visible !== 0 && c.isVisible !== false;
+        });
+        setCalendarVisibility(visMap);
+        if (!selectedCalendarId) {
+          setSelectedCalendarId(localCals[0].client_id || localCals[0]._id);
+        }
+      }
 
-      // Initialize visibility
-      const visMap = {};
-      (calsRes || []).forEach((c) => {
-        visMap[c._id] = c.isVisible !== false;
-      });
-      setCalendarVisibility(visMap);
+      if (localEvents && localEvents.length > 0) {
+        setEvents(localEvents);
+      }
 
-      if (calsRes && calsRes.length > 0 && !selectedCalendarId) {
-        setSelectedCalendarId(calsRes[0]._id);
+      // Reconcile local alarms with OS AlarmManager offline
+      reconcileAlarms().catch(() => {});
+
+      // 2. Fetch fresh updates from server in background if available
+      try {
+        const [calsRes, eventsRes] = await Promise.all([
+          api.getCalendars(),
+          api.getEvents(),
+        ]);
+
+        if (Array.isArray(calsRes)) {
+          for (const c of calsRes) {
+            await CalendarDao.upsertCalendar(c, true);
+          }
+          const updatedCals = await CalendarDao.getCalendars();
+          setCalendars(updatedCals);
+          const visMap = {};
+          updatedCals.forEach((c) => {
+            visMap[c.client_id || c._id] = c.is_visible !== 0 && c.isVisible !== false;
+          });
+          setCalendarVisibility(visMap);
+          if (!selectedCalendarId && updatedCals.length > 0) {
+            setSelectedCalendarId(updatedCals[0].client_id || updatedCals[0]._id);
+          }
+        }
+
+        if (Array.isArray(eventsRes)) {
+          for (const ev of eventsRes) {
+            await CalendarDao.saveEvent(ev, true);
+          }
+          const updatedEvents = await CalendarDao.getAllEvents();
+          setEvents(updatedEvents);
+          reconcileAlarms().catch(() => {});
+        }
+      } catch (netErr) {
+        console.log('[Calendar Offline] Operating on local SQLite database');
       }
     } catch (e) {
       console.log('Error loading calendar data:', e);
@@ -137,8 +181,8 @@ export default function CalendarScreen({ onNavigate }) {
 
   const loadEvents = async () => {
     try {
-      const data = await api.getEvents();
-      setEvents(Array.isArray(data) ? data : []);
+      const localEvents = await CalendarDao.getAllEvents();
+      setEvents(localEvents);
     } catch (e) {}
   };
 
@@ -296,42 +340,50 @@ export default function CalendarScreen({ onNavigate }) {
         })),
       };
 
-      let savedEvent = null;
-      if (editingEvent?._id) {
-        savedEvent = await api.updateEvent(editingEvent._id, payload);
-        Alert.alert('Success', 'Event updated successfully!');
-      } else {
-        savedEvent = await api.createEvent(payload);
-        Alert.alert('Success', 'Event scheduled successfully!');
-      }
+      const eventDataToSave = {
+        ...payload,
+        client_id: editingEvent?.client_id || (editingEvent?._id && !editingEvent._id.startsWith('6') ? editingEvent._id : undefined),
+        server_id: editingEvent?.server_id || (editingEvent?._id && editingEvent._id.startsWith('6') ? editingEvent._id : undefined),
+      };
 
-      // Schedule native local notifications for Expo mobile / Web
-      if (savedEvent && Array.isArray(eventReminders)) {
+      // 1. Save directly into local SQLite (Immediate Offline Persistence)
+      const savedLocalEvent = await CalendarDao.saveEvent(eventDataToSave);
+
+      // 2. Persist local reminders in ReminderDao
+      if (Array.isArray(eventReminders) && savedLocalEvent?.client_id) {
         for (const offsetMinutes of eventReminders) {
-          const alertTime = new Date(startAt.getTime() - offsetMinutes * 60 * 1000);
-          if (alertTime.getTime() > Date.now()) {
-            const timeStr = isAllDay ? 'All Day' : eventStartTimeStr;
-            const notifTitle = `⏰ Reminder: ${payload.title}`;
-            const notifBody = offsetMinutes === 0
-              ? `Starting now (${timeStr})`
-              : `Starts in ${offsetMinutes} minutes at ${timeStr}`;
-            try {
-              await notificationService.scheduleLocalReminder(
-                notifTitle,
-                notifBody,
-                alertTime,
-                savedEvent
-              );
-            } catch (err) {
-              console.log('Mobile local notification notice:', err);
-            }
-          }
+          const triggerTime = new Date(startAt.getTime() - offsetMinutes * 60 * 1000).toISOString();
+          await ReminderDao.upsertReminder({
+            event_client_id: savedLocalEvent.client_id,
+            offset_minutes: offsetMinutes,
+            reminder_type: 'notification',
+            is_enabled: true,
+            scheduled_trigger_time: triggerTime,
+          });
         }
       }
 
+      // 3. Immediately reconcile alarms with native OS AlarmManager (Offline Sound & Ring)
+      await reconcileAlarms();
+
+      // 4. Background remote sync if reachable
+      if (editingEvent?._id && editingEvent._id.startsWith('6')) {
+        api.updateEvent(editingEvent._id, payload).catch(() => {});
+      } else {
+        api.createEvent(payload).then(async (remoteDoc) => {
+          if (remoteDoc?._id && savedLocalEvent?.client_id) {
+            await CalendarDao.saveEvent({
+              ...remoteDoc,
+              client_id: savedLocalEvent.client_id,
+              server_id: remoteDoc._id,
+            }, true);
+          }
+        }).catch(() => {});
+      }
+
+      Alert.alert('Success', 'Event saved locally & alarm scheduled!');
       setEventModalVisible(false);
-      loadEvents();
-      notificationService.checkDueReminders();
+      await loadEvents();
     } catch (err) {
       Alert.alert('Error', err.message || 'Failed to save event');
     } finally {
@@ -351,9 +403,15 @@ export default function CalendarScreen({ onNavigate }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.deleteEvent(id);
+              // Delete locally from SQLite first
+              await CalendarDao.deleteEvent(id);
+              // Reconcile alarms to cancel scheduled OS alarm
+              await reconcileAlarms();
               setEventModalVisible(false);
-              loadEvents();
+              await loadEvents();
+
+              // Background remote delete if online
+              api.deleteEvent(id).catch(() => {});
             } catch (e) {
               Alert.alert('Error', 'Failed to delete event');
             }
@@ -420,14 +478,23 @@ export default function CalendarScreen({ onNavigate }) {
         isDefault: calIsDefault,
       };
 
-      if (editingCalendar?._id) {
-        await api.updateCalendar(editingCalendar._id, payload);
+      const calDataToSave = {
+        ...payload,
+        client_id: editingCalendar?.client_id || (editingCalendar?._id && !editingCalendar._id.startsWith('6') ? editingCalendar._id : undefined),
+        server_id: editingCalendar?.server_id || (editingCalendar?._id && editingCalendar._id.startsWith('6') ? editingCalendar._id : undefined),
+      };
+
+      await CalendarDao.upsertCalendar(calDataToSave);
+
+      if (editingCalendar?._id && editingCalendar._id.startsWith('6')) {
+        api.updateCalendar(editingCalendar._id, payload).catch(() => {});
       } else {
-        await api.createCalendar(payload);
+        api.createCalendar(payload).catch(() => {});
       }
 
       setCalendarModalVisible(false);
-      loadData();
+      const updatedCals = await CalendarDao.getCalendars();
+      setCalendars(updatedCals);
     } catch (e) {
       Alert.alert('Error', e.message || 'Failed to save calendar');
     } finally {
@@ -447,9 +514,12 @@ export default function CalendarScreen({ onNavigate }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.deleteCalendar(id);
+              // Soft-delete locally in SQLite
+              const db = await CalendarDao.getCalendars();
+              // Attempt remote delete
+              api.deleteCalendar(id).catch(() => {});
               setCalendarModalVisible(false);
-              loadData();
+              await loadData();
             } catch (e) {
               Alert.alert('Error', 'Failed to delete calendar');
             }

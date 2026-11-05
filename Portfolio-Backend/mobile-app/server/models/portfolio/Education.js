@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const syncPlugin = require('../plugins/syncPlugin');
 
 const educationItemSchema = new mongoose.Schema(
   {
@@ -21,6 +22,8 @@ const educationProfileSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+educationProfileSchema.plugin(syncPlugin);
 
 module.exports =
   mongoose.models.Education || mongoose.model('Education', educationProfileSchema);

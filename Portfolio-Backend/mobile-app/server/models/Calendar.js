@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const syncPlugin = require('./plugins/syncPlugin');
 
 const CalendarSchema = new mongoose.Schema(
   {
@@ -12,5 +13,7 @@ const CalendarSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+CalendarSchema.plugin(syncPlugin);
 
 module.exports = mongoose.models.Calendar || mongoose.model('Calendar', CalendarSchema);

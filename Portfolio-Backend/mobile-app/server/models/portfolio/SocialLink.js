@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const syncPlugin = require('../plugins/syncPlugin');
 
 const SocialLinkSchema = new mongoose.Schema(
   {
@@ -13,6 +14,8 @@ const SocialLinkSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+SocialLinkSchema.plugin(syncPlugin);
 
 module.exports =
   mongoose.models.SocialLink || mongoose.model('SocialLink', SocialLinkSchema);

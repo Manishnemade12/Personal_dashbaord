@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const syncPlugin = require('../plugins/syncPlugin');
 
 const blogSchema = new mongoose.Schema(
   {
@@ -14,5 +15,7 @@ const blogSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+blogSchema.plugin(syncPlugin);
 
 module.exports = mongoose.models.Blog || mongoose.model('Blog', blogSchema);
