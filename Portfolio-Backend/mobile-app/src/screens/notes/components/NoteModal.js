@@ -486,3 +486,4 @@ const modalStyles = StyleSheet.create({
     color: '#ffffff',
   },
 });
+

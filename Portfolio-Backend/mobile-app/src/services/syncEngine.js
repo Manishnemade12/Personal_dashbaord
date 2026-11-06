@@ -7,6 +7,7 @@ import { DietDao } from '../db/dao/DietDao';
 import { FinanceDao } from '../db/dao/FinanceDao';
 import { InvestmentDao } from '../db/dao/InvestmentDao';
 import { PortfolioDao } from '../db/dao/PortfolioDao';
+import { NoteDao } from '../db/dao/NoteDao';
 import { reconcileAlarms } from './alarmReconciliationEngine';
 
 const LAST_SYNCED_KEY = 'SYNC_LAST_PULLED_AT';
@@ -188,6 +189,18 @@ class SyncEngine {
           if (Array.isArray(changes.portfolioProjects)) {
             for (const pp of changes.portfolioProjects) {
               await PortfolioDao.saveProject(pp, true);
+            }
+          }
+
+          // Notes & Ideas (Offline Sync)
+          if (Array.isArray(changes.notes)) {
+            for (const n of changes.notes) {
+              await NoteDao.saveNote(n, true);
+            }
+          }
+          if (Array.isArray(changes.noteCategories)) {
+            for (const nc of changes.noteCategories) {
+              await NoteDao.saveCategory(nc, true);
             }
           }
 

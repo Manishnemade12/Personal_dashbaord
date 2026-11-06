@@ -319,6 +319,40 @@ export const CREATE_TABLES_SQL = [
     is_deleted INTEGER DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
+  );`,
+
+  // Notes & Ideas (Offline-First Single Source of Truth)
+  `CREATE TABLE IF NOT EXISTS notes (
+    client_id TEXT PRIMARY KEY,
+    server_id TEXT UNIQUE,
+    user_id TEXT NOT NULL DEFAULT 'admin',
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    category TEXT NOT NULL DEFAULT 'General',
+    color TEXT NOT NULL DEFAULT '#7e37d8',
+    is_pinned INTEGER DEFAULT 0,
+    tags TEXT DEFAULT '[]',
+    sync_status TEXT DEFAULT 'SYNCED',
+    is_deleted INTEGER DEFAULT 0,
+    deleted_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_notes_cat ON notes(category, is_deleted);`,
+  `CREATE INDEX IF NOT EXISTS idx_notes_pinned ON notes(is_pinned, updated_at);`,
+
+  // Note Categories (Offline-First dynamic user categories)
+  `CREATE TABLE IF NOT EXISTS note_categories (
+    client_id TEXT PRIMARY KEY,
+    server_id TEXT UNIQUE,
+    user_id TEXT NOT NULL DEFAULT 'admin',
+    name TEXT NOT NULL UNIQUE,
+    color TEXT NOT NULL DEFAULT '#7e37d8',
+    icon TEXT NOT NULL DEFAULT 'folder-outline',
+    sync_status TEXT DEFAULT 'SYNCED',
+    is_deleted INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
   );`
 ];
 

@@ -15,3 +15,4 @@ NoteCategorySchema.index({ userId: 1, name: 1 }, { unique: true });
 NoteCategorySchema.plugin(syncPlugin);
 
 module.exports = mongoose.models.NoteCategory || mongoose.model('NoteCategory', NoteCategorySchema);
+

@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, spacing } from '../../../styles/theme';
 import api from '../../../api/client';
+import { NoteDao } from '../../../db/dao/NoteDao';
 
 const COLOR_PALETTE = [
   '#7e37d8', // Purple
@@ -46,19 +47,23 @@ export default function CategoryModal({
 
     setSubmitting(true);
     try {
-      const res = await api.createNoteCategory({
+      // 1. Immediately persist into local SQLite (Offline First)
+      await NoteDao.saveCategory({
         name: trimmed,
         color: selectedColor,
+        icon: 'folder-outline',
       });
 
-      if (res?.success || res?.category) {
-        setNewCatName('');
-        if (onRefresh) onRefresh();
-        if (onSelectCategory) onSelectCategory(trimmed);
-        onClose();
-      } else {
-        throw new Error(res?.error || 'Failed to create category');
-      }
+      // 2. Background sync to remote if reachable
+      api.createNoteCategory({
+        name: trimmed,
+        color: selectedColor,
+      }).catch(() => {});
+
+      setNewCatName('');
+      if (onRefresh) onRefresh();
+      if (onSelectCategory) onSelectCategory(trimmed);
+      onClose();
     } catch (err) {
       Alert.alert('Error', err.message || 'Failed to create category');
     } finally {
@@ -82,7 +87,12 @@ export default function CategoryModal({
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.deleteNoteCategory(catName);
+              // 1. Immediately delete from local SQLite (Offline First)
+              await NoteDao.deleteCategory(catName);
+
+              // 2. Background sync to remote if reachable
+              api.deleteNoteCategory(catName).catch(() => {});
+
               if (onRefresh) onRefresh();
             } catch (err) {
               Alert.alert('Error', err.message || 'Failed to delete category');
@@ -405,3 +415,4 @@ const modalStyles = StyleSheet.create({
     color: colors.textPrimary,
   },
 });
+

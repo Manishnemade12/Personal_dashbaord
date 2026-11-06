@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../styles/theme';
 import api from '../../api/client';
+import { NoteDao } from '../../db/dao/NoteDao';
 import { ScreenHeader } from '../../components/common';
 import styles from './styles/notesStyles';
 import NoteModal from './components/NoteModal';
@@ -59,7 +60,40 @@ export default function NotesScreen({ onNavigate }) {
   const loadData = async () => {
     setLoading(true);
     try {
-      await Promise.all([loadNotes(), loadCategories()]);
+      // 1. Instantly read from local SQLite (Offline Single Source of Truth)
+      const [localNotes, localCats] = await Promise.all([
+        NoteDao.getNotes(),
+        NoteDao.getCategories(),
+      ]);
+
+      if (localNotes) setNotes(localNotes);
+      if (localCats && localCats.length > 0) setCategories(localCats);
+
+      // 2. Background sync from remote MongoDB if online
+      try {
+        const [remoteNotes, remoteCatsRes] = await Promise.all([
+          api.getNotes(),
+          api.getNoteCategories(),
+        ]);
+
+        if (Array.isArray(remoteNotes)) {
+          for (const n of remoteNotes) {
+            await NoteDao.saveNote(n, true);
+          }
+          const updatedNotes = await NoteDao.getNotes();
+          setNotes(updatedNotes);
+        }
+
+        if (remoteCatsRes?.categories && Array.isArray(remoteCatsRes.categories)) {
+          for (const c of remoteCatsRes.categories) {
+            await NoteDao.saveCategory(c, true);
+          }
+          const updatedCats = await NoteDao.getCategories();
+          setCategories(updatedCats);
+        }
+      } catch (netErr) {
+        // Offline: continue seamlessly with SQLite local data
+      }
     } catch (err) {
       console.warn('[Notes Load Error]', err.message);
     } finally {
@@ -70,7 +104,7 @@ export default function NotesScreen({ onNavigate }) {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([loadNotes(), loadCategories()]);
+      await loadData();
     } catch (err) {
       console.warn('[Notes Refresh Error]', err.message);
     } finally {
@@ -78,24 +112,11 @@ export default function NotesScreen({ onNavigate }) {
     }
   };
 
-  const loadNotes = async () => {
-    try {
-      const res = await api.getNotes();
-      setNotes(Array.isArray(res) ? res : []);
-    } catch (err) {
-      console.warn('[Fetch Notes Error]', err.message);
-    }
-  };
-
   const loadCategories = async () => {
     try {
-      const res = await api.getNoteCategories();
-      if (res?.categories) {
-        setCategories(res.categories);
-      }
-    } catch (err) {
-      console.warn('[Fetch Categories Error]', err.message);
-    }
+      const cats = await NoteDao.getCategories();
+      if (Array.isArray(cats)) setCategories(cats);
+    } catch (e) {}
   };
 
   // Filter notes in real-time according to Title, Description, and Category
@@ -134,39 +155,75 @@ export default function NotesScreen({ onNavigate }) {
     [filteredNotes]
   );
 
-  // Toggle Pin handler
+  // Toggle Pin handler (Offline-First)
   const handleTogglePin = async (noteId) => {
     try {
-      // Optimistic update
-      setNotes((prev) =>
-        prev.map((n) => (n._id === noteId ? { ...n, isPinned: !n.isPinned } : n))
-      );
-      await api.togglePinNote(noteId);
+      // 1. Immediately update in local SQLite
+      const updated = await NoteDao.togglePin(noteId);
+      if (updated) {
+        setNotes((prev) =>
+          prev.map((n) => (n._id === noteId || n.client_id === noteId ? updated : n))
+        );
+      }
+
+      // 2. Background remote sync if reachable
+      if (noteId && String(noteId).length === 24) {
+        api.togglePinNote(noteId).catch(() => {});
+      }
     } catch (err) {
       Alert.alert('Error', 'Could not update pin status.');
-      loadNotes();
     }
   };
 
-  // Save Note handler
+  // Save Note handler (Offline-First)
   const handleSaveNote = async (data) => {
     try {
+      const noteToSave = {
+        title: data.title.trim(),
+        description: data.description.trim(),
+        category: data.category || 'General',
+        color: data.color || '#7e37d8',
+        isPinned: !!data.isPinned,
+        client_id: data.client_id || (data.id && data.id.length !== 24 ? data.id : undefined),
+        server_id: data.server_id || (data.id && data.id.length === 24 ? data.id : undefined),
+        _id: data.id,
+      };
+
+      // 1. Save directly into local SQLite (Immediate Offline Persistence)
+      const savedLocal = await NoteDao.saveNote(noteToSave);
+
+      // 2. Optimistically update local UI state immediately
       if (data.id) {
-        // Update existing note
-        const updated = await api.updateNote(data.id, data);
-        setNotes((prev) => prev.map((n) => (n._id === data.id ? updated : n)));
+        setNotes((prev) =>
+          prev.map((n) => (n._id === data.id || n.client_id === data.id ? savedLocal : n))
+        );
       } else {
-        // Create new note
-        const created = await api.createNote(data);
-        setNotes((prev) => [created, ...prev]);
+        setNotes((prev) => [savedLocal, ...prev]);
       }
-      loadCategories(); // refresh note count in categories
+
+      const updatedCats = await NoteDao.getCategories();
+      setCategories(updatedCats);
+
+      // 3. Background remote sync if reachable
+      if (data.id && String(data.id).length === 24) {
+        api.updateNote(data.id, data).catch(() => {});
+      } else {
+        api.createNote(data).then(async (remoteDoc) => {
+          if (remoteDoc?._id && savedLocal?.client_id) {
+            await NoteDao.saveNote({
+              ...remoteDoc,
+              client_id: savedLocal.client_id,
+              server_id: remoteDoc._id,
+            }, true);
+          }
+        }).catch(() => {});
+      }
     } catch (err) {
       throw err;
     }
   };
 
-  // Delete Note handler
+  // Delete Note handler (Offline-First)
   const handleDeleteNote = (note) => {
     Alert.alert(
       'Delete Note',
@@ -178,13 +235,21 @@ export default function NotesScreen({ onNavigate }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Optimistic remove
-              setNotes((prev) => prev.filter((n) => n._id !== note._id));
-              await api.deleteNote(note._id);
-              loadCategories();
+              const noteId = note._id || note.client_id;
+              // 1. Instantly delete from local SQLite
+              await NoteDao.deleteNote(noteId);
+              setNotes((prev) =>
+                prev.filter((n) => n._id !== noteId && n.client_id !== noteId)
+              );
+              const updatedCats = await NoteDao.getCategories();
+              setCategories(updatedCats);
+
+              // 2. Background remote delete
+              if (note._id && String(note._id).length === 24) {
+                api.deleteNote(note._id).catch(() => {});
+              }
             } catch (err) {
               Alert.alert('Error', err.message || 'Could not delete note.');
-              loadNotes();
             }
           },
         },
@@ -492,3 +557,4 @@ export default function NotesScreen({ onNavigate }) {
     </View>
   );
 }
+

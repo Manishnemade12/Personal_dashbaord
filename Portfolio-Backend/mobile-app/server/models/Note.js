@@ -17,3 +17,4 @@ const NoteSchema = new mongoose.Schema(
 NoteSchema.plugin(syncPlugin);
 
 module.exports = mongoose.models.Note || mongoose.model('Note', NoteSchema);
+

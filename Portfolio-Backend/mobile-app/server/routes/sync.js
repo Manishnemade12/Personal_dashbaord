@@ -16,6 +16,8 @@ const MODELS = {
   portfolio_photo: require('../models/portfolio/Photo'),
   portfolio_education: require('../models/portfolio/Education'),
   portfolio_social_link: require('../models/portfolio/SocialLink'),
+  note: require('../models/Note'),
+  note_category: require('../models/NoteCategory'),
 };
 
 /**
@@ -166,6 +168,8 @@ router.get('/pull', async (req, res) => {
       photos,
       education,
       socialLinks,
+      notes,
+      noteCategories,
     ] = await Promise.all([
       MODELS.calendar.find(queryFilter).lean(),
       MODELS.calendar_event.find(queryFilter).lean(),
@@ -180,6 +184,8 @@ router.get('/pull', async (req, res) => {
       MODELS.portfolio_photo.find(queryFilter).lean(),
       MODELS.portfolio_education.find(queryFilter).lean(),
       MODELS.portfolio_social_link.find(queryFilter).lean(),
+      MODELS.note.find(queryFilter).lean(),
+      MODELS.note_category.find(queryFilter).lean(),
     ]);
 
     res.json({
@@ -198,6 +204,8 @@ router.get('/pull', async (req, res) => {
         portfolioPhotos: photos,
         portfolioEducation: education,
         portfolioSocialLinks: socialLinks,
+        notes,
+        noteCategories,
       },
     });
   } catch (err) {
