@@ -392,7 +392,6 @@ export const CREATE_TABLES_SQL = [
     updated_at TEXT NOT NULL
   );`,
   `CREATE INDEX IF NOT EXISTS idx_study_subjects_user ON study_subjects(user_id, is_deleted);`,
-  `CREATE INDEX IF NOT EXISTS idx_study_subjects_field ON study_subjects(field_id, is_deleted);`,
   `CREATE INDEX IF NOT EXISTS idx_study_subjects_order ON study_subjects(order_index);`,
 
   // Study Chunks (Chapters and Leaf sections)

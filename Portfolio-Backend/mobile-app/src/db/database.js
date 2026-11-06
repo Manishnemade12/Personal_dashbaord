@@ -25,6 +25,13 @@ export const getDatabase = async () => {
         console.warn('[SQLite PRAGMA Warning]', pragmaErr.message);
       }
 
+      // Safe early migration for existing study_subjects table before CREATE_TABLES_SQL
+      try {
+        await db.execAsync("ALTER TABLE study_subjects ADD COLUMN field_id TEXT DEFAULT 'field_ssc';");
+      } catch (alterErr) {
+        // Safe to ignore if column exists or table not yet created
+      }
+
       // Execute table creation statements
       for (const sql of CREATE_TABLES_SQL) {
         try {
@@ -34,12 +41,13 @@ export const getDatabase = async () => {
         }
       }
 
-      // Safe column migration for study_subjects.field_id
+      // Ensure field_id column and index on study_subjects
       try {
         await db.execAsync("ALTER TABLE study_subjects ADD COLUMN field_id TEXT DEFAULT 'field_ssc';");
-      } catch (alterErr) {
-        // Column likely exists, safe to ignore
-      }
+      } catch (alterErr) {}
+      try {
+        await db.execAsync("CREATE INDEX IF NOT EXISTS idx_study_subjects_field ON study_subjects(field_id, is_deleted);");
+      } catch (idxErr) {}
 
       // Seed default study fields (SSC and Engineering) if table is empty
       try {
