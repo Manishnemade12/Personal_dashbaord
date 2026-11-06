@@ -325,12 +325,12 @@ export default function StudyWorkspaceScreen({ onExit, routeParams = null }) {
         <View style={styles.activeViewWrap}>{renderCurrentView()}</View>
       </View>
 
-      {/* Mobile Drawer Modal */}
+      {/* Mobile Drawer Modal - Slides/opens from LEFT side */}
       {!isDesktop && (
         <Modal
           visible={mobileDrawerVisible}
           transparent
-          animationType="slide"
+          animationType="fade"
           onRequestClose={() => setMobileDrawerVisible(false)}
         >
           <View style={styles.mobileDrawerOverlay}>
@@ -494,17 +494,32 @@ const styles = StyleSheet.create({
   },
   mobileDrawerOverlay: {
     flex: 1,
+    position: 'relative',
     flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
   },
   mobileBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
   },
   mobileDrawerSheet: {
-    width: '82%',
-    maxWidth: 300,
+    width: 290,
+    maxWidth: '85%',
     backgroundColor: '#0f172a',
     height: '100%',
+    zIndex: 10,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    borderRightWidth: 1,
+    borderRightColor: '#1e293b',
   },
   mobileDrawerTopRow: {
     flexDirection: 'row',
