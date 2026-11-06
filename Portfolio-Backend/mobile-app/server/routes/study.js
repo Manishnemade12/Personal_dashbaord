@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
+const StudyField = require('../models/StudyField');
 const StudySubject = require('../models/StudySubject');
 const StudyChunk = require('../models/StudyChunk');
 const StudyQuizQuestion = require('../models/StudyQuizQuestion');
@@ -13,12 +14,50 @@ const StudyUserStreak = require('../models/StudyUserStreak');
 const { organizeContentWithAi } = require('../services/studyAiChunkerService');
 const { generateQuizFromNotes } = require('../services/studyAiQuizService');
 
+// Seed default fields (SSC and Engineering) if none exist
+const ensureDefaultFields = async (userId = 'admin') => {
+  try {
+    const count = await StudyField.countDocuments({ userId, isDeleted: false });
+    if (count === 0) {
+      await StudyField.create([
+        {
+          userId,
+          clientId: 'field_ssc',
+          name: 'SSC Exam Prep',
+          code: 'ssc',
+          description: 'General Studies, Math, Reasoning & English for SSC CGL / CHSL',
+          icon: 'school-outline',
+          color: '#6366f1',
+          isDefault: true,
+          orderIndex: 0,
+        },
+        {
+          userId,
+          clientId: 'field_engineering',
+          name: 'Engineering',
+          code: 'engineering',
+          description: 'Computer Science, Algorithms, Core Engineering & Tech Concepts',
+          icon: 'code-slash-outline',
+          color: '#06b6d4',
+          isDefault: false,
+          orderIndex: 1,
+        },
+      ]);
+    }
+  } catch (e) {
+    console.warn('[Study API] ensureDefaultFields warning:', e.message);
+  }
+};
+
 // ================= 1. BOOTSTRAP / FULL FETCH =================
 
 router.get('/all', async (req, res) => {
   try {
     const userId = req.user?.id || req.query.userId || 'admin';
-    const [subjects, chunks, quizQuestions] = await Promise.all([
+    await ensureDefaultFields(userId);
+
+    const [fields, subjects, chunks, quizQuestions] = await Promise.all([
+      StudyField.find({ userId, isDeleted: false }).sort({ orderIndex: 1, createdAt: 1 }).lean(),
       StudySubject.find({ userId, isDeleted: false }).sort({ orderIndex: 1, createdAt: 1 }).lean(),
       StudyChunk.find({ userId, isDeleted: false }).sort({ orderIndex: 1, createdAt: 1 }).lean(),
       StudyQuizQuestion.find({ userId, isDeleted: false }).sort({ orderIndex: 1 }).lean(),
@@ -65,14 +104,30 @@ router.get('/all', async (req, res) => {
       id: s.clientId || s._id,
       _id: s._id,
       clientId: s.clientId,
+      fieldId: s.fieldId || 'field_ssc',
       name: s.name,
       description: s.description || '',
       orderIndex: s.orderIndex,
       createdAt: s.createdAt ? new Date(s.createdAt).getTime() : Date.now(),
     }));
 
+    const formattedFields = fields.map((f) => ({
+      id: f.clientId || f._id,
+      _id: f._id,
+      clientId: f.clientId,
+      name: f.name,
+      code: f.code || '',
+      description: f.description || '',
+      icon: f.icon || 'school-outline',
+      color: f.color || '#6366f1',
+      isDefault: Boolean(f.isDefault),
+      orderIndex: f.orderIndex,
+      createdAt: f.createdAt ? new Date(f.createdAt).getTime() : Date.now(),
+    }));
+
     res.json({
       success: true,
+      fields: formattedFields,
       subjects: formattedSubjects,
       chunks: formattedChunks,
     });
@@ -203,9 +258,11 @@ router.post('/import-tree', async (req, res) => {
     let importedChunksCount = 0;
     for (const s of tree.subjects) {
       let subjectId = target?.subjectId;
+      const targetFieldId = target?.fieldId || req.body.fieldId || 'field_ssc';
       if (!subjectId) {
         let existingSubj = await StudySubject.findOne({
           userId,
+          fieldId: targetFieldId,
           name: { $regex: new RegExp(`^${s.name.trim()}$`, 'i') },
           isDeleted: false,
         });
@@ -214,6 +271,7 @@ router.post('/import-tree', async (req, res) => {
         } else {
           const newSubj = new StudySubject({
             userId,
+            fieldId: targetFieldId,
             clientId: require('crypto').randomUUID(),
             name: s.name.trim(),
             description: s.description || '',
@@ -306,12 +364,112 @@ router.post('/import-tree', async (req, res) => {
   }
 });
 
+// ================= 3.5. FIELDS / FOLDERS CRUD =================
+
+router.get('/fields', async (req, res) => {
+  try {
+    const userId = req.user?.id || req.query.userId || 'admin';
+    await ensureDefaultFields(userId);
+    const fields = await StudyField.find({ userId, isDeleted: false })
+      .sort({ orderIndex: 1, createdAt: 1 })
+      .lean();
+    res.json(fields.map((f) => ({ ...f, id: f.clientId || f._id })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/fields', async (req, res) => {
+  try {
+    const userId = req.user?.id || req.body.userId || 'admin';
+    const { name, description = '', icon = 'school-outline', color = '#6366f1', code = '' } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Field name is required.' });
+
+    let existing = await StudyField.findOne({
+      userId,
+      name: { $regex: new RegExp(`^${name.trim()}$`, 'i') },
+      isDeleted: false,
+    });
+    if (existing) return res.json({ ...existing.toObject(), id: existing.clientId || existing._id });
+
+    const maxOrderDoc = await StudyField.findOne({ userId, isDeleted: false }).sort({ orderIndex: -1 });
+    const orderIndex = (maxOrderDoc?.orderIndex ?? -1) + 1;
+
+    const field = new StudyField({
+      userId,
+      clientId: require('crypto').randomUUID(),
+      name: name.trim(),
+      code: code ? code.trim() : name.trim().toLowerCase().replace(/\s+/g, '_'),
+      description: description.trim(),
+      icon,
+      color,
+      orderIndex,
+      isDefault: false,
+    });
+    await field.save();
+    res.status(201).json({ ...field.toObject(), id: field.clientId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/fields/:id', async (req, res) => {
+  try {
+    const userId = req.user?.id || 'admin';
+    const { id } = req.params;
+    const { name, description, icon, color, code } = req.body;
+
+    const updates = {};
+    if (name !== undefined) updates.name = name.trim();
+    if (description !== undefined) updates.description = description.trim();
+    if (icon !== undefined) updates.icon = icon;
+    if (color !== undefined) updates.color = color;
+    if (code !== undefined) updates.code = code;
+
+    const field = await StudyField.findOneAndUpdate(
+      { $or: [{ clientId: id }, { _id: id }], userId },
+      { $set: updates },
+      { new: true }
+    );
+    if (!field) return res.status(404).json({ error: 'Field not found' });
+    res.json({ ...field.toObject(), id: field.clientId || field._id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/fields/:id', async (req, res) => {
+  try {
+    const userId = req.user?.id || 'admin';
+    const { id } = req.params;
+
+    const field = await StudyField.findOneAndUpdate(
+      { $or: [{ clientId: id }, { _id: id }], userId },
+      { $set: { isDeleted: true, deletedAt: new Date() } },
+      { new: true }
+    );
+    if (!field) return res.status(404).json({ error: 'Field not found' });
+    res.json({ success: true, message: 'Field deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ================= 4. SUBJECTS CRUD =================
 
 router.get('/subjects', async (req, res) => {
   try {
     const userId = req.user?.id || req.query.userId || 'admin';
-    const subjects = await StudySubject.find({ userId, isDeleted: false })
+    const { fieldId } = req.query;
+    const query = { userId, isDeleted: false };
+    if (fieldId) {
+      if (fieldId === 'field_ssc') {
+        query.$or = [{ fieldId: 'field_ssc' }, { fieldId: { $exists: false } }, { fieldId: null }, { fieldId: '' }];
+      } else {
+        query.fieldId = fieldId;
+      }
+    }
+    const subjects = await StudySubject.find(query)
       .sort({ orderIndex: 1, createdAt: 1 })
       .lean();
     res.json(subjects.map((s) => ({ ...s, id: s.clientId || s._id })));
@@ -323,11 +481,12 @@ router.get('/subjects', async (req, res) => {
 router.post('/subjects', async (req, res) => {
   try {
     const userId = req.user?.id || req.body.userId || 'admin';
-    const { name, description = '' } = req.body;
+    const { name, description = '', fieldId = 'field_ssc' } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'Subject name is required.' });
 
     let existing = await StudySubject.findOne({
       userId,
+      fieldId,
       name: { $regex: new RegExp(`^${name.trim()}$`, 'i') },
       isDeleted: false,
     });
@@ -338,6 +497,7 @@ router.post('/subjects', async (req, res) => {
 
     const subject = new StudySubject({
       userId,
+      fieldId,
       clientId: require('crypto').randomUUID(),
       name: name.trim(),
       description,

@@ -4,6 +4,7 @@ const syncPlugin = require('./plugins/syncPlugin');
 const StudySubjectSchema = new mongoose.Schema(
   {
     userId: { type: String, default: 'admin', index: true },
+    fieldId: { type: String, default: 'field_ssc', index: true },
     name: { type: String, required: true, trim: true },
     description: { type: String, default: '', trim: true },
     orderIndex: { type: Number, default: 0 },

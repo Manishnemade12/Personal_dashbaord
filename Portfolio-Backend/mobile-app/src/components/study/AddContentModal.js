@@ -18,6 +18,7 @@ export default function AddContentModal({
   visible,
   onClose,
   initialTarget = null,
+  fieldId = 'field_ssc',
   subjects = [],
   chunks = [],
   onContentImported,
@@ -138,7 +139,7 @@ export default function AddContentModal({
 
     let targetSubjId = selectedSubjectId;
     if (!targetSubjId && manualSubjectName.trim()) {
-      const created = await StudyDao.createSubject(manualSubjectName.trim());
+      const created = await StudyDao.createSubject(manualSubjectName.trim(), '', 'admin', false, fieldId);
       targetSubjId = created.id;
     }
 
@@ -147,7 +148,7 @@ export default function AddContentModal({
     }
 
     if (!targetSubjId) {
-      const created = await StudyDao.createSubject('General Studies');
+      const created = await StudyDao.createSubject('General Studies', '', 'admin', false, fieldId);
       targetSubjId = created.id;
     }
 
@@ -177,7 +178,7 @@ export default function AddContentModal({
     setIsSaving(true);
 
     try {
-      const target = {};
+      const target = { fieldId };
       if (mode === 'subject' && selectedSubjectId) {
         target.subjectId = selectedSubjectId;
       } else if (mode === 'chunk' && selectedParentChunkId) {

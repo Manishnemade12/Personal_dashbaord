@@ -26,11 +26,20 @@ import RevisionReportScreen from './RevisionReportScreen';
 import DailyQuizSettingsScreen from './DailyQuizSettingsScreen';
 import StudySearchScreen from './StudySearchScreen';
 
-export default function StudyWorkspaceScreen({ onExit, routeParams = null }) {
+export default function StudyWorkspaceScreen({
+  onExit,
+  activeField = null,
+  routeParams = null,
+}) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const isSmall = width < 500;
   const isNarrow = width < 380;
+
+  const currentFieldId = activeField?.id || activeField?.clientId || 'field_ssc';
+  const currentFieldName = activeField?.name || 'Study Flow';
+  const currentFieldColor = activeField?.color || '#6366f1';
+  const currentFieldIcon = activeField?.icon || 'book';
 
   // Study workspace internal route state
   const [activeView, setActiveView] = useState('dashboard');
@@ -50,15 +59,15 @@ export default function StudyWorkspaceScreen({ onExit, routeParams = null }) {
   const refreshData = useCallback(async () => {
     try {
       const [subs, chs] = await Promise.all([
-        StudyDao.getSubjects(),
-        StudyDao.getChunks(),
+        StudyDao.getSubjects('admin', currentFieldId),
+        StudyDao.getChunks(null, 'admin', currentFieldId),
       ]);
       setSubjects(subs || []);
       setChunks(chs || []);
     } catch (err) {
       console.warn('[StudyWorkspace] refreshData error:', err);
     }
-  }, []);
+  }, [currentFieldId]);
 
   useEffect(() => {
     refreshData();
@@ -98,7 +107,7 @@ export default function StudyWorkspaceScreen({ onExit, routeParams = null }) {
 
   const handleAddSubject = async (name) => {
     try {
-      await StudyDao.createSubject(name);
+      await StudyDao.createSubject(name, '', 'admin', false, currentFieldId);
       await refreshData();
     } catch (e) {
       console.warn('[StudyWorkspace] Add subject error:', e);
@@ -257,26 +266,31 @@ export default function StudyWorkspaceScreen({ onExit, routeParams = null }) {
 
           {isDesktop && (
             <View style={styles.leftBrand}>
-              <View style={styles.headerIconBubble}>
-                <Ionicons name="book" size={14} color="#ffffff" />
+              <View style={[styles.headerIconBubble, { backgroundColor: currentFieldColor }]}>
+                <Ionicons name={currentFieldIcon} size={14} color="#ffffff" />
               </View>
               <Text style={styles.headerBrandTitle} numberOfLines={1}>
-                SSC Study Flow
+                {currentFieldName}
               </Text>
             </View>
           )}
         </View>
 
-        {/* Center: Brand Icon on mobile */}
+        {/* Center: Brand Icon and title on mobile */}
         <View style={styles.centerBrand}>
           {!isDesktop && (
-            <View style={styles.headerIconBubble}>
-              <Ionicons name="book" size={14} color="#ffffff" />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: 180 }}>
+              <View style={[styles.headerIconBubble, { backgroundColor: currentFieldColor }]}>
+                <Ionicons name={currentFieldIcon} size={14} color="#ffffff" />
+              </View>
+              <Text style={styles.headerBrandTitle} numberOfLines={1}>
+                {currentFieldName}
+              </Text>
             </View>
           )}
         </View>
 
-        {/* Right: Quick Search & Exit to Dashboard */}
+        {/* Right: Quick Search & Exit to Study Hub */}
         <View style={styles.rightActions}>
           <TouchableOpacity
             style={styles.headerIconBtn}
@@ -291,11 +305,11 @@ export default function StudyWorkspaceScreen({ onExit, routeParams = null }) {
             style={styles.exitBtn}
             onPress={onExit}
             activeOpacity={0.8}
-            accessibilityLabel="Exit to Dashboard"
+            accessibilityLabel="Back to Study Folders"
           >
             <Ionicons name="arrow-back" size={15} color="#ffffff" />
             <Text style={styles.exitBtnText} numberOfLines={1}>
-              {isDesktop ? 'Exit to Dashboard' : 'Exit'}
+              {isDesktop ? '← Folders' : 'Folders'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -369,6 +383,7 @@ export default function StudyWorkspaceScreen({ onExit, routeParams = null }) {
         visible={addModalVisible}
         onClose={() => setAddModalVisible(false)}
         initialTarget={addTarget}
+        fieldId={currentFieldId}
         subjects={subjects}
         chunks={chunks}
         onContentImported={() => {

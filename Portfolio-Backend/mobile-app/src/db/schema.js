@@ -356,11 +356,32 @@ export const CREATE_TABLES_SQL = [
   );`,
 
   // ================= SMART STUDY FLOW SCHEMAS =================
+  // Study Fields / Workspace Folders (e.g. SSC, Engineering)
+  `CREATE TABLE IF NOT EXISTS study_fields (
+    client_id TEXT PRIMARY KEY,
+    server_id TEXT UNIQUE,
+    user_id TEXT NOT NULL DEFAULT 'admin',
+    name TEXT NOT NULL,
+    code TEXT,
+    description TEXT DEFAULT '',
+    icon TEXT DEFAULT 'school-outline',
+    color TEXT DEFAULT '#6366f1',
+    is_default INTEGER DEFAULT 0,
+    order_index INTEGER DEFAULT 0,
+    sync_status TEXT DEFAULT 'SYNCED',
+    is_deleted INTEGER DEFAULT 0,
+    deleted_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_study_fields_user ON study_fields(user_id, is_deleted);`,
+
   // Study Subjects
   `CREATE TABLE IF NOT EXISTS study_subjects (
     client_id TEXT PRIMARY KEY,
     server_id TEXT UNIQUE,
     user_id TEXT NOT NULL DEFAULT 'admin',
+    field_id TEXT DEFAULT 'field_ssc',
     name TEXT NOT NULL,
     description TEXT DEFAULT '',
     order_index INTEGER DEFAULT 0,
@@ -371,6 +392,7 @@ export const CREATE_TABLES_SQL = [
     updated_at TEXT NOT NULL
   );`,
   `CREATE INDEX IF NOT EXISTS idx_study_subjects_user ON study_subjects(user_id, is_deleted);`,
+  `CREATE INDEX IF NOT EXISTS idx_study_subjects_field ON study_subjects(field_id, is_deleted);`,
   `CREATE INDEX IF NOT EXISTS idx_study_subjects_order ON study_subjects(order_index);`,
 
   // Study Chunks (Chapters and Leaf sections)

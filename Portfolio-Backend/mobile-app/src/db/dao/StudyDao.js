@@ -21,6 +21,31 @@ export function questionHash(q) {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(13, '0');
 }
 
+export const formatFieldRow = (row) => {
+  if (!row) return null;
+  const id = row.server_id || row.client_id;
+  return {
+    _id: id,
+    id: id,
+    client_id: row.client_id,
+    clientId: row.client_id,
+    server_id: row.server_id,
+    serverId: row.server_id,
+    userId: row.user_id || 'admin',
+    name: row.name,
+    code: row.code || '',
+    description: row.description || '',
+    icon: row.icon || 'school-outline',
+    color: row.color || '#6366f1',
+    isDefault: Boolean(row.is_default),
+    orderIndex: row.order_index ?? 0,
+    syncStatus: row.sync_status || 'SYNCED',
+    isDeleted: Boolean(row.is_deleted),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
+
 export const formatSubjectRow = (row) => {
   if (!row) return null;
   const id = row.server_id || row.client_id;
@@ -32,6 +57,8 @@ export const formatSubjectRow = (row) => {
     server_id: row.server_id,
     serverId: row.server_id,
     userId: row.user_id || 'admin',
+    fieldId: row.field_id || 'field_ssc',
+    field_id: row.field_id || 'field_ssc',
     name: row.name,
     description: row.description || '',
     orderIndex: row.order_index ?? 0,
@@ -187,14 +214,157 @@ export const formatAttemptRow = (row) => {
 };
 
 export const StudyDao = {
-  // ================= 1. SUBJECTS =================
+  // ================= 0. FIELDS / FOLDERS =================
 
-  async getSubjects(userId = 'admin') {
+  async getFields(userId = 'admin') {
     const db = await getDatabase();
     const rows = await db.getAllAsync(
-      `SELECT * FROM study_subjects WHERE is_deleted = 0 AND (user_id = ? OR user_id = 'admin') ORDER BY order_index ASC, created_at ASC`,
+      `SELECT * FROM study_fields WHERE is_deleted = 0 AND (user_id = ? OR user_id = 'admin') ORDER BY order_index ASC, created_at ASC`,
       [userId]
     );
+    return rows.map(formatFieldRow);
+  },
+
+  async getFieldById(fieldId) {
+    if (!fieldId) return null;
+    const db = await getDatabase();
+    const row = await db.getFirstAsync(
+      `SELECT * FROM study_fields WHERE (client_id = ? OR server_id = ?) AND is_deleted = 0`,
+      [fieldId, fieldId]
+    );
+    return row ? formatFieldRow(row) : null;
+  },
+
+  async createField({ name, description = '', icon = 'school-outline', color = '#6366f1', code = '' }, userId = 'admin', isSyncPull = false) {
+    const db = await getDatabase();
+    const trimmed = (name || '').trim();
+    if (!trimmed) throw new Error('Field name is required');
+
+    const existing = await db.getFirstAsync(
+      `SELECT * FROM study_fields WHERE LOWER(name) = LOWER(?) AND is_deleted = 0 AND (user_id = ? OR user_id = 'admin')`,
+      [trimmed, userId]
+    );
+    if (existing) {
+      return formatFieldRow(existing);
+    }
+
+    const clientId = generateUUID();
+    const now = new Date().toISOString();
+    const maxOrder = await db.getFirstAsync(
+      `SELECT MAX(order_index) as max_ord FROM study_fields WHERE is_deleted = 0 AND (user_id = ? OR user_id = 'admin')`,
+      [userId]
+    );
+    const nextOrder = (maxOrder?.max_ord ?? -1) + 1;
+    const cleanCode = code ? code.trim() : trimmed.toLowerCase().replace(/\s+/g, '_');
+
+    await db.runAsync(
+      `INSERT INTO study_fields (client_id, user_id, name, code, description, icon, color, is_default, order_index, sync_status, is_deleted, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 0, ?, ?)`,
+      [clientId, userId, trimmed, cleanCode, description, icon, color, nextOrder, isSyncPull ? 'SYNCED' : 'PENDING', now, now]
+    );
+
+    const inserted = await db.getFirstAsync(`SELECT * FROM study_fields WHERE client_id = ?`, [clientId]);
+    const formatted = formatFieldRow(inserted);
+
+    if (!isSyncPull) {
+      await SyncOutboxDao.enqueue('CREATE', 'study_field', clientId, {
+        name: trimmed,
+        code: cleanCode,
+        description,
+        icon,
+        color,
+        orderIndex: nextOrder,
+        userId,
+      });
+    }
+
+    return formatted;
+  },
+
+  async updateField(fieldId, updates = {}, userId = 'admin', isSyncPull = false) {
+    if (!fieldId) return null;
+    const db = await getDatabase();
+    const now = new Date().toISOString();
+
+    const target = await db.getFirstAsync(
+      `SELECT client_id, server_id, name, code, description, icon, color FROM study_fields WHERE client_id = ? OR server_id = ?`,
+      [fieldId, fieldId]
+    );
+    if (!target) return null;
+
+    const newName = updates.name !== undefined ? updates.name.trim() : target.name;
+    const newDesc = updates.description !== undefined ? updates.description : target.description;
+    const newIcon = updates.icon !== undefined ? updates.icon : target.icon;
+    const newColor = updates.color !== undefined ? updates.color : target.color;
+    const newCode = updates.code !== undefined ? updates.code : target.code;
+
+    await db.runAsync(
+      `UPDATE study_fields SET name = ?, code = ?, description = ?, icon = ?, color = ?, sync_status = ?, updated_at = ? WHERE client_id = ?`,
+      [newName, newCode, newDesc, newIcon, newColor, isSyncPull ? 'SYNCED' : 'PENDING', now, target.client_id]
+    );
+
+    if (!isSyncPull) {
+      await SyncOutboxDao.enqueue('UPDATE', 'study_field', target.client_id, {
+        name: newName,
+        code: newCode,
+        description: newDesc,
+        icon: newIcon,
+        color: newColor,
+        userId,
+      }, target.server_id);
+    }
+
+    const updated = await db.getFirstAsync(`SELECT * FROM study_fields WHERE client_id = ?`, [target.client_id]);
+    return formatFieldRow(updated);
+  },
+
+  async deleteField(fieldId, userId = 'admin', isSyncPull = false) {
+    if (!fieldId) return;
+    const db = await getDatabase();
+    const now = new Date().toISOString();
+
+    const target = await db.getFirstAsync(
+      `SELECT client_id, server_id, is_default FROM study_fields WHERE client_id = ? OR server_id = ?`,
+      [fieldId, fieldId]
+    );
+    if (!target) return;
+    if (target.is_default) {
+      throw new Error('Default folder cannot be deleted');
+    }
+
+    await db.runAsync(
+      `UPDATE study_fields SET is_deleted = 1, deleted_at = ?, sync_status = ?, updated_at = ? WHERE client_id = ?`,
+      [now, isSyncPull ? 'SYNCED' : 'PENDING', now, target.client_id]
+    );
+
+    // Reassign subjects of this field to default field_ssc so data is safely retained
+    await db.runAsync(
+      `UPDATE study_subjects SET field_id = 'field_ssc', sync_status = 'PENDING', updated_at = ? WHERE field_id = ?`,
+      [now, target.client_id]
+    );
+
+    if (!isSyncPull) {
+      await SyncOutboxDao.enqueue('DELETE', 'study_field', target.client_id, {}, target.server_id);
+    }
+  },
+
+  // ================= 1. SUBJECTS =================
+
+  async getSubjects(userId = 'admin', fieldId = null) {
+    const db = await getDatabase();
+    let sql = `SELECT * FROM study_subjects WHERE is_deleted = 0 AND (user_id = ? OR user_id = 'admin')`;
+    const params = [userId];
+    if (fieldId) {
+      if (fieldId === 'field_ssc') {
+        sql += ` AND (field_id = ? OR field_id IS NULL OR field_id = '')`;
+        params.push(fieldId);
+      } else {
+        sql += ` AND field_id = ?`;
+        params.push(fieldId);
+      }
+    }
+    sql += ` ORDER BY order_index ASC, created_at ASC`;
+    const rows = await db.getAllAsync(sql, params);
     return rows.map(formatSubjectRow);
   },
 
@@ -208,15 +378,15 @@ export const StudyDao = {
     return row ? formatSubjectRow(row) : null;
   },
 
-  async createSubject(name, description = '', userId = 'admin', isSyncPull = false) {
+  async createSubject(name, description = '', userId = 'admin', isSyncPull = false, fieldId = 'field_ssc') {
     const db = await getDatabase();
     const trimmed = (name || '').trim();
     if (!trimmed) throw new Error('Subject name is required');
 
-    // Case-insensitive check for existing subject
+    // Case-insensitive check for existing subject in same field
     const existing = await db.getFirstAsync(
-      `SELECT * FROM study_subjects WHERE LOWER(name) = LOWER(?) AND is_deleted = 0 AND (user_id = ? OR user_id = 'admin')`,
-      [trimmed, userId]
+      `SELECT * FROM study_subjects WHERE LOWER(name) = LOWER(?) AND is_deleted = 0 AND (user_id = ? OR user_id = 'admin') AND (field_id = ? OR (field_id IS NULL AND ? = 'field_ssc'))`,
+      [trimmed, userId, fieldId, fieldId]
     );
     if (existing) {
       return formatSubjectRow(existing);
@@ -232,9 +402,9 @@ export const StudyDao = {
     const nextOrder = (maxOrder?.max_ord ?? -1) + 1;
 
     await db.runAsync(
-      `INSERT INTO study_subjects (client_id, user_id, name, description, order_index, sync_status, is_deleted, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
-      [clientId, userId, trimmed, description, nextOrder, isSyncPull ? 'SYNCED' : 'PENDING', now, now]
+      `INSERT INTO study_subjects (client_id, user_id, field_id, name, description, order_index, sync_status, is_deleted, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+      [clientId, userId, fieldId, trimmed, description, nextOrder, isSyncPull ? 'SYNCED' : 'PENDING', now, now]
     );
 
     const inserted = await db.getFirstAsync(`SELECT * FROM study_subjects WHERE client_id = ?`, [clientId]);
@@ -243,6 +413,7 @@ export const StudyDao = {
     if (!isSyncPull) {
       await SyncOutboxDao.enqueue('CREATE', 'study_subject', clientId, {
         name: trimmed,
+        fieldId,
         description,
         orderIndex: nextOrder,
         userId,
@@ -282,7 +453,7 @@ export const StudyDao = {
 
   // ================= 2. CHUNKS & IN-CHUNK QUIZZES =================
 
-  async getChunks(subjectId = null, userId = 'admin') {
+  async getChunks(subjectId = null, userId = 'admin', fieldId = null) {
     const db = await getDatabase();
     let sql = `SELECT * FROM study_chunks WHERE is_deleted = 0 AND (user_id = ? OR user_id = 'admin')`;
     const params = [userId];
@@ -290,6 +461,14 @@ export const StudyDao = {
     if (subjectId) {
       sql += ` AND (subject_id = ? OR subject_id IN (SELECT client_id FROM study_subjects WHERE server_id = ?))`;
       params.push(subjectId, subjectId);
+    } else if (fieldId) {
+      if (fieldId === 'field_ssc') {
+        sql += ` AND subject_id IN (SELECT client_id FROM study_subjects WHERE is_deleted = 0 AND (field_id = ? OR field_id IS NULL OR field_id = ''))`;
+        params.push(fieldId);
+      } else {
+        sql += ` AND subject_id IN (SELECT client_id FROM study_subjects WHERE is_deleted = 0 AND field_id = ?)`;
+        params.push(fieldId);
+      }
     }
 
     sql += ` ORDER BY order_index ASC, created_at ASC`;
@@ -563,7 +742,7 @@ export const StudyDao = {
     for (const s of tree.subjects) {
       let subjectId = target.subjectId;
       if (!subjectId) {
-        const createdSubj = await this.createSubject(s.name, s.description || '', userId);
+        const createdSubj = await this.createSubject(s.name, s.description || '', userId, false, target.fieldId || 'field_ssc');
         subjectId = createdSubj.id;
       }
 

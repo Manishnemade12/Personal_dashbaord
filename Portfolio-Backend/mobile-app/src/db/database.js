@@ -34,6 +34,34 @@ export const getDatabase = async () => {
         }
       }
 
+      // Safe column migration for study_subjects.field_id
+      try {
+        await db.execAsync("ALTER TABLE study_subjects ADD COLUMN field_id TEXT DEFAULT 'field_ssc';");
+      } catch (alterErr) {
+        // Column likely exists, safe to ignore
+      }
+
+      // Seed default study fields (SSC and Engineering) if table is empty
+      try {
+        const fieldCountRow = await db.getFirstAsync('SELECT COUNT(*) as count FROM study_fields WHERE is_deleted = 0');
+        if (!fieldCountRow || fieldCountRow.count === 0) {
+          const now = new Date().toISOString();
+          await db.runAsync(
+            `INSERT OR IGNORE INTO study_fields (client_id, name, code, description, icon, color, is_default, order_index, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, ?)`,
+            ['field_ssc', 'SSC Exam Prep', 'ssc', 'General Studies, Math, Reasoning & English for SSC CGL / CHSL', 'school-outline', '#6366f1', now, now]
+          );
+          await db.runAsync(
+            `INSERT OR IGNORE INTO study_fields (client_id, name, code, description, icon, color, is_default, order_index, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 0, 1, ?, ?)`,
+            ['field_engineering', 'Engineering', 'engineering', 'Computer Science, Algorithms, Core Engineering & Tech Concepts', 'code-slash-outline', '#06b6d4', now, now]
+          );
+        }
+        await db.runAsync("UPDATE study_subjects SET field_id = 'field_ssc' WHERE field_id IS NULL OR field_id = ''");
+      } catch (seedErr) {
+        console.warn('[SQLite Study Fields Seed Warning]', seedErr.message);
+      }
+
       // Verify migration record
       try {
         const migrationRow = await db.getFirstAsync(
