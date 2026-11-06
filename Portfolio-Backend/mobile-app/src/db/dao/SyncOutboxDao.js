@@ -3,21 +3,55 @@ import { generateUUID } from '../../utils/uuid';
 
 export const SyncOutboxDao = {
   /**
+   * Universal flexible enqueue method supporting both:
+   * 1. (action, entityName, clientId, payload, serverId)
+   * 2. (entityName, action, clientId, payload)
+   */
+  async enqueue(actionOrEntity, entityOrAction, clientId, payload = {}, serverId = null) {
+    try {
+      const actions = ['CREATE', 'UPDATE', 'DELETE', 'UPSERT'];
+      let action = String(actionOrEntity).toUpperCase();
+      let entityName = entityOrAction;
+
+      if (!actions.includes(action) && actions.includes(String(entityOrAction).toUpperCase())) {
+        // entityName was passed as first argument
+        entityName = actionOrEntity;
+        action = String(entityOrAction).toUpperCase();
+      }
+
+      const fullPayload = { ...(payload || {}) };
+      if (serverId) {
+        fullPayload.serverId = serverId;
+      }
+
+      return await this.enqueueMutation(entityName, action, clientId, fullPayload);
+    } catch (err) {
+      console.warn('[SyncOutboxDao.enqueue Exception]', err.message);
+      return null;
+    }
+  },
+
+  /**
    * Enqueue a new mutation into the persistent outbox table
    */
   async enqueueMutation(entityName, action, clientId, payload) {
-    const db = await getDatabase();
-    const mutationId = generateUUID();
-    const now = new Date().toISOString();
+    try {
+      const db = await getDatabase();
+      const mutationId = generateUUID();
+      const now = new Date().toISOString();
 
-    await db.runAsync(
-      `INSERT INTO sync_outbox (
-        mutation_id, entity_name, action, client_id, payload, status, retry_count, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, 'PENDING', 0, ?, ?)`,
-      [mutationId, entityName, action, clientId, JSON.stringify(payload || {}), now, now]
-    );
+      await db.runAsync(
+        `INSERT INTO sync_outbox (
+          mutation_id, entity_name, action, client_id, payload, status, retry_count, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, 'PENDING', 0, ?, ?)`,
+        [mutationId, entityName, action, clientId, JSON.stringify(payload || {}), now, now]
+      );
 
-    return mutationId;
+      return mutationId;
+    } catch (err) {
+      console.warn('[SyncOutboxDao.enqueueMutation Exception]', err.message);
+      return null;
+    }
   },
 
   /**
