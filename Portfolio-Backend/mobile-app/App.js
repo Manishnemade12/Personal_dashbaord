@@ -52,8 +52,17 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
   if (typeof document !== 'undefined') {
     const styleEl = document.createElement('style');
     styleEl.textContent = `
-      html, body, #root {
+      *, *::before, *::after {
+        box-sizing: border-box !important;
+      }
+      html, body {
         max-width: 100vw !important;
+        width: 100% !important;
+        overflow-x: hidden !important;
+      }
+      #root {
+        max-width: 100vw !important;
+        width: 100% !important;
         overflow-x: hidden !important;
       }
     `;
@@ -320,13 +329,13 @@ export default function App() {
   // Dedicated 'Exit to Dashboard' button allows returning to main dashboard
   if (currentRoute === 'Study') {
     return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: '#0b0f19', width: '100%', maxWidth: '100%', overflow: 'hidden' }]}>
+      <View style={{ flex: 1, backgroundColor: '#0b0f19', width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
         <StatusBar barStyle="light-content" backgroundColor="#0b0f19" />
         <StudyWorkspaceScreen
           onExit={() => navigate('Dashboard')}
           routeParams={routeParams}
         />
-      </SafeAreaView>
+      </View>
     );
   }
 

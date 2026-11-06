@@ -361,6 +361,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f172a',
     borderRightWidth: 1,
     borderRightColor: '#1e293b',
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',

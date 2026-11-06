@@ -42,7 +42,14 @@ export default function StudyDashboardScreen({
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentWrap}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentWrap}
+      showsHorizontalScrollIndicator={false}
+      showsVerticalScrollIndicator={true}
+      horizontal={false}
+      alwaysBounceHorizontal={false}
+    >
       {/* Hero Banner */}
       <View style={styles.heroBanner}>
         <View style={styles.heroBadge}>
@@ -183,20 +190,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#0b0f19',
     width: '100%',
     maxWidth: '100%',
+    overflow: 'hidden',
   },
   contentWrap: {
-    padding: 14,
+    padding: 12,
     maxWidth: 1100,
     width: '100%',
     alignSelf: 'center',
     paddingBottom: 40,
+    overflow: 'hidden',
   },
   heroBanner: {
     borderRadius: 14,
-    padding: 18,
+    padding: 16,
     marginBottom: 16,
     backgroundColor: '#4f46e5',
     overflow: 'hidden',
+    width: '100%',
+    maxWidth: '100%',
   },
   heroBadge: {
     flexDirection: 'row',
@@ -215,23 +226,25 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   heroTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '800',
     color: '#ffffff',
-    lineHeight: 28,
-    maxWidth: 600,
+    lineHeight: 26,
+    width: '100%',
+    maxWidth: '100%',
   },
   heroSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: 'rgba(255, 255, 255, 0.85)',
     marginTop: 6,
-    lineHeight: 19,
-    maxWidth: 640,
+    lineHeight: 18,
+    width: '100%',
+    maxWidth: '100%',
   },
   heroBtnRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
     marginTop: 16,
   },
   heroPrimaryBtn: {
@@ -267,17 +280,20 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 24,
+    gap: 8,
+    marginBottom: 20,
+    width: '100%',
+    maxWidth: '100%',
   },
   statCard: {
     flex: 1,
-    minWidth: 130,
+    flexBasis: '47%',
+    minWidth: 0,
     backgroundColor: '#111827',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#1f2937',
-    padding: 14,
+    padding: 12,
   },
   statIconHeader: {
     flexDirection: 'row',
@@ -286,39 +302,42 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#94a3b8',
     fontWeight: '500',
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '800',
     color: '#f8fafc',
   },
   sectionHeader: {
-    marginBottom: 14,
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     color: '#f1f5f9',
   },
   emptyCard: {
+    width: '100%',
+    maxWidth: '100%',
     borderRadius: 14,
     borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: '#1f2937',
-    padding: 30,
+    padding: 20,
     alignItems: 'center',
+    overflow: 'hidden',
   },
   emptyIconWrap: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     backgroundColor: 'rgba(99, 102, 241, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   emptyTitle: {
     fontSize: 15,
@@ -330,8 +349,9 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     textAlign: 'center',
     marginTop: 4,
-    marginBottom: 16,
-    maxWidth: 320,
+    marginBottom: 14,
+    width: '100%',
+    maxWidth: '100%',
   },
   emptyActionBtn: {
     flexDirection: 'row',
@@ -350,12 +370,13 @@ const styles = StyleSheet.create({
   recentGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
+    width: '100%',
+    maxWidth: '100%',
   },
   chunkCard: {
-    flex: 1,
-    minWidth: 260,
     width: '100%',
+    maxWidth: '100%',
     backgroundColor: '#111827',
     borderRadius: 12,
     borderWidth: 1,

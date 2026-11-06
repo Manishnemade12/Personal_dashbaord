@@ -241,46 +241,44 @@ export default function StudyWorkspaceScreen({ onExit, routeParams = null }) {
       <StatusBar barStyle="light-content" backgroundColor="#0b0f19" />
 
       {/* Top Header - Main Sidebar is Hidden! Dedicated Exit Button Provided */}
-      <View style={[styles.topHeader, isSmall && styles.topHeaderSmall]}>
+      <View style={styles.topHeader}>
         {/* Left: Prominent Exit to Dashboard Button */}
         <TouchableOpacity
-          style={[styles.exitBtn, isSmall && styles.exitBtnSmall]}
+          style={styles.exitBtn}
           onPress={onExit}
           activeOpacity={0.8}
         >
-          <Ionicons name="arrow-back" size={isSmall ? 15 : 18} color="#ffffff" />
+          <Ionicons name="arrow-back" size={16} color="#ffffff" />
           <Text style={styles.exitBtnText} numberOfLines={1}>
-            {isSmall ? 'Exit' : 'Exit to Dashboard'}
+            {isDesktop ? 'Exit to Dashboard' : 'Exit'}
           </Text>
         </TouchableOpacity>
 
-        {/* Center: Brand */}
-        {!isNarrow && (
-          <View style={styles.centerBrand}>
-            <View style={styles.headerIconBubble}>
-              <Ionicons name="book" size={14} color="#ffffff" />
-            </View>
-            {!isSmall && <Text style={styles.headerBrandTitle}>SSC Study Flow</Text>}
+        {/* Center: Brand (Icon bubble on mobile; title on desktop) */}
+        <View style={styles.centerBrand}>
+          <View style={styles.headerIconBubble}>
+            <Ionicons name="book" size={14} color="#ffffff" />
           </View>
-        )}
+          {isDesktop && <Text style={styles.headerBrandTitle} numberOfLines={1}>SSC Study Flow</Text>}
+        </View>
 
         {/* Right: Quick Search & Mobile Drawer Hamburger */}
         <View style={styles.rightActions}>
           <TouchableOpacity
-            style={[styles.headerIconBtn, isSmall && styles.headerIconBtnSmall]}
+            style={styles.headerIconBtn}
             onPress={() => handleNavigateView('search')}
             activeOpacity={0.7}
           >
-            <Ionicons name="search" size={isSmall ? 16 : 18} color="#cbd5e1" />
+            <Ionicons name="search" size={16} color="#cbd5e1" />
           </TouchableOpacity>
 
           {!isDesktop && (
             <TouchableOpacity
-              style={[styles.headerIconBtn, isSmall && styles.headerIconBtnSmall]}
+              style={styles.headerIconBtn}
               onPress={() => setMobileDrawerVisible(true)}
               activeOpacity={0.7}
             >
-              <Ionicons name="menu" size={isSmall ? 18 : 20} color="#cbd5e1" />
+              <Ionicons name="menu" size={18} color="#cbd5e1" />
             </TouchableOpacity>
           )}
         </View>
@@ -384,39 +382,30 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   topHeader: {
-    height: 54,
+    height: 50,
     backgroundColor: '#0f172a',
     borderBottomWidth: 1,
     borderBottomColor: '#1e293b',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     width: '100%',
     maxWidth: '100%',
     overflow: 'hidden',
     zIndex: 10,
   },
-  topHeaderSmall: {
-    paddingHorizontal: 10,
-    height: 50,
-  },
   exitBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     backgroundColor: '#1e293b',
     borderWidth: 1,
     borderColor: '#334155',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-    flexShrink: 1,
-  },
-  exitBtnSmall: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    gap: 4,
+    borderRadius: 8,
+    flexShrink: 0,
   },
   exitBtnText: {
     fontSize: 12,
@@ -445,21 +434,16 @@ const styles = StyleSheet.create({
   rightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     flexShrink: 0,
   },
   headerIconBtn: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     borderRadius: 8,
     backgroundColor: '#1e293b',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  headerIconBtnSmall: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
   },
   mainSplitBody: {
     flex: 1,
