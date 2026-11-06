@@ -300,6 +300,24 @@ export const api = {
   saveStockChatSession: (data) => request('/investments/ai-chat/sessions', { method: 'POST', body: data }),
   deleteStockChatSession: (id) => request(`/investments/ai-chat/sessions/${id}`, { method: 'DELETE' }),
 
+  // Notes & Categories Management (/api/notes/*)
+  getNotes: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.category && params.category !== 'All') query.append('category', params.category);
+    if (params.search) query.append('search', params.search);
+    if (params.pinnedOnly) query.append('pinnedOnly', 'true');
+    const qs = query.toString();
+    return request(`/notes${qs ? `?${qs}` : ''}`);
+  },
+  getNoteById: (id) => request(`/notes/${id}`),
+  createNote: (data) => request('/notes', { method: 'POST', body: data }),
+  updateNote: (id, data) => request(`/notes/${id}`, { method: 'PUT', body: data }),
+  deleteNote: (id) => request(`/notes/${id}`, { method: 'DELETE' }),
+  togglePinNote: (id) => request(`/notes/${id}/pin`, { method: 'PATCH' }),
+  getNoteCategories: () => request('/notes/categories'),
+  createNoteCategory: (data) => request('/notes/categories', { method: 'POST', body: data }),
+  deleteNoteCategory: (name) => request(`/notes/categories/${encodeURIComponent(name)}`, { method: 'DELETE' }),
+
   // Bidirectional Synchronization Engine (/api/sync/*)
   pushSyncMutations: (data) => request('/sync/push', { method: 'POST', body: data }),
   pullSyncChanges: (since = null) =>

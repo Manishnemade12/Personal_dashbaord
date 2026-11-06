@@ -59,6 +59,7 @@ app.use('/api/apis', require('./routes/apis'));
 app.use('/api/projectapi', require('./routes/portfolio/projectApis'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/diet', require('./routes/diet'));
+app.use('/api/notes', require('./routes/notes'));
 app.use('/api/sync', require('./routes/sync'));
 
 

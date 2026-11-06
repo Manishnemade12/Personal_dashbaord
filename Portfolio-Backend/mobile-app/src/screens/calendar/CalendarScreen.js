@@ -23,6 +23,11 @@ import AiRoutinePlannerModal from './components/AiRoutinePlannerModal';
 import DietCaloriesVisuals from './components/DietCaloriesVisuals';
 import styles from './styles/calendarStyles';
 import aiRoutineStyles from './styles/aiRoutineStyles';
+import {
+  getCalendarId,
+  isEventInCalendar,
+  resolveEventCalendar,
+} from './utils/calendarHelpers';
 
 const formatLocalDate = (date) => {
   if (!date) return '';
@@ -123,11 +128,15 @@ export default function CalendarScreen({ onNavigate }) {
         setCalendars(localCals);
         const visMap = {};
         localCals.forEach((c) => {
-          visMap[c.client_id || c._id] = c.is_visible !== 0 && c.isVisible !== false;
+          const id = getCalendarId(c);
+          const isVis = c.is_visible !== 0 && c.isVisible !== false;
+          visMap[id] = isVis;
+          if (c.client_id) visMap[c.client_id] = isVis;
+          if (c.server_id) visMap[c.server_id] = isVis;
         });
         setCalendarVisibility(visMap);
         if (!selectedCalendarId) {
-          setSelectedCalendarId(localCals[0].client_id || localCals[0]._id);
+          setSelectedCalendarId(getCalendarId(localCals[0]));
         }
       }
 
@@ -153,11 +162,15 @@ export default function CalendarScreen({ onNavigate }) {
           setCalendars(updatedCals);
           const visMap = {};
           updatedCals.forEach((c) => {
-            visMap[c.client_id || c._id] = c.is_visible !== 0 && c.isVisible !== false;
+            const id = getCalendarId(c);
+            const isVis = c.is_visible !== 0 && c.isVisible !== false;
+            visMap[id] = isVis;
+            if (c.client_id) visMap[c.client_id] = isVis;
+            if (c.server_id) visMap[c.server_id] = isVis;
           });
           setCalendarVisibility(visMap);
           if (!selectedCalendarId && updatedCals.length > 0) {
-            setSelectedCalendarId(updatedCals[0].client_id || updatedCals[0]._id);
+            setSelectedCalendarId(getCalendarId(updatedCals[0]));
           }
         }
 
@@ -230,7 +243,7 @@ export default function CalendarScreen({ onNavigate }) {
       setEventTitle(event.title || '');
       setEventDescription(event.description || '');
       setSelectedCalendarId(
-        event.calendarId?._id || event.calendarId || calendars[0]?._id || ''
+        event.calendarId?._id || event.calendarId || event.calendar_server_id || event.calendar_client_id || getCalendarId(calendars[0]) || ''
       );
 
       const s = new Date(event.startAt);
@@ -266,7 +279,7 @@ export default function CalendarScreen({ onNavigate }) {
       if (activeCalendarFilter !== 'all') {
         setSelectedCalendarId(activeCalendarFilter);
       } else if (calendars.length > 0) {
-        setSelectedCalendarId(calendars[0]._id);
+        setSelectedCalendarId(getCalendarId(calendars[0]));
       }
     }
     setEventModalVisible(true);
@@ -323,10 +336,19 @@ export default function CalendarScreen({ onNavigate }) {
         return;
       }
 
+      const targetCal = calendars.find(
+        (c) =>
+          getCalendarId(c) === selectedCalendarId ||
+          c._id === selectedCalendarId ||
+          c.client_id === selectedCalendarId ||
+          c.server_id === selectedCalendarId
+      ) || calendars[0];
+      const chosenCalId = selectedCalendarId || getCalendarId(targetCal) || getCalendarId(calendars[0]);
+
       const payload = {
         title: eventTitle.trim(),
         description: eventDescription.trim(),
-        calendarId: selectedCalendarId || calendars[0]?._id,
+        calendarId: chosenCalId,
         startAt: startAt.toISOString(),
         endAt: endAt.toISOString(),
         isAllDay,
@@ -342,6 +364,8 @@ export default function CalendarScreen({ onNavigate }) {
 
       const eventDataToSave = {
         ...payload,
+        calendarClientId: targetCal?.client_id || (chosenCalId && !chosenCalId.startsWith('6') ? chosenCalId : undefined),
+        calendarServerId: targetCal?.server_id || (chosenCalId && chosenCalId.startsWith('6') ? chosenCalId : undefined),
         client_id: editingEvent?.client_id || (editingEvent?._id && !editingEvent._id.startsWith('6') ? editingEvent._id : undefined),
         server_id: editingEvent?.server_id || (editingEvent?._id && editingEvent._id.startsWith('6') ? editingEvent._id : undefined),
       };
@@ -515,9 +539,12 @@ export default function CalendarScreen({ onNavigate }) {
           onPress: async () => {
             try {
               // Soft-delete locally in SQLite
-              const db = await CalendarDao.getCalendars();
+              await CalendarDao.deleteCalendar(id);
               // Attempt remote delete
               api.deleteCalendar(id).catch(() => {});
+              if (activeCalendarFilter === id) {
+                setActiveCalendarFilter('all');
+              }
               setCalendarModalVisible(false);
               await loadData();
             } catch (e) {
@@ -545,18 +572,31 @@ export default function CalendarScreen({ onNavigate }) {
 
   // Filter events by active calendar filter, visibility, and search query
   const visibleEvents = events.filter((ev) => {
-    const calId = ev.calendarId?._id || ev.calendarId;
-    if (activeCalendarFilter !== 'all' && calId !== activeCalendarFilter) {
+    // 1. Calendar filter check
+    if (!isEventInCalendar(ev, activeCalendarFilter, calendars)) {
       return false;
     }
-    const isVisible = calendarVisibility[calId] !== false;
-    const matchesSearch =
-      searchQuery.trim() === '' ||
-      ev.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ev.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ev.location?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    return isVisible && matchesSearch;
+    // 2. Calendar visibility check
+    const calId = ev.calendarId?._id || ev.calendarId || ev.calendar_server_id || ev.calendar_client_id;
+    if (calId && calendarVisibility[calId] === false) {
+      return false;
+    }
+
+    // 3. Skip deleted/cancelled events
+    if (ev.isDeleted || ev.status === 'cancelled') {
+      return false;
+    }
+
+    // 4. Search query
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch =
+      q === '' ||
+      ev.title?.toLowerCase().includes(q) ||
+      ev.description?.toLowerCase().includes(q) ||
+      ev.location?.toLowerCase().includes(q);
+
+    return matchesSearch;
   });
 
   const calendarHeader = (
@@ -582,9 +622,18 @@ export default function CalendarScreen({ onNavigate }) {
       />
 
       <DietCaloriesVisuals
-        visible={activeCalendarFilter !== 'all' && /diet|nutrition|meal/i.test(
-          calendars.find((calendar) => calendar._id === activeCalendarFilter)?.name || ''
-        )}
+        visible={
+          activeCalendarFilter !== 'all' &&
+          /diet|nutrition|meal|food|calorie/i.test(
+            calendars.find(
+              (c) =>
+                getCalendarId(c) === activeCalendarFilter ||
+                c._id === activeCalendarFilter ||
+                c.client_id === activeCalendarFilter ||
+                c.server_id === activeCalendarFilter
+            )?.name || ''
+          )
+        }
       />
 
       {/* Quick Access Banner to Workout & Diet Tracker */}
@@ -650,6 +699,7 @@ export default function CalendarScreen({ onNavigate }) {
             openEventModal={openEventModal}
             viewMode={viewMode}
             headerComponent={calendarHeader}
+            calendars={calendars}
           />
         )}
       </View>

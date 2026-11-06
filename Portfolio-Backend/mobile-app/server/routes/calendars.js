@@ -15,7 +15,7 @@ const DEFAULT_CALENDARS = [
 router.get('/', async (req, res) => {
   try {
     const userId = req.query.userId || 'admin';
-    let calendars = await Calendar.find({ userId, isArchived: false }).sort({ isDefault: -1, createdAt: 1 });
+    let calendars = await Calendar.find({ userId, isArchived: false, isDeleted: { $ne: true } }).sort({ isDefault: -1, createdAt: 1 });
 
     if (calendars.length === 0) {
       // Auto seed default calendars

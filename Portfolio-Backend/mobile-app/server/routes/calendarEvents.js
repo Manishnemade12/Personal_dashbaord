@@ -65,7 +65,7 @@ router.get('/', async (req, res) => {
     const { calendarId, start, end, search, status } = req.query;
     const userId = req.query.userId || 'admin';
 
-    const query = { userId };
+    const query = { userId, isDeleted: { $ne: true } };
 
     if (calendarId) {
       query.calendarId = calendarId;

@@ -18,8 +18,9 @@ export default function SidebarDrawer({
   onLogout,
 }) {
   const isCalendarActive = currentRoute === 'Calendar';
+  const isNotesActive = currentRoute === 'Notes';
   const isWorkoutDietActive = currentRoute === 'WorkoutDiet';
-  const isCalendarGroupActive = isCalendarActive || isWorkoutDietActive;
+  const isCalendarGroupActive = isCalendarActive || isNotesActive || isWorkoutDietActive;
 
   const isFinanceActive = currentRoute === 'Finance';
   const isInvestmentsActive = currentRoute === 'Investments';
@@ -186,6 +187,24 @@ export default function SidebarDrawer({
                   </View>
                   <Text style={[styles.subMenuText, isCalendarActive && styles.subMenuTextActive]}>
                     Schedule & Events
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Child 2: Notes & Ideas */}
+                <TouchableOpacity
+                  style={[styles.subMenuItem, isNotesActive && styles.subMenuItemActive]}
+                  onPress={() => handleNav('Notes')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.subMenuIconWrap}>
+                    <Ionicons
+                      name="document-text-outline"
+                      size={16}
+                      color={isNotesActive ? '#7e37d8' : '#64748b'}
+                    />
+                  </View>
+                  <Text style={[styles.subMenuText, isNotesActive && styles.subMenuTextActive]}>
+                    Notes & Ideas
                   </Text>
                 </TouchableOpacity>
 

@@ -2,14 +2,83 @@ import { getDatabase } from '../database';
 import { generateUUID } from '../../utils/uuid';
 import { SyncOutboxDao } from './SyncOutboxDao';
 
+export const formatCalendarRow = (row) => {
+  if (!row) return null;
+  const primaryId = row.server_id || row.client_id;
+  return {
+    _id: primaryId,
+    id: primaryId,
+    client_id: row.client_id,
+    clientId: row.client_id,
+    server_id: row.server_id,
+    serverId: row.server_id,
+    userId: row.user_id || 'admin',
+    name: row.name,
+    description: row.description || '',
+    color: row.color || '#7e37d8',
+    isDefault: Boolean(row.is_default),
+    isVisible: row.is_visible !== 0,
+    isArchived: Boolean(row.is_archived),
+    syncStatus: row.sync_status || 'SYNCED',
+    isDeleted: Boolean(row.is_deleted),
+    deletedAt: row.deleted_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
+
+export const formatEventRow = (row) => {
+  if (!row) return null;
+  const primaryId = row.server_id || row.client_id;
+  return {
+    _id: primaryId,
+    id: primaryId,
+    client_id: row.client_id,
+    clientId: row.client_id,
+    server_id: row.server_id,
+    serverId: row.server_id,
+    calendarId: row.calendar_server_id || row.calendar_client_id,
+    calendarClientId: row.calendar_client_id,
+    calendarServerId: row.calendar_server_id,
+    userId: row.user_id || 'admin',
+    title: row.title,
+    description: row.description || '',
+    startAt: row.start_at,
+    endAt: row.end_at,
+    isAllDay: Boolean(row.is_all_day),
+    color: row.color || '',
+    location: row.location || '',
+    priority: row.priority || 'medium',
+    status: row.status || 'scheduled',
+    recurrenceRule: row.recurrence_rule ? JSON.parse(row.recurrence_rule) : null,
+    reminders: row.reminders_json ? JSON.parse(row.reminders_json) : [],
+    syncStatus: row.sync_status || 'SYNCED',
+    isDeleted: Boolean(row.is_deleted),
+    deletedAt: row.deleted_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
+
 export const CalendarDao = {
   // ================= Calendars =================
 
   async getCalendars() {
     const db = await getDatabase();
-    return await db.getAllAsync(
+    const rows = await db.getAllAsync(
       `SELECT * FROM calendars WHERE is_deleted = 0 ORDER BY is_default DESC, name ASC`
     );
+    return rows.map(formatCalendarRow);
+  },
+
+  async getCalendarById(id) {
+    if (!id) return null;
+    const db = await getDatabase();
+    const row = await db.getFirstAsync(
+      `SELECT * FROM calendars WHERE (client_id = ? OR server_id = ?) AND is_deleted = 0`,
+      [id, id]
+    );
+    return row ? formatCalendarRow(row) : null;
   },
 
   async upsertCalendar(calData, isSyncPull = false) {
@@ -19,7 +88,7 @@ export const CalendarDao = {
     const now = new Date().toISOString();
 
     const existing = await db.getFirstAsync(
-      `SELECT client_id FROM calendars WHERE client_id = ? OR (server_id IS NOT NULL AND server_id = ?)`,
+      `SELECT client_id, server_id FROM calendars WHERE client_id = ? OR (server_id IS NOT NULL AND server_id = ?)`,
       [clientId, serverId]
     );
 
@@ -47,7 +116,7 @@ export const CalendarDao = {
       if (!isSyncPull) {
         await SyncOutboxDao.enqueueMutation('calendar', 'UPDATE', existing.client_id, {
           ...calData,
-          _id: serverId,
+          _id: existing.server_id || serverId,
         });
       }
       return existing.client_id;
@@ -75,6 +144,32 @@ export const CalendarDao = {
         await SyncOutboxDao.enqueueMutation('calendar', 'CREATE', clientId, calData);
       }
       return clientId;
+    }
+  },
+
+  async deleteCalendar(id, isSyncPull = false) {
+    if (!id) return;
+    const db = await getDatabase();
+    const now = new Date().toISOString();
+    const cal = await CalendarDao.getCalendarById(id);
+    if (!cal) return;
+
+    await db.runAsync(
+      `UPDATE calendars SET is_deleted = 1, deleted_at = ?, sync_status = ? WHERE client_id = ?`,
+      [now, isSyncPull ? 'SYNCED' : 'PENDING_DELETE', cal.client_id]
+    );
+
+    // Also mark all associated events deleted
+    await db.runAsync(
+      `UPDATE calendar_events SET is_deleted = 1, deleted_at = ?, sync_status = ? 
+       WHERE calendar_client_id = ? OR (calendar_server_id IS NOT NULL AND calendar_server_id = ?)`,
+      [now, isSyncPull ? 'SYNCED' : 'PENDING_DELETE', cal.client_id, cal.server_id || '']
+    );
+
+    if (!isSyncPull) {
+      await SyncOutboxDao.enqueueMutation('calendar', 'DELETE', cal.client_id, {
+        _id: cal.server_id,
+      });
     }
   },
 
@@ -122,6 +217,29 @@ export const CalendarDao = {
     const serverId = eventData.server_id || eventData.serverId || eventData._id || null;
     const now = new Date().toISOString();
 
+    // Cross-resolve calendar IDs if one of them is missing
+    let calClientId = eventData.calendarClientId || null;
+    let calServerId = eventData.calendarServerId || null;
+    const rawCalId = eventData.calendarId?._id || eventData.calendarId || null;
+
+    if (rawCalId && (!calClientId || !calServerId)) {
+      try {
+        const matchedCal = await db.getFirstAsync(
+          `SELECT client_id, server_id FROM calendars WHERE client_id = ? OR server_id = ?`,
+          [rawCalId, rawCalId]
+        );
+        if (matchedCal) {
+          calClientId = calClientId || matchedCal.client_id;
+          calServerId = calServerId || matchedCal.server_id;
+        } else {
+          if (!calClientId) calClientId = rawCalId;
+          if (!calServerId && rawCalId.length === 24) calServerId = rawCalId;
+        }
+      } catch (e) {
+        calClientId = calClientId || rawCalId;
+      }
+    }
+
     const existing = await db.getFirstAsync(
       `SELECT client_id, server_id FROM calendar_events WHERE client_id = ? OR (server_id IS NOT NULL AND server_id = ?)`,
       [clientId, serverId]
@@ -148,8 +266,8 @@ export const CalendarDao = {
          WHERE client_id = ?`,
         [
           serverId,
-          eventData.calendarClientId || eventData.calendarId?._id || eventData.calendarId || null,
-          eventData.calendarServerId || eventData.calendarId?._id || eventData.calendarId || null,
+          calClientId,
+          calServerId,
           eventData.title,
           eventData.description || '',
           new Date(eventData.startAt || eventData.start_at).toISOString(),
@@ -187,8 +305,8 @@ export const CalendarDao = {
         [
           clientId,
           serverId,
-          eventData.calendarClientId || eventData.calendarId?._id || eventData.calendarId || '',
-          eventData.calendarServerId || eventData.calendarId?._id || eventData.calendarId || '',
+          calClientId || '',
+          calServerId || '',
           eventData.userId || 'admin',
           eventData.title,
           eventData.description || '',
@@ -255,28 +373,4 @@ export const CalendarDao = {
   },
 };
 
-const formatEventRow = (row) => ({
-  _id: row.server_id || row.client_id,
-  client_id: row.client_id,
-  server_id: row.server_id,
-  calendarId: row.calendar_server_id || row.calendar_client_id,
-  calendarClientId: row.calendar_client_id,
-  title: row.title,
-  description: row.description,
-  startAt: row.start_at,
-  endAt: row.end_at,
-  isAllDay: Boolean(row.is_all_day),
-  color: row.color,
-  location: row.location,
-  priority: row.priority,
-  status: row.status,
-  recurrenceRule: row.recurrence_rule ? JSON.parse(row.recurrence_rule) : null,
-  reminders: row.reminders_json ? JSON.parse(row.reminders_json) : [],
-  syncStatus: row.sync_status,
-  isDeleted: Boolean(row.is_deleted),
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-});
-
 export default CalendarDao;
-

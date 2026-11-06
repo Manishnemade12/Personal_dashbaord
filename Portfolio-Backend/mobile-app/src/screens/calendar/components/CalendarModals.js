@@ -6,6 +6,7 @@ import styles from '../styles/calendarStyles';
 import { COLOR_PALETTE } from '../constants/calendarOptions';
 import { REMINDER_OPTIONS } from '../constants/calendarOptions';
 import GenericDateTimePicker from '../../../components/common/GenericDateTimePicker';
+import { getCalendarId, getCalendarColor, getCalendarName } from '../utils/calendarHelpers';
 
 export default function CalendarModals(props) {
   const {
@@ -56,29 +57,40 @@ export default function CalendarModals(props) {
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Choose Calendar</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.calSelectorRow}>
-                  {calendars.map((cal) => (
-                    <TouchableOpacity
-                      key={cal._id}
-                      style={[
-                        styles.calSelectorPill,
-                        selectedCalendarId === cal._id && {
-                          borderColor: cal.color,
-                          backgroundColor: `${cal.color}20`,
-                        },
-                      ]}
-                      onPress={() => setSelectedCalendarId(cal._id)}
-                    >
-                      <View style={[styles.calDotSmall, { backgroundColor: cal.color }]} />
-                      <Text
+                  {calendars.map((cal) => {
+                    const calId = getCalendarId(cal);
+                    const color = getCalendarColor(cal);
+                    const name = getCalendarName(cal);
+                    const isSelected =
+                      selectedCalendarId === calId ||
+                      selectedCalendarId === cal._id ||
+                      selectedCalendarId === cal.client_id ||
+                      selectedCalendarId === cal.server_id;
+
+                    return (
+                      <TouchableOpacity
+                        key={calId || name}
                         style={[
-                          styles.calSelectorText,
-                          selectedCalendarId === cal._id && { color: cal.color, fontWeight: '700' },
+                          styles.calSelectorPill,
+                          isSelected && {
+                            borderColor: color,
+                            backgroundColor: `${color}20`,
+                          },
                         ]}
+                        onPress={() => setSelectedCalendarId(calId)}
                       >
-                        {cal.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                        <View style={[styles.calDotSmall, { backgroundColor: color }]} />
+                        <Text
+                          style={[
+                            styles.calSelectorText,
+                            isSelected && { color, fontWeight: '700' },
+                          ]}
+                        >
+                          {name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </ScrollView>
               </View>
 
@@ -277,19 +289,24 @@ export default function CalendarModals(props) {
 
             <ScrollView style={styles.calListScroll}>
               {calendars.map((cal) => {
-                const isVis = calendarVisibility[cal._id] !== false;
+                const calId = getCalendarId(cal);
+                const color = getCalendarColor(cal);
+                const isVis = calendarVisibility[calId] !== false &&
+                  calendarVisibility[cal._id] !== false &&
+                  calendarVisibility[cal.client_id] !== false;
+
                 return (
-                  <View key={cal._id} style={styles.calListItem}>
+                  <View key={calId || cal.name} style={styles.calListItem}>
                     <TouchableOpacity
                       style={styles.calVisibilityBtn}
-                      onPress={() => toggleCalendarVisibility(cal._id)}
+                      onPress={() => toggleCalendarVisibility(calId)}
                     >
                       <Ionicons
                         name={isVis ? 'checkbox' : 'square-outline'}
                         size={22}
-                        color={cal.color}
+                        color={color}
                       />
-                      <View style={[styles.calDotSmall, { backgroundColor: cal.color, marginLeft: 8 }]} />
+                      <View style={[styles.calDotSmall, { backgroundColor: color, marginLeft: 8 }]} />
                       <View style={{ marginLeft: 8, flex: 1 }}>
                         <Text style={styles.calListName}>{cal.name}</Text>
                         {cal.description ? (
@@ -310,9 +327,9 @@ export default function CalendarModals(props) {
                       >
                         <Ionicons name="create-outline" size={18} color="#64748b" />
                       </TouchableOpacity>
-                      {!cal.isDefault && (
+                      {!cal.isDefault && !cal.is_default && (
                         <TouchableOpacity
-                          onPress={() => handleDeleteCalendar(cal._id, cal.name)}
+                          onPress={() => handleDeleteCalendar(calId, cal.name)}
                           style={styles.deleteCalIcon}
                         >
                           <Ionicons name="trash-outline" size={18} color="#ef4444" />

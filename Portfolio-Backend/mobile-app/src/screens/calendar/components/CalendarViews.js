@@ -3,53 +3,13 @@ import { View, Text, TouchableOpacity, ScrollView, FlatList } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import MobileDayAgenda from './MobileDayAgenda';
 import styles from '../styles/calendarStyles';
+import {
+  isEventMatchingDate,
+  getEventDisplayColor,
+  getEventCalendarName,
+} from '../utils/calendarHelpers';
 
-/**
- * Check if an event occurs on a target date, accounting for exact date
- * and recurring rules (daily, weekly, monthly).
- */
-export const isEventMatchingDate = (ev, targetDate) => {
-  if (!ev || !ev.startAt || !targetDate) return false;
-  const evDate = new Date(ev.startAt);
-  const target = new Date(targetDate);
-
-  // Exact same day
-  if (
-    evDate.getFullYear() === target.getFullYear() &&
-    evDate.getMonth() === target.getMonth() &&
-    evDate.getDate() === target.getDate()
-  ) {
-    return true;
-  }
-
-  // Handle recurrence frequency
-  const freq = ev.recurrenceRule?.frequency;
-  if (!freq || freq === 'none') return false;
-
-  const startMidnight = new Date(evDate.getFullYear(), evDate.getMonth(), evDate.getDate()).getTime();
-  const targetMidnight = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
-  if (targetMidnight < startMidnight) return false;
-
-  if (ev.recurrenceRule?.until) {
-    const untilMidnight = new Date(new Date(ev.recurrenceRule.until).setHours(23, 59, 59, 999)).getTime();
-    if (targetMidnight > untilMidnight) return false;
-  }
-
-  if (freq === 'daily') return true;
-  if (freq === 'weekdays') {
-    const day = target.getDay();
-    return day >= 1 && day <= 5;
-  }
-  if (freq === 'weekly') {
-    if (Array.isArray(ev.recurrenceRule?.daysOfWeek) && ev.recurrenceRule.daysOfWeek.length > 0) {
-      return ev.recurrenceRule.daysOfWeek.includes(target.getDay());
-    }
-    return evDate.getDay() === target.getDay();
-  }
-  if (freq === 'monthly') return evDate.getDate() === target.getDate();
-
-  return false;
-};
+export { isEventMatchingDate };
 
 export default function CalendarViews({
   isMobile,
@@ -60,6 +20,7 @@ export default function CalendarViews({
   openEventModal,
   viewMode,
   headerComponent,
+  calendars = [],
 }) {
   // ==========================================
   // VIEW RENDERERS
@@ -159,17 +120,20 @@ export default function CalendarViews({
 
                     {/* Event Indicator Dots */}
                     <View style={{ flexDirection: 'row', gap: 2, marginTop: 2, height: 4, alignItems: 'center' }}>
-                      {item.events.slice(0, 3).map((ev) => (
-                        <View
-                          key={ev._id}
-                          style={{
-                            width: 5,
-                            height: 5,
-                            borderRadius: 2.5,
-                            backgroundColor: ev.color || ev.calendarId?.color || '#7e37d8',
-                          }}
-                        />
-                      ))}
+                      {item.events.slice(0, 3).map((ev) => {
+                        const dotColor = getEventDisplayColor(ev, calendars);
+                        return (
+                          <View
+                            key={ev._id || ev.client_id}
+                            style={{
+                              width: 5,
+                              height: 5,
+                              borderRadius: 2.5,
+                              backgroundColor: dotColor,
+                            }}
+                          />
+                        );
+                      })}
                       {item.events.length > 3 && (
                         <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#94a3b8' }} />
                       )}
@@ -183,6 +147,7 @@ export default function CalendarViews({
           <MobileDayAgenda
             date={selectedDate}
             events={selectedDayEvents}
+            calendars={calendars}
             onAdd={() => openEventModal(null, selectedDate)}
             onEventPress={openEventModal}
           />
@@ -230,10 +195,10 @@ export default function CalendarViews({
                   {/* Event Chips */}
                   <ScrollView style={styles.eventChipScroll} showsVerticalScrollIndicator={false}>
                     {item.events.slice(0, 3).map((ev) => {
-                      const calColor = ev.color || ev.calendarId?.color || '#7e37d8';
+                      const calColor = getEventDisplayColor(ev, calendars);
                       return (
                         <TouchableOpacity
-                          key={ev._id}
+                          key={ev._id || ev.client_id}
                           style={[
                             styles.eventChip,
                             {
@@ -286,64 +251,64 @@ export default function CalendarViews({
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
         {headerComponent}
         <ScrollView horizontal style={styles.weekScrollContainer} showsHorizontalScrollIndicator={false}>
-        <View style={styles.weekColsWrapper}>
-          {weekDays.map(({ date, events: dayEvents }, idx) => {
-            const isToday =
-              new Date().toDateString() === date.toDateString();
+          <View style={styles.weekColsWrapper}>
+            {weekDays.map(({ date, events: dayEvents }, idx) => {
+              const isToday =
+                new Date().toDateString() === date.toDateString();
 
-            return (
-              <View key={idx} style={styles.weekColumn}>
-                <View style={[styles.weekColHeader, isToday && styles.weekColHeaderToday]}>
-                  <Text style={[styles.weekDayName, isToday && styles.textWhite]}>
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()]}
-                  </Text>
-                  <Text style={[styles.weekDayNum, isToday && styles.textWhite]}>
-                    {date.getDate()}
-                  </Text>
-                </View>
+              return (
+                <View key={idx} style={styles.weekColumn}>
+                  <View style={[styles.weekColHeader, isToday && styles.weekColHeaderToday]}>
+                    <Text style={[styles.weekDayName, isToday && styles.textWhite]}>
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()]}
+                    </Text>
+                    <Text style={[styles.weekDayNum, isToday && styles.textWhite]}>
+                      {date.getDate()}
+                    </Text>
+                  </View>
 
-                <ScrollView style={styles.weekEventsList} showsVerticalScrollIndicator={false}>
-                  {dayEvents.map((ev) => {
-                    const calColor = ev.color || ev.calendarId?.color || '#7e37d8';
-                    const startTime = new Date(ev.startAt).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    });
+                  <ScrollView style={styles.weekEventsList} showsVerticalScrollIndicator={false}>
+                    {dayEvents.map((ev) => {
+                      const calColor = getEventDisplayColor(ev, calendars);
+                      const startTime = new Date(ev.startAt).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      });
 
-                    return (
-                      <TouchableOpacity
-                        key={ev._id}
-                        style={[styles.weekEventCard, { borderLeftColor: calColor }]}
-                        onPress={() => openEventModal(ev)}
-                      >
-                        <Text style={styles.weekEventTime}>{startTime}</Text>
-                        <Text style={styles.weekEventTitle} numberOfLines={2}>
-                          {ev.title}
-                        </Text>
-                        {ev.location ? (
-                          <Text style={styles.weekEventLoc} numberOfLines={1}>
-                            📍 {ev.location}
+                      return (
+                        <TouchableOpacity
+                          key={ev._id || ev.client_id}
+                          style={[styles.weekEventCard, { borderLeftColor: calColor }]}
+                          onPress={() => openEventModal(ev)}
+                        >
+                          <Text style={styles.weekEventTime}>{startTime}</Text>
+                          <Text style={styles.weekEventTitle} numberOfLines={2}>
+                            {ev.title}
                           </Text>
-                        ) : null}
+                          {ev.location ? (
+                            <Text style={styles.weekEventLoc} numberOfLines={1}>
+                              📍 {ev.location}
+                            </Text>
+                          ) : null}
+                        </TouchableOpacity>
+                      );
+                    })}
+                    {dayEvents.length === 0 && (
+                      <TouchableOpacity
+                        style={styles.emptyDaySlot}
+                        onPress={() => openEventModal(null, date)}
+                      >
+                        <Text style={styles.emptyDaySlotText}>+ Add</Text>
                       </TouchableOpacity>
-                    );
-                  })}
-                  {dayEvents.length === 0 && (
-                    <TouchableOpacity
-                      style={styles.emptyDaySlot}
-                      onPress={() => openEventModal(null, date)}
-                    >
-                      <Text style={styles.emptyDaySlotText}>+ Add</Text>
-                    </TouchableOpacity>
-                  )}
-                </ScrollView>
-              </View>
-            );
-          })}
-        </View>
+                    )}
+                  </ScrollView>
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
       </ScrollView>
-    </ScrollView>
-  );
+    );
   };
 
   // 3. Day View
@@ -354,7 +319,7 @@ export default function CalendarViews({
       <View style={styles.dayViewContainer}>
         <FlatList
           data={dayEvents}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item) => item._id || item.client_id}
           contentContainerStyle={styles.dayEventsList}
           ListHeaderComponent={
             <View>
@@ -372,7 +337,8 @@ export default function CalendarViews({
             </View>
           }
           renderItem={({ item }) => {
-            const calColor = item.color || item.calendarId?.color || '#7e37d8';
+            const calColor = getEventDisplayColor(item, calendars);
+            const calName = getEventCalendarName(item, calendars);
             const sTime = new Date(item.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const eTime = new Date(item.endAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -388,7 +354,7 @@ export default function CalendarViews({
                   </View>
                   <View style={[styles.calTag, { backgroundColor: `${calColor}20` }]}>
                     <Text style={[styles.calTagText, { color: calColor }]}>
-                      {item.calendarId?.name || 'Calendar'}
+                      {calName}
                     </Text>
                   </View>
                 </View>
@@ -437,11 +403,11 @@ export default function CalendarViews({
     return (
       <FlatList
         data={sorted}
-        keyExtractor={(item) => item._id}
+        keyExtractor={(item) => item._id || item.client_id}
         contentContainerStyle={styles.agendaList}
         ListHeaderComponent={headerComponent}
         renderItem={({ item }) => {
-          const calColor = item.color || item.calendarId?.color || '#7e37d8';
+          const calColor = getEventDisplayColor(item, calendars);
           const s = new Date(item.startAt);
           const dateStr = s.toLocaleDateString(undefined, {
             weekday: 'short',
@@ -487,7 +453,6 @@ export default function CalendarViews({
       />
     );
   };
-
 
   if (viewMode === 'month') return renderMonthView();
   if (viewMode === 'week') return renderWeekView();
