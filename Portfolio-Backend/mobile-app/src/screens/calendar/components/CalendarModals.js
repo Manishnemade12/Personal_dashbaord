@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../../api/client';
+import { notificationService } from '../../../services/notificationService';
+import { ReminderDao } from '../../../db/dao/ReminderDao';
 import styles from '../styles/calendarStyles';
 import { COLOR_PALETTE } from '../constants/calendarOptions';
 import { REMINDER_OPTIONS } from '../constants/calendarOptions';
@@ -436,7 +438,7 @@ export default function CalendarModals(props) {
               </TouchableOpacity>
             </View>
 
-            {/* Permission Banner */}
+            {/* Permission Banner & Instant Audio Test */}
             <View style={styles.permBanner}>
               <Ionicons
                 name={hasNotifPermission ? 'checkmark-circle' : 'alert-circle'}
@@ -448,12 +450,27 @@ export default function CalendarModals(props) {
                   ? 'Browser / Native Notifications Active'
                   : 'Notifications disabled. Tap to enable.'}
               </Text>
-              {!hasNotifPermission && (
+              {!hasNotifPermission ? (
                 <TouchableOpacity
                   style={styles.permBtn}
                   onPress={handleRequestNotifPermission}
                 >
                   <Text style={styles.permBtnText}>Enable</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.testSoundBtn}
+                  onPress={() => {
+                    notificationService.showSystemNotification(
+                      '⏰ Offline Alarm Test',
+                      'Sound chime and offline notification active!',
+                      { title: 'Alarm Test' },
+                      true
+                    );
+                  }}
+                >
+                  <Ionicons name="volume-high-outline" size={14} color="#fff" />
+                  <Text style={styles.testSoundBtnText}>Test Sound</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -467,24 +484,45 @@ export default function CalendarModals(props) {
                 </View>
               ) : (
                 upcomingReminders.map((log) => {
-                  const schedTime = new Date(log.scheduledFor).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  });
+                  const schedTime = log.scheduledFor
+                    ? new Date(log.scheduledFor).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : 'Scheduled';
+
+                  const isLoudAlarm = log.offsetMinutes === 0;
 
                   return (
-                    <View key={log._id} style={styles.reminderItem}>
-                      <View style={styles.reminderDot} />
+                    <View
+                      key={log.client_id || log._id || `${log.scheduledFor}_${Math.random()}`}
+                      style={styles.reminderItem}
+                    >
+                      <View
+                        style={[
+                          styles.reminderDot,
+                          isLoudAlarm ? { backgroundColor: '#ef4444' } : { backgroundColor: '#3b82f6' },
+                        ]}
+                      />
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.reminderItemTitle}>{log.title}</Text>
-                        <Text style={styles.reminderItemBody}>{log.body}</Text>
+                        <Text style={styles.reminderItemTitle}>
+                          {log.title || log.eventTitle || (isLoudAlarm ? '⏰ Alarm' : '🔔 Reminder')}
+                        </Text>
+                        <Text style={styles.reminderItemBody}>
+                          {log.body || (isLoudAlarm ? 'Starting right now!' : `Starts in ${log.offsetMinutes}m`)}
+                        </Text>
                         <Text style={styles.reminderItemTime}>Scheduled for: {schedTime}</Text>
                       </View>
                       <TouchableOpacity
                         style={styles.dismissBtn}
                         onPress={async () => {
-                          await api.dismissReminder(log._id);
-                          loadReminders();
+                          if (log.client_id) {
+                            await ReminderDao.markDelivered(log.client_id);
+                          }
+                          if (log._id && !String(log._id).startsWith('rem_')) {
+                            api.dismissReminder(log._id).catch(() => {});
+                          }
+                          if (loadReminders) loadReminders();
                         }}
                       >
                         <Ionicons name="checkmark" size={18} color="#10b981" />

@@ -19,3 +19,4 @@ StudyFieldSchema.index({ userId: 1, isDeleted: 1 });
 StudyFieldSchema.plugin(syncPlugin);
 
 module.exports = mongoose.models.StudyField || mongoose.model('StudyField', StudyFieldSchema);
+

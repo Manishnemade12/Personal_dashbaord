@@ -21,6 +21,8 @@ export const ReminderDao = {
                WHERE r.is_deleted = 0 
                  AND e.is_deleted = 0 
                  AND e.status != 'cancelled'
+                 AND r.is_delivered = 0
+                 AND r.is_enabled = 1
                  AND r.scheduled_trigger_time >= ?`;
     const params = [nowIso];
 
@@ -31,6 +33,24 @@ export const ReminderDao = {
 
     sql += ` ORDER BY r.scheduled_trigger_time ASC`;
     return await db.getAllAsync(sql, params);
+  },
+
+  async getDueUnDeliveredReminders(maxTimeIso = null) {
+    const db = await getDatabase();
+    const cutoff = maxTimeIso || new Date().toISOString();
+    return await db.getAllAsync(
+      `SELECT r.*, e.title as event_title, e.start_at as event_start_at, e.is_all_day 
+       FROM event_reminders r
+       JOIN calendar_events e ON r.event_client_id = e.client_id
+       WHERE r.is_deleted = 0 
+         AND e.is_deleted = 0 
+         AND e.status != 'cancelled'
+         AND r.is_delivered = 0
+         AND r.is_enabled = 1
+         AND r.scheduled_trigger_time <= ?
+       ORDER BY r.scheduled_trigger_time ASC`,
+      [cutoff]
+    );
   },
 
   async upsertReminder(remData) {

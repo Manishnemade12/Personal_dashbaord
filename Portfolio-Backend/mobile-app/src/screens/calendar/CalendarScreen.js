@@ -96,22 +96,22 @@ export default function CalendarScreen({ onNavigate }) {
   useEffect(() => {
     loadData();
     reconcileAlarms();
-    notificationService.requestPermission().then((granted) => {
+    notificationService.checkPermissionStatus().then((granted) => {
       setHasNotifPermission(granted);
     });
 
     const unsubscribe = notificationService.addListener((rem) => {
       // In-app alert notification
       Alert.alert(
-        `🔔 ${rem.title}`,
-        rem.body,
+        rem.isAlarm ? `⏰ Event Alarm` : `🔔 Reminder`,
+        `${rem.title}\n${rem.body || ''}`,
         [{ text: 'Dismiss' }, { text: 'View Calendar', onPress: () => loadEvents() }]
       );
+      loadReminders();
     });
 
     return () => {
-      unsubscribe();
-
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 
@@ -201,9 +201,35 @@ export default function CalendarScreen({ onNavigate }) {
 
   const loadReminders = async () => {
     try {
-      const logs = await api.getUpcomingReminders();
-      setUpcomingReminders(Array.isArray(logs) ? logs : []);
-    } catch (e) {}
+      // 1. Fetch local SQLite reminders (100% offline-first)
+      const localList = await ReminderDao.getUpcomingActiveReminders(50);
+      const formattedLocal = (localList || []).map((rem) => {
+        const isAlarm = rem.offset_minutes === 0;
+        const title = rem.event_title || 'Calendar Event';
+        return {
+          _id: rem.server_id || rem.client_id,
+          client_id: rem.client_id,
+          title: isAlarm ? `⏰ Alarm: ${title}` : `🔔 Reminder: ${title}`,
+          body: isAlarm ? 'Starting right now!' : `Starts in ${rem.offset_minutes} minutes`,
+          scheduledFor: rem.scheduled_trigger_time,
+          offsetMinutes: rem.offset_minutes,
+          eventTitle: title,
+          isDelivered: rem.is_delivered,
+          isLocal: true,
+        };
+      });
+      setUpcomingReminders(formattedLocal);
+
+      // 2. Fetch server reminders if network is available
+      try {
+        const logs = await api.getUpcomingReminders();
+        if (Array.isArray(logs) && logs.length > 0 && formattedLocal.length === 0) {
+          setUpcomingReminders(logs);
+        }
+      } catch (netErr) {}
+    } catch (e) {
+      console.warn('[CalendarScreen loadReminders error]', e);
+    }
   };
 
   // Toggle calendar show/hide
@@ -561,11 +587,15 @@ export default function CalendarScreen({ onNavigate }) {
     const granted = await notificationService.requestPermission();
     setHasNotifPermission(granted);
     if (granted) {
-      Alert.alert('Notifications Enabled', 'You will receive reminders before your events!');
+      if (typeof notificationService.playAlarmChime === 'function') {
+        notificationService.playAlarmChime();
+      }
+      Alert.alert('Notifications & Alarms Active', 'Offline event alerts and sounds are now enabled!');
+      await reconcileAlarms();
     } else {
       Alert.alert(
-        'Permission Denied',
-        'Please enable notifications in your browser or device settings to receive reminder popups.'
+        'Permission Needed',
+        'Please allow notifications in your browser or device settings to receive timely alarms.'
       );
     }
   };
@@ -612,6 +642,31 @@ export default function CalendarScreen({ onNavigate }) {
         onCreateEvent={() => openEventModal()}
         onAiPlan={() => setAiPlanModalVisible(true)}
       />
+
+      {!hasNotifPermission && (
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#fffbeb',
+            borderBottomWidth: 1,
+            borderBottomColor: '#fde68a',
+            paddingHorizontal: 12,
+            paddingVertical: 7,
+            gap: 8,
+          }}
+          onPress={handleRequestNotifPermission}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="notifications-outline" size={15} color="#d97706" />
+          <Text style={{ flex: 1, fontSize: 11.5, color: '#92400e', fontWeight: '600' }}>
+            Enable notifications to get timely event alarms offline
+          </Text>
+          <View style={{ backgroundColor: '#d97706', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 5 }}>
+            <Text style={{ color: '#fff', fontSize: 10.5, fontWeight: '700' }}>Enable</Text>
+          </View>
+        </TouchableOpacity>
+      )}
 
       <CalendarSwitcher
         calendars={calendars}

@@ -313,10 +313,24 @@ modalOverlay: {
   permBtn: {
     backgroundColor: '#7e37d8',
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 6,
   },
   permBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  testSoundBtn: {
+    backgroundColor: '#3b82f6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  testSoundBtnText: {
     fontSize: 11,
     fontWeight: '700',
     color: '#ffffff',
