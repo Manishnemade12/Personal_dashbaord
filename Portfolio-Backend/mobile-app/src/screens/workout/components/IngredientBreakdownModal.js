@@ -19,14 +19,14 @@ export default function IngredientBreakdownModal({
   if (!item) return null;
 
   const nutrients = item.nutrients || { calories: 0, protein: 0, carbs: 0, fats: 0 };
-  const totalCal = Number(nutrients.calories) || 1;
+  const savedCalories = Number(nutrients.calories) || 0;
 
   // Use precomputed ingredientBreakdown from backend, or derive from item.ingredients
   const breakdownList = (item.ingredientBreakdown && item.ingredientBreakdown.length > 0)
     ? item.ingredientBreakdown
     : (item.ingredients || []).map((ing) => {
         const cal = Number(ing.calories) || 0;
-        const pct = totalCal > 0 ? Math.round((cal / totalCal) * 100) : 0;
+        const pct = savedCalories > 0 ? Math.round((cal / savedCalories) * 100) : 0;
         return {
           name: ing.name,
           quantity: ing.quantity,
@@ -41,7 +41,7 @@ export default function IngredientBreakdownModal({
 
   // Calculate total computed calories from breakdown if nutrients was 0
   const computedTotalCal = breakdownList.reduce((acc, curr) => acc + (curr.calories || 0), 0);
-  const displayTotalCal = totalCal > 1 ? totalCal : (computedTotalCal || 0);
+  const displayTotalCal = savedCalories > 0 ? savedCalories : computedTotalCal;
 
   return (
     <Modal
@@ -51,7 +51,15 @@ export default function IngredientBreakdownModal({
       onRequestClose={onClose}
     >
       <View style={breakdownStyles.overlay}>
-        <View style={breakdownStyles.modalContainer}>
+        <View
+          style={[
+            breakdownStyles.modalContainer,
+            {
+              maxHeight: Math.round(Dimensions.get('window').height * 0.94),
+              minHeight: Math.min(420, Math.round(Dimensions.get('window').height * 0.8)),
+            },
+          ]}
+        >
           {/* Header */}
           <View style={breakdownStyles.headerRow}>
             <View style={breakdownStyles.headerLeft}>
@@ -245,8 +253,8 @@ const breakdownStyles = StyleSheet.create({
   },
   modalContainer: {
     width: '100%',
-    maxWidth: 480,
-    maxHeight: '88%',
+    maxWidth: 520,
+    maxHeight: '94%',
     backgroundColor: '#ffffff',
     borderRadius: 20,
     shadowColor: '#000',
@@ -264,7 +272,7 @@ const breakdownStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
@@ -319,7 +327,7 @@ const breakdownStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrollBody: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 16,
     flex: 1,
   },

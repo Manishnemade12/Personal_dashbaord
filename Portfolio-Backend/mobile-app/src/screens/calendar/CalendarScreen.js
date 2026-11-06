@@ -11,9 +11,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../api/client';
 import { notificationService } from '../../services/notificationService';
+import { reconcileAlarms } from '../../services/alarmReconciliationEngine';
 import { CalendarDao } from '../../db/dao/CalendarDao';
 import { ReminderDao } from '../../db/dao/ReminderDao';
-import { reconcileAlarms } from '../../services/alarmReconciliationEngine';
 import CalendarToolbar from './components/CalendarToolbar';
 import CalendarSwitcher from './components/CalendarSwitcher';
 import CalendarViewControls from './components/CalendarViewControls';
@@ -90,7 +90,7 @@ export default function CalendarScreen({ onNavigate }) {
   // Initial load
   useEffect(() => {
     loadData();
-    notificationService.startReminderWatcher();
+    reconcileAlarms();
     notificationService.requestPermission().then((granted) => {
       setHasNotifPermission(granted);
     });
@@ -106,7 +106,7 @@ export default function CalendarScreen({ onNavigate }) {
 
     return () => {
       unsubscribe();
-      notificationService.stopReminderWatcher();
+
     };
   }, []);
 

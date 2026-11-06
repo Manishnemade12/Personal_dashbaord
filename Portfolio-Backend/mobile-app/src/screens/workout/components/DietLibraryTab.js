@@ -46,6 +46,15 @@ export default function DietLibraryTab({
     return matchesCategory && matchesSearch;
   });
 
+  const getCalories = (item) => {
+    const savedCalories = Number(item.nutrients?.calories);
+    if (Number.isFinite(savedCalories) && savedCalories > 0) return savedCalories;
+    return (item.ingredientBreakdown || item.ingredients || []).reduce(
+      (total, ingredient) => total + (Number(ingredient.calories) || 0),
+      0
+    );
+  };
+
   return (
     <View style={{ flex: 1 }}>
       {/* Search + Add — stacked on 2 lines to avoid overflow */}
@@ -178,9 +187,8 @@ export default function DietLibraryTab({
                   activeOpacity={0.7}
                 >
                   <Text style={styles.calChipText}>
-                    ⚡ {item.nutrients?.calories || 0} kcal
+                    ⚡ {getCalories(item)} kcal
                   </Text>
-                  <Ionicons name="information-circle-outline" size={12} color="#7e37d8" />
                 </TouchableOpacity>
                 <View style={[styles.macroChip, styles.proChip]}>
                   <Text style={styles.proChipText}>
