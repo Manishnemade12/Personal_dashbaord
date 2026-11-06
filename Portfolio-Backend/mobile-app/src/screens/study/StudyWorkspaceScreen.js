@@ -29,6 +29,8 @@ import StudySearchScreen from './StudySearchScreen';
 export default function StudyWorkspaceScreen({ onExit, routeParams = null }) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
+  const isSmall = width < 500;
+  const isNarrow = width < 380;
 
   // Study workspace internal route state
   const [activeView, setActiveView] = useState('dashboard');
@@ -239,38 +241,46 @@ export default function StudyWorkspaceScreen({ onExit, routeParams = null }) {
       <StatusBar barStyle="light-content" backgroundColor="#0b0f19" />
 
       {/* Top Header - Main Sidebar is Hidden! Dedicated Exit Button Provided */}
-      <View style={styles.topHeader}>
+      <View style={[styles.topHeader, isSmall && styles.topHeaderSmall]}>
         {/* Left: Prominent Exit to Dashboard Button */}
-        <TouchableOpacity style={styles.exitBtn} onPress={onExit} activeOpacity={0.8}>
-          <Ionicons name="arrow-back" size={18} color="#ffffff" />
-          <Text style={styles.exitBtnText}>Exit to Dashboard</Text>
+        <TouchableOpacity
+          style={[styles.exitBtn, isSmall && styles.exitBtnSmall]}
+          onPress={onExit}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="arrow-back" size={isSmall ? 15 : 18} color="#ffffff" />
+          <Text style={styles.exitBtnText} numberOfLines={1}>
+            {isSmall ? 'Exit' : 'Exit to Dashboard'}
+          </Text>
         </TouchableOpacity>
 
         {/* Center: Brand */}
-        <View style={styles.centerBrand}>
-          <View style={styles.headerIconBubble}>
-            <Ionicons name="book" size={15} color="#ffffff" />
+        {!isNarrow && (
+          <View style={styles.centerBrand}>
+            <View style={styles.headerIconBubble}>
+              <Ionicons name="book" size={14} color="#ffffff" />
+            </View>
+            {!isSmall && <Text style={styles.headerBrandTitle}>SSC Study Flow</Text>}
           </View>
-          <Text style={styles.headerBrandTitle}>SSC Study Flow</Text>
-        </View>
+        )}
 
         {/* Right: Quick Search & Mobile Drawer Hamburger */}
         <View style={styles.rightActions}>
           <TouchableOpacity
-            style={styles.headerIconBtn}
+            style={[styles.headerIconBtn, isSmall && styles.headerIconBtnSmall]}
             onPress={() => handleNavigateView('search')}
             activeOpacity={0.7}
           >
-            <Ionicons name="search" size={18} color="#cbd5e1" />
+            <Ionicons name="search" size={isSmall ? 16 : 18} color="#cbd5e1" />
           </TouchableOpacity>
 
           {!isDesktop && (
             <TouchableOpacity
-              style={styles.headerIconBtn}
+              style={[styles.headerIconBtn, isSmall && styles.headerIconBtnSmall]}
               onPress={() => setMobileDrawerVisible(true)}
               activeOpacity={0.7}
             >
-              <Ionicons name="menu" size={20} color="#cbd5e1" />
+              <Ionicons name="menu" size={isSmall ? 18 : 20} color="#cbd5e1" />
             </TouchableOpacity>
           )}
         </View>
@@ -369,6 +379,9 @@ const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
     backgroundColor: '#0b0f19',
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   topHeader: {
     height: 54,
@@ -379,7 +392,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
     zIndex: 10,
+  },
+  topHeaderSmall: {
+    paddingHorizontal: 10,
+    height: 50,
   },
   exitBtn: {
     flexDirection: 'row',
@@ -391,6 +411,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 8,
+    flexShrink: 1,
+  },
+  exitBtnSmall: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 4,
   },
   exitBtnText: {
     fontSize: 12,
@@ -401,6 +427,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 1,
   },
   headerIconBubble: {
     width: 26,
@@ -419,6 +446,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 0,
   },
   headerIconBtn: {
     width: 36,
@@ -428,9 +456,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerIconBtnSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+  },
   mainSplitBody: {
     flex: 1,
     flexDirection: 'row',
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   desktopSidebarWrap: {
     width: 280,
@@ -439,7 +475,10 @@ const styles = StyleSheet.create({
   activeViewWrap: {
     flex: 1,
     height: '100%',
+    width: '100%',
+    maxWidth: '100%',
     backgroundColor: '#0b0f19',
+    overflow: 'hidden',
   },
   mobileDrawerOverlay: {
     flex: 1,
@@ -450,7 +489,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
   },
   mobileDrawerSheet: {
-    width: 300,
+    width: '82%',
+    maxWidth: 300,
     backgroundColor: '#0f172a',
     height: '100%',
   },

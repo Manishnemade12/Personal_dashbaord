@@ -177,9 +177,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0b0f19',
+    width: '100%',
+    maxWidth: '100%',
   },
   contentWrap: {
-    padding: 20,
+    padding: 14,
     maxWidth: 680,
     width: '100%',
     alignSelf: 'center',

@@ -171,9 +171,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0b0f19',
+    width: '100%',
+    maxWidth: '100%',
   },
   contentWrap: {
-    padding: 20,
+    padding: 14,
     maxWidth: 900,
     width: '100%',
     alignSelf: 'center',
@@ -228,7 +230,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    minWidth: 130,
+    minWidth: 120,
     backgroundColor: '#111827',
     borderRadius: 10,
     borderWidth: 1,

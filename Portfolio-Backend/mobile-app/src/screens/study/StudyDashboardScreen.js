@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -15,6 +16,9 @@ export default function StudyDashboardScreen({
   onOpenQuickQuiz,
   onSelectChunk,
 }) {
+  const { width } = useWindowDimensions();
+  const isSmall = width < 480;
+
   const stats = useMemo(() => {
     const total = chunks.length;
     const revised = chunks.filter((c) => c.revised).length;
@@ -177,18 +181,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0b0f19',
+    width: '100%',
+    maxWidth: '100%',
   },
   contentWrap: {
-    padding: 20,
+    padding: 14,
     maxWidth: 1100,
     width: '100%',
     alignSelf: 'center',
     paddingBottom: 40,
   },
   heroBanner: {
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 20,
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 16,
     backgroundColor: '#4f46e5',
     overflow: 'hidden',
   },
@@ -201,7 +207,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   heroBadgeText: {
     fontSize: 11,
@@ -209,32 +215,32 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   heroTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '800',
     color: '#ffffff',
-    lineHeight: 32,
+    lineHeight: 28,
     maxWidth: 600,
   },
   heroSubtitle: {
     fontSize: 13,
     color: 'rgba(255, 255, 255, 0.85)',
-    marginTop: 8,
-    lineHeight: 20,
+    marginTop: 6,
+    lineHeight: 19,
     maxWidth: 640,
   },
   heroBtnRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-    marginTop: 20,
+    marginTop: 16,
   },
   heroPrimaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
     borderRadius: 8,
   },
   heroPrimaryBtnText: {
@@ -249,8 +255,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
     borderRadius: 8,
   },
   heroSecondaryBtnText: {
@@ -261,17 +267,17 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 28,
+    gap: 10,
+    marginBottom: 24,
   },
   statCard: {
     flex: 1,
-    minWidth: 140,
+    minWidth: 130,
     backgroundColor: '#111827',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#1f2937',
-    padding: 16,
+    padding: 14,
   },
   statIconHeader: {
     flexDirection: 'row',
@@ -285,7 +291,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   statValue: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     color: '#f8fafc',
   },
@@ -302,7 +308,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: '#1f2937',
-    padding: 36,
+    padding: 30,
     alignItems: 'center',
   },
   emptyIconWrap: {
@@ -344,16 +350,17 @@ const styles = StyleSheet.create({
   recentGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 14,
+    gap: 12,
   },
   chunkCard: {
     flex: 1,
-    minWidth: 280,
+    minWidth: 260,
+    width: '100%',
     backgroundColor: '#111827',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#1f2937',
-    padding: 16,
+    padding: 14,
   },
   chunkSubjTag: {
     fontSize: 10,

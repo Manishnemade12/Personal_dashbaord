@@ -49,6 +49,17 @@ const ANDROID_STATUS_BAR_HEIGHT = Platform.OS === 'android' ? Math.max(StatusBar
 
 // React Native Web Polyfill: Enable native web confirm/alert dialogs and execute button callbacks
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  if (typeof document !== 'undefined') {
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+      html, body, #root {
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+      }
+    `;
+    document.head.appendChild(styleEl);
+  }
+
   Alert.alert = (title, message, buttons) => {
     const formattedMsg = title ? (message ? `${title}\n\n${message}` : title) : (message || '');
     if (!buttons || buttons.length <= 1) {
@@ -309,7 +320,7 @@ export default function App() {
   // Dedicated 'Exit to Dashboard' button allows returning to main dashboard
   if (currentRoute === 'Study') {
     return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: '#0b0f19' }]}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: '#0b0f19', width: '100%', maxWidth: '100%', overflow: 'hidden' }]}>
         <StatusBar barStyle="light-content" backgroundColor="#0b0f19" />
         <StudyWorkspaceScreen
           onExit={() => navigate('Dashboard')}
@@ -358,6 +369,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
     paddingTop: ANDROID_STATUS_BAR_HEIGHT,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   appContainer: {
     flex: 1,

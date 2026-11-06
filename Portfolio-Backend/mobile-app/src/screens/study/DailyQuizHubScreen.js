@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StudyDao } from '../../db/dao/StudyDao';
@@ -18,6 +19,9 @@ export default function DailyQuizHubScreen({
   onNavigateRevisionReport,
   onOpenQuickQuiz,
 }) {
+  const { width } = useWindowDimensions();
+  const isSmall = width < 500;
+
   const [activeTab, setActiveTab] = useState('today'); // 'today' | 'history'
   const [loading, setLoading] = useState(true);
   const [todayQuizzes, setTodayQuizzes] = useState([]);
@@ -154,18 +158,20 @@ export default function DailyQuizHubScreen({
               Longest: {streak.longestStreak} · Total: {streak.totalQuizzesCompleted}
             </Text>
           </View>
-          {/* 7-day mini dots */}
-          <View style={styles.dotStrip}>
-            {last7Days.map((d) => {
-              const isActive = activeDays.has(d);
-              return (
-                <View
-                  key={d}
-                  style={[styles.streakDot, isActive && styles.streakDotActive]}
-                />
-              );
-            })}
-          </View>
+          {/* 7-day mini dots (shown on wider screens) */}
+          {!isSmall && (
+            <View style={styles.dotStrip}>
+              {last7Days.map((d) => {
+                const isActive = activeDays.has(d);
+                return (
+                  <View
+                    key={d}
+                    style={[styles.streakDot, isActive && styles.streakDotActive]}
+                  />
+                );
+              })}
+            </View>
+          )}
         </View>
 
         {/* Card 2: Weak Topics Shortcut */}
@@ -440,9 +446,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0b0f19',
+    width: '100%',
+    maxWidth: '100%',
   },
   contentWrap: {
-    padding: 20,
+    padding: 14,
     maxWidth: 960,
     width: '100%',
     alignSelf: 'center',
@@ -453,11 +461,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#4f46e5',
-    borderRadius: 16,
-    padding: 22,
+    borderRadius: 14,
+    padding: 18,
     marginBottom: 16,
     flexWrap: 'wrap',
-    gap: 14,
+    gap: 12,
   },
   heroBadge: {
     flexDirection: 'row',
@@ -476,7 +484,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   heroTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     color: '#ffffff',
   },
@@ -491,8 +499,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
     borderRadius: 8,
   },
   heroActionBtnText: {
@@ -503,24 +511,25 @@ const styles = StyleSheet.create({
   twoCardRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
     marginBottom: 16,
   },
   streakCard: {
     flex: 1,
-    minWidth: 260,
+    minWidth: 240,
+    width: '100%',
     backgroundColor: '#111827',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(245, 158, 11, 0.2)',
-    padding: 16,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   streakIconWrap: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 10,
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
     alignItems: 'center',
@@ -532,7 +541,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   cardMainNum: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     color: '#f8fafc',
     marginVertical: 2,
@@ -556,19 +565,20 @@ const styles = StyleSheet.create({
   },
   weakCard: {
     flex: 1,
-    minWidth: 260,
+    minWidth: 240,
+    width: '100%',
     backgroundColor: '#111827',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(244, 63, 94, 0.2)',
-    padding: 16,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   weakIconWrap: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 10,
     backgroundColor: 'rgba(244, 63, 94, 0.15)',
     alignItems: 'center',
@@ -577,12 +587,12 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
     marginBottom: 20,
   },
   miniStatCard: {
     flex: 1,
-    minWidth: 110,
+    minWidth: 100,
     backgroundColor: '#111827',
     borderRadius: 10,
     borderWidth: 1,
@@ -601,7 +611,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   miniStatVal: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: '#f8fafc',
   },
@@ -648,12 +658,13 @@ const styles = StyleSheet.create({
   },
   quizCard: {
     flex: 1,
-    minWidth: 260,
+    minWidth: 240,
+    width: '100%',
     backgroundColor: '#111827',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#1f2937',
-    padding: 16,
+    padding: 14,
   },
   quizCardHeader: {
     flexDirection: 'row',

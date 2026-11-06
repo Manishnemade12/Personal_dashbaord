@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StudyDao } from '../../db/dao/StudyDao';
@@ -19,6 +20,9 @@ export default function DailyQuizRunnerScreen({
   onQuizCompleted,
   onBackToHub,
 }) {
+  const { width } = useWindowDimensions();
+  const isSmall = width < 500;
+
   const [loading, setLoading] = useState(true);
   const [quiz, setQuiz] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -274,7 +278,7 @@ export default function DailyQuizRunnerScreen({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.submitBtn}
+          style={[styles.submitBtn, isSmall && styles.submitBtnSmall]}
           onPress={handleConfirmSubmit}
           disabled={isSubmitting}
         >
@@ -335,9 +339,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0b0f19',
+    width: '100%',
+    maxWidth: '100%',
   },
   contentWrap: {
-    padding: 20,
+    padding: 14,
     maxWidth: 780,
     width: '100%',
     alignSelf: 'center',
@@ -360,11 +366,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingBottom: 12,
+    gap: 8,
   },
   topSubjectTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     color: '#f8fafc',
+    maxWidth: 160,
   },
   diffBadge: {
     backgroundColor: 'rgba(99, 102, 241, 0.15)',
@@ -504,7 +512,8 @@ const styles = StyleSheet.create({
   navBtnRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    flexWrap: 'wrap',
+    gap: 8,
     marginBottom: 20,
   },
   navBtn: {
@@ -512,7 +521,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#1e293b',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 8,
   },
@@ -527,12 +536,18 @@ const styles = StyleSheet.create({
   submitBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     backgroundColor: '#6366f1',
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
     marginLeft: 'auto',
+  },
+  submitBtnSmall: {
+    width: '100%',
+    marginLeft: 0,
+    marginTop: 4,
   },
   submitBtnText: {
     fontSize: 13,

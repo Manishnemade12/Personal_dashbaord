@@ -295,7 +295,12 @@ export default function AddContentModal({
           ) : (
             <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
               {/* Mode Selector Tabs */}
-              <View style={styles.modeTabs}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.modeTabsScroll}
+                contentContainerStyle={styles.modeTabs}
+              >
                 <TouchableOpacity
                   style={[styles.modeTab, mode === 'auto' && styles.modeTabActive]}
                   onPress={() => setMode('auto')}
@@ -328,7 +333,7 @@ export default function AddContentModal({
                     Manual
                   </Text>
                 </TouchableOpacity>
-              </View>
+              </ScrollView>
 
               {/* Mode Dependent Selectors */}
               {mode === 'subject' && (
@@ -500,16 +505,22 @@ const styles = StyleSheet.create({
   closeBtn: {
     padding: 6,
   },
+  modeTabsScroll: {
+    marginBottom: 12,
+    width: '100%',
+  },
   modeTabs: {
     flexDirection: 'row',
     backgroundColor: '#1e293b',
     borderRadius: 8,
     padding: 3,
-    marginBottom: 12,
+    minWidth: '100%',
+    gap: 4,
   },
   modeTab: {
     flex: 1,
     paddingVertical: 7,
+    paddingHorizontal: 10,
     alignItems: 'center',
     borderRadius: 6,
   },

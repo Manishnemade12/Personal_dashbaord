@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StudyDao } from '../../db/dao/StudyDao';
@@ -16,6 +17,9 @@ export default function DailyQuizResultScreen({
   onRetryQuiz,
   onBackToHub,
 }) {
+  const { width } = useWindowDimensions();
+  const isSmall = width < 480;
+
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(null);
 
@@ -227,9 +231,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0b0f19',
+    width: '100%',
+    maxWidth: '100%',
   },
   contentWrap: {
-    padding: 20,
+    padding: 14,
     maxWidth: 780,
     width: '100%',
     alignSelf: 'center',
@@ -249,7 +255,7 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     backgroundColor: '#111827',
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#1f2937',
     overflow: 'hidden',
@@ -257,7 +263,7 @@ const styles = StyleSheet.create({
   },
   heroTop: {
     backgroundColor: '#4f46e5',
-    padding: 24,
+    padding: 20,
     alignItems: 'center',
   },
   gradeSubtitle: {
@@ -267,7 +273,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   scorePercentageText: {
-    fontSize: 52,
+    fontSize: 48,
     fontWeight: '900',
     color: '#ffffff',
     marginVertical: 4,
@@ -278,12 +284,14 @@ const styles = StyleSheet.create({
   },
   statTilesRow: {
     flexDirection: 'row',
-    padding: 16,
+    flexWrap: 'wrap',
+    padding: 12,
     backgroundColor: '#111827',
     gap: 8,
   },
   statTile: {
     flex: 1,
+    minWidth: 65,
     alignItems: 'center',
     backgroundColor: '#0f172a',
     borderRadius: 8,
@@ -292,7 +300,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   statTileVal: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
     color: '#f8fafc',
   },
@@ -303,11 +311,13 @@ const styles = StyleSheet.create({
   },
   actionBtnRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
     marginBottom: 16,
   },
   retryBtn: {
     flex: 1,
+    minWidth: 130,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -323,6 +333,7 @@ const styles = StyleSheet.create({
   },
   hubBtn: {
     flex: 1,
+    minWidth: 130,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

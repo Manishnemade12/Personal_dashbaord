@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StudyDao } from '../../db/dao/StudyDao';
@@ -22,6 +23,9 @@ export default function StudyChunkReaderScreen({
   onChunkUpdated,
   onChunkDeleted,
 }) {
+  const { width } = useWindowDimensions();
+  const isSmall = width < 480;
+
   const [activeTab, setActiveTab] = useState('notes'); // 'notes' | 'key' | 'terms' | 'quiz'
   const [isEditing, setIsEditing] = useState(false);
   const [draftTitle, setDraftTitle] = useState('');
@@ -222,7 +226,7 @@ export default function StudyChunkReaderScreen({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.toolBtn, { marginLeft: 'auto' }]}
+            style={styles.toolBtn}
             onPress={handleDeleteChunk}
           >
             <Ionicons name="trash-outline" size={14} color="#f43f5e" />
@@ -231,8 +235,13 @@ export default function StudyChunkReaderScreen({
         </View>
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabBar}>
+      {/* Tabs - Horizontal Scroll Container to prevent mobile horizontal blowout */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabScroll}
+        contentContainerStyle={styles.tabBar}
+      >
         <TouchableOpacity
           style={[styles.tabItem, activeTab === 'notes' && styles.tabItemActive]}
           onPress={() => setActiveTab('notes')}
@@ -268,7 +277,7 @@ export default function StudyChunkReaderScreen({
             Quiz ({chunk.quiz?.length || 0})
           </Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
 
       {/* Tab 1: Notes Content */}
       {activeTab === 'notes' && (
@@ -490,7 +499,7 @@ export default function StudyChunkReaderScreen({
             onPress={() => onSelectChunk(nextChunk.id)}
             activeOpacity={0.8}
           >
-            <View>
+            <View style={{ flex: 1, marginRight: 10 }}>
               <Text style={styles.nextChunkSub}>Next Section</Text>
               <Text style={styles.nextChunkTitle} numberOfLines={1}>
                 {nextChunk.title}
@@ -508,9 +517,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0b0f19',
+    width: '100%',
+    maxWidth: '100%',
   },
   contentWrap: {
-    padding: 20,
+    padding: 14,
     maxWidth: 900,
     width: '100%',
     alignSelf: 'center',
@@ -531,6 +542,7 @@ const styles = StyleSheet.create({
   breadcrumbText: {
     fontSize: 12,
     color: '#64748b',
+    maxWidth: 160,
   },
   breadcrumbActive: {
     color: '#cbd5e1',
@@ -543,14 +555,14 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   chunkTitleHeading: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     color: '#f8fafc',
     marginBottom: 12,
-    lineHeight: 32,
+    lineHeight: 30,
   },
   editTitleInput: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: '#f8fafc',
     backgroundColor: '#111827',
@@ -571,7 +583,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
@@ -621,15 +633,21 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '600',
   },
-  tabBar: {
-    flexDirection: 'row',
+  tabScroll: {
+    width: '100%',
+    maxWidth: '100%',
     borderBottomWidth: 1,
     borderBottomColor: '#1f2937',
     marginBottom: 16,
   },
+  tabBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: '100%',
+  },
   tabItem: {
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
@@ -760,7 +778,8 @@ const styles = StyleSheet.create({
   },
   termCard: {
     flex: 1,
-    minWidth: 260,
+    minWidth: 240,
+    width: '100%',
     backgroundColor: '#111827',
     borderRadius: 10,
     borderWidth: 1,
