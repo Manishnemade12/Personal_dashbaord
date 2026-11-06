@@ -46,6 +46,9 @@ export const getDatabase = async () => {
         await db.execAsync("ALTER TABLE study_subjects ADD COLUMN field_id TEXT DEFAULT 'field_ssc';");
       } catch (alterErr) {}
       try {
+        await db.execAsync("ALTER TABLE study_fields ADD COLUMN system_prompt TEXT DEFAULT '';");
+      } catch (alterFieldErr) {}
+      try {
         await db.execAsync("CREATE INDEX IF NOT EXISTS idx_study_subjects_field ON study_subjects(field_id, is_deleted);");
       } catch (idxErr) {}
 

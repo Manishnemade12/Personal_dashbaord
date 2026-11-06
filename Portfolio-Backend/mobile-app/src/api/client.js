@@ -51,7 +51,9 @@ export const getApiBaseUrl = () => API_BASE_URL;
 
 const request = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
-  const timeoutMs = options.timeout || 12000; // 12 seconds timeout to prevent infinite loading
+  const isAiRoute = typeof endpoint === 'string' && endpoint.includes('/ai/');
+  const defaultTimeout = isAiRoute ? 60000 : 15000;
+  const timeoutMs = options.timeout || defaultTimeout;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -100,6 +102,12 @@ const request = async (endpoint, options = {}) => {
 
 
 export const api = {
+  // Generic HTTP methods
+  get: (endpoint, options = {}) => request(endpoint, { method: 'GET', ...options }),
+  post: (endpoint, body = {}, options = {}) => request(endpoint, { method: 'POST', body, ...options }),
+  put: (endpoint, body = {}, options = {}) => request(endpoint, { method: 'PUT', body, ...options }),
+  delete: (endpoint, options = {}) => request(endpoint, { method: 'DELETE', ...options }),
+
   // Auth Login (Checks real admin collection in MongoDB)
   login: (email, password) =>
     request('/auth/login', {

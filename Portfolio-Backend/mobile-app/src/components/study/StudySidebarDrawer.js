@@ -21,6 +21,8 @@ export default function StudySidebarDrawer({
   onAddSubject,
   onDeleteSubject,
   onDeleteChunk,
+  fieldName = 'Study Flow',
+  onOpenPromptConfig,
 }) {
   const [openSubjects, setOpenSubjects] = useState({});
   const [openChunks, setOpenChunks] = useState({});
@@ -91,9 +93,20 @@ export default function StudySidebarDrawer({
           <Ionicons name="book" size={18} color="#ffffff" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>SSC Smart Notes</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {fieldName || 'Study Flow'}
+          </Text>
           <Text style={styles.headerSubtitle}>AI Study Organizer</Text>
         </View>
+        {onOpenPromptConfig && (
+          <TouchableOpacity
+            style={styles.promptIconBtn}
+            onPress={onOpenPromptConfig}
+            accessibilityLabel="Configure AI Prompt"
+          >
+            <Ionicons name="options-outline" size={16} color="#94a3b8" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Action Buttons */}
@@ -391,6 +404,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#94a3b8',
     marginTop: 1,
+  },
+  promptIconBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: '#1e293b',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 6,
   },
   actionSection: {
     padding: 12,

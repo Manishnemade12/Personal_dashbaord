@@ -15,6 +15,7 @@ import { StudyDao } from '../../db/dao/StudyDao';
 import StudySidebarDrawer from '../../components/study/StudySidebarDrawer';
 import AddContentModal from '../../components/study/AddContentModal';
 import StudyQuickQuizModal from '../../components/study/StudyQuickQuizModal';
+import StudyPromptConfigModal from '../../components/study/StudyPromptConfigModal';
 
 import StudyDashboardScreen from './StudyDashboardScreen';
 import StudyChunkReaderScreen from './StudyChunkReaderScreen';
@@ -55,6 +56,7 @@ export default function StudyWorkspaceScreen({
   const [addTarget, setAddTarget] = useState(null);
   const [quickQuizModalVisible, setQuickQuizModalVisible] = useState(false);
   const [quickQuizSubjectId, setQuickQuizSubjectId] = useState(null);
+  const [promptModalVisible, setPromptModalVisible] = useState(false);
 
   const refreshData = useCallback(async () => {
     try {
@@ -139,9 +141,12 @@ export default function StudyWorkspaceScreen({
           <StudyDashboardScreen
             subjects={subjects}
             chunks={chunks}
+            fieldName={currentFieldName}
+            fieldColor={currentFieldColor}
             onOpenAddContent={handleOpenAddContent}
             onOpenQuickQuiz={handleOpenQuickQuiz}
             onSelectChunk={handleSelectChunk}
+            onOpenPromptConfig={() => setPromptModalVisible(true)}
           />
         );
 
@@ -323,6 +328,8 @@ export default function StudyWorkspaceScreen({
             <StudySidebarDrawer
               subjects={subjects}
               chunks={chunks}
+              fieldName={currentFieldName}
+              onOpenPromptConfig={() => setPromptModalVisible(true)}
               activeChunkId={viewParams.chunkId}
               activeView={activeView}
               onSelectChunk={handleSelectChunk}
@@ -364,6 +371,11 @@ export default function StudyWorkspaceScreen({
               <StudySidebarDrawer
                 subjects={subjects}
                 chunks={chunks}
+                fieldName={currentFieldName}
+                onOpenPromptConfig={() => {
+                  setMobileDrawerVisible(false);
+                  setPromptModalVisible(true);
+                }}
                 activeChunkId={viewParams.chunkId}
                 activeView={activeView}
                 onSelectChunk={handleSelectChunk}
@@ -384,8 +396,10 @@ export default function StudyWorkspaceScreen({
         onClose={() => setAddModalVisible(false)}
         initialTarget={addTarget}
         fieldId={currentFieldId}
+        fieldName={currentFieldName}
         subjects={subjects}
         chunks={chunks}
+        onOpenPromptConfig={() => setPromptModalVisible(true)}
         onContentImported={() => {
           refreshData();
           setActiveView('dashboard');
@@ -398,8 +412,21 @@ export default function StudyWorkspaceScreen({
         onClose={() => setQuickQuizModalVisible(false)}
         subjects={subjects}
         chunks={chunks}
+        fieldId={currentFieldId}
+        fieldName={currentFieldName}
         defaultSubjectId={quickQuizSubjectId}
         onQuizReady={handleQuizReady}
+      />
+
+      {/* AI System Prompt & Engine Setup Modal */}
+      <StudyPromptConfigModal
+        visible={promptModalVisible}
+        onClose={() => setPromptModalVisible(false)}
+        fieldId={currentFieldId}
+        fieldName={currentFieldName}
+        onPromptSaved={() => {
+          refreshData();
+        }}
       />
     </SafeAreaView>
   );

@@ -15,6 +15,9 @@ export default function StudyDashboardScreen({
   onOpenAddContent,
   onOpenQuickQuiz,
   onSelectChunk,
+  fieldName = 'Study Flow',
+  fieldColor = '#6366f1',
+  onOpenPromptConfig,
 }) {
   const { width } = useWindowDimensions();
   const isSmall = width < 480;
@@ -47,14 +50,14 @@ export default function StudyDashboardScreen({
       <View style={styles.heroBanner}>
         <View style={styles.heroBadge}>
           <Ionicons name="sparkles" size={13} color="#ffffff" />
-          <Text style={styles.heroBadgeText}>AI-powered study organizer</Text>
+          <Text style={styles.heroBadgeText}>{fieldName || 'AI-powered'} Study Organizer</Text>
         </View>
 
         <Text style={styles.heroTitle}>
-          Turn long ChatGPT chats into perfectly organized SSC notes.
+          Turn long ChatGPT chats into perfectly organized {fieldName ? `${fieldName} ` : ''}notes.
         </Text>
         <Text style={styles.heroSubtitle}>
-          Paste any conversation. We detect subjects, chapters, key terms and quiz questions instantly.
+          Paste any conversation. We detect subjects, chapters, key terms and quiz questions instantly for {fieldName || 'your studies'}.
         </Text>
 
         <View style={styles.heroBtnRow}>
@@ -76,6 +79,17 @@ export default function StudyDashboardScreen({
             <Ionicons name="hardware-chip-outline" size={16} color="#ffffff" />
             <Text style={styles.heroSecondaryBtnText}>Generate quiz</Text>
           </TouchableOpacity>
+
+          {onOpenPromptConfig && (
+            <TouchableOpacity
+              style={styles.heroPromptBtn}
+              onPress={onOpenPromptConfig}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="options-outline" size={16} color="#ffffff" />
+              <Text style={styles.heroPromptBtnText}>AI Prompt</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -265,6 +279,22 @@ const styles = StyleSheet.create({
   },
   heroSecondaryBtnText: {
     fontSize: 13,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  heroPromptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 8,
+  },
+  heroPromptBtnText: {
+    fontSize: 12.5,
     fontWeight: '600',
     color: '#ffffff',
   },

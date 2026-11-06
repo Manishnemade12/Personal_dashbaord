@@ -144,12 +144,30 @@ router.get('/all', async (req, res) => {
 
 router.post('/ai/chunk-content', async (req, res) => {
   try {
-    const { content } = req.body;
+    const { content, fieldId, fieldName, customPrompt, apiKey } = req.body;
     if (!content || content.trim().length < 20) {
       return res.status(400).json({ error: 'Please provide at least a paragraph of study content.' });
     }
 
-    const organizedTree = await organizeContentWithAi(content);
+    let effectivePrompt = customPrompt || '';
+    let effectiveFieldName = fieldName || '';
+
+    // If fieldId is provided and no custom prompt specified, check if field has configured prompt
+    if (fieldId && !effectivePrompt) {
+      try {
+        const fieldDoc = await StudyField.findOne(buildIdQuery(fieldId));
+        if (fieldDoc) {
+          if (fieldDoc.systemPrompt) effectivePrompt = fieldDoc.systemPrompt;
+          if (!effectiveFieldName) effectiveFieldName = fieldDoc.name;
+        }
+      } catch (fErr) {}
+    }
+
+    const organizedTree = await organizeContentWithAi(content, {
+      fieldName: effectiveFieldName || 'General Studies',
+      customPrompt: effectivePrompt,
+      apiKey,
+    });
     res.json(organizedTree);
   } catch (err) {
     console.error('[Study API] /ai/chunk-content error:', err);
@@ -159,8 +177,21 @@ router.post('/ai/chunk-content', async (req, res) => {
 
 router.post('/ai/generate-quiz', async (req, res) => {
   try {
-    const { notes, difficulty = 'medium', count = 10, subjectId, chunkIds } = req.body;
+    const { notes, difficulty = 'medium', count = 10, subjectId, chunkIds, fieldId, fieldName, customPrompt, apiKey } = req.body;
     let textToUse = notes || '';
+
+    let effectiveFieldName = fieldName || '';
+    let effectivePrompt = customPrompt || '';
+
+    if (fieldId && !effectivePrompt) {
+      try {
+        const fieldDoc = await StudyField.findOne(buildIdQuery(fieldId));
+        if (fieldDoc) {
+          if (fieldDoc.systemPrompt) effectivePrompt = fieldDoc.systemPrompt;
+          if (!effectiveFieldName) effectiveFieldName = fieldDoc.name;
+        }
+      } catch (fErr) {}
+    }
 
     // If chunkIds provided but no notes, pull them from database
     if (!textToUse && Array.isArray(chunkIds) && chunkIds.length > 0) {
@@ -181,7 +212,7 @@ router.post('/ai/generate-quiz', async (req, res) => {
 
     if (!textToUse || textToUse.trim().length < 20) {
       const subjDoc = subjectId ? await StudySubject.findOne(buildIdQuery(subjectId)) : null;
-      const subjName = subjDoc?.name || 'General';
+      const subjName = effectiveFieldName || subjDoc?.name || 'General';
       return res.json({
         questions: [
           {
@@ -212,11 +243,43 @@ router.post('/ai/generate-quiz', async (req, res) => {
       });
     }
 
-    const questions = await generateQuizFromNotes(textToUse, difficulty, count);
+    const questions = await generateQuizFromNotes(textToUse, {
+      difficulty,
+      count,
+      fieldName: effectiveFieldName || 'General Studies',
+      customPrompt: effectivePrompt,
+      apiKey,
+    });
     res.json({ questions });
   } catch (err) {
     console.error('[Study API] /ai/generate-quiz error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Configure or retrieve custom system prompt for a study field
+router.get('/fields/:id/prompt', async (req, res) => {
+  try {
+    const field = await StudyField.findOne(buildIdQuery(req.params.id));
+    if (!field) return res.status(404).json({ error: 'Field not found' });
+    res.json({ systemPrompt: field.systemPrompt || '', name: field.name });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.put('/fields/:id/prompt', async (req, res) => {
+  try {
+    const { systemPrompt } = req.body;
+    const field = await StudyField.findOneAndUpdate(
+      buildIdQuery(req.params.id),
+      { $set: { systemPrompt: systemPrompt || '' } },
+      { new: true }
+    );
+    if (!field) return res.status(404).json({ error: 'Field not found' });
+    res.json({ success: true, systemPrompt: field.systemPrompt, name: field.name });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 

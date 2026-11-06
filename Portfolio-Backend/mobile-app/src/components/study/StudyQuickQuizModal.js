@@ -19,6 +19,8 @@ export default function StudyQuickQuizModal({
   subjects = [],
   chunks = [],
   defaultSubjectId = null,
+  fieldName = 'Study Flow',
+  fieldId = 'field_ssc',
   onQuizReady,
 }) {
   const [selectedSubjectId, setSelectedSubjectId] = useState(
@@ -47,6 +49,8 @@ export default function StudyQuickQuizModal({
           difficulty,
           count: questionCount,
           notes: notesCombined,
+          fieldId,
+          fieldName,
         });
         questions = res?.questions || [];
       } catch (apiErr) {
@@ -117,7 +121,7 @@ export default function StudyQuickQuizModal({
               <View>
                 <Text style={styles.dialogTitle}>Generate Quiz</Text>
                 <Text style={styles.dialogSubtitle}>
-                  Create custom SSC MCQs from your notes
+                  Create custom {fieldName ? `${fieldName} ` : ''}MCQs from your notes
                 </Text>
               </View>
             </View>

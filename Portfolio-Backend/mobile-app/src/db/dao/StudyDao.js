@@ -37,6 +37,8 @@ export const formatFieldRow = (row) => {
     description: row.description || '',
     icon: row.icon || 'school-outline',
     color: row.color || '#6366f1',
+    systemPrompt: row.system_prompt || '',
+    system_prompt: row.system_prompt || '',
     isDefault: Boolean(row.is_default),
     orderIndex: row.order_index ?? 0,
     syncStatus: row.sync_status || 'SYNCED',
@@ -287,7 +289,7 @@ export const StudyDao = {
     const now = new Date().toISOString();
 
     const target = await db.getFirstAsync(
-      `SELECT client_id, server_id, name, code, description, icon, color FROM study_fields WHERE client_id = ? OR server_id = ?`,
+      `SELECT client_id, server_id, name, code, description, icon, color, system_prompt FROM study_fields WHERE client_id = ? OR server_id = ?`,
       [fieldId, fieldId]
     );
     if (!target) return null;
@@ -297,10 +299,11 @@ export const StudyDao = {
     const newIcon = updates.icon !== undefined ? updates.icon : target.icon;
     const newColor = updates.color !== undefined ? updates.color : target.color;
     const newCode = updates.code !== undefined ? updates.code : target.code;
+    const newPrompt = updates.systemPrompt !== undefined ? updates.systemPrompt : (updates.system_prompt !== undefined ? updates.system_prompt : target.system_prompt || '');
 
     await db.runAsync(
-      `UPDATE study_fields SET name = ?, code = ?, description = ?, icon = ?, color = ?, sync_status = ?, updated_at = ? WHERE client_id = ?`,
-      [newName, newCode, newDesc, newIcon, newColor, isSyncPull ? 'SYNCED' : 'PENDING', now, target.client_id]
+      `UPDATE study_fields SET name = ?, code = ?, description = ?, icon = ?, color = ?, system_prompt = ?, sync_status = ?, updated_at = ? WHERE client_id = ?`,
+      [newName, newCode, newDesc, newIcon, newColor, newPrompt, isSyncPull ? 'SYNCED' : 'PENDING', now, target.client_id]
     );
 
     if (!isSyncPull) {
@@ -310,6 +313,7 @@ export const StudyDao = {
         description: newDesc,
         icon: newIcon,
         color: newColor,
+        systemPrompt: newPrompt,
         userId,
       }, target.server_id);
     }

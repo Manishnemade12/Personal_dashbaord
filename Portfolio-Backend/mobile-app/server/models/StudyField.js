@@ -9,6 +9,7 @@ const StudyFieldSchema = new mongoose.Schema(
     description: { type: String, default: '', trim: true },
     icon: { type: String, default: 'school-outline' },
     color: { type: String, default: '#6366f1' },
+    systemPrompt: { type: String, default: '', trim: true },
     isDefault: { type: Boolean, default: false },
     orderIndex: { type: Number, default: 0 },
   },

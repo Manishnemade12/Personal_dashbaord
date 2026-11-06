@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../../api/client';
 import { StudyDao } from '../../db/dao/StudyDao';
 
@@ -19,8 +20,10 @@ export default function AddContentModal({
   onClose,
   initialTarget = null,
   fieldId = 'field_ssc',
+  fieldName = 'Study Flow',
   subjects = [],
   chunks = [],
+  onOpenPromptConfig,
   onContentImported,
 }) {
   const [step, setStep] = useState('input'); // 'input' | 'loading' | 'preview'
@@ -86,49 +89,79 @@ export default function AddContentModal({
     setStep('loading');
 
     try {
-      // Call backend AI chunker endpoint
-      const res = await api.post('/study/ai/chunk-content', { content: text });
+      // 1. Fetch user-configured custom API key if present
+      const customKey = await AsyncStorage.getItem('STUDY_AI_CUSTOM_API_KEY');
+
+      // 2. Fetch field custom prompt if configured
+      let customPrompt = '';
+      try {
+        const fieldDoc = await StudyDao.getFieldById(fieldId);
+        if (fieldDoc?.systemPrompt) customPrompt = fieldDoc.systemPrompt;
+      } catch (fErr) {}
+
+      // 3. Call backend universal AI chunker endpoint
+      const res = await api.post('/study/ai/chunk-content', {
+        content: text,
+        fieldId,
+        fieldName,
+        customPrompt,
+        apiKey: customKey || undefined,
+      });
+
       if (res && res.subjects && res.subjects.length > 0) {
         setPreviewTree(res);
         setStep('preview');
-      } else {
-        throw new Error('AI returned an empty or invalid content hierarchy.');
+        return;
       }
     } catch (err) {
       console.warn('[AddContentModal AI Error]', err);
-      // Fallback: organize locally via heuristic in StudyDao
-      Alert.alert(
-        'AI Notice',
-        'Could not reach cloud AI service. Content will be organized using smart heuristic offline parsing.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              const fallbackTree = {
-                subjects: [
-                  {
-                    name: 'General Studies',
-                    description: 'Organized from raw text dump',
-                    chunks: [
-                      {
-                        title: 'Imported Section',
-                        summary: text.slice(0, 150) + '...',
-                        notes: text,
-                        keyPoints: ['Comprehensive overview from study material.'],
-                        terms: [],
-                        quiz: [],
-                      },
-                    ],
-                  },
-                ],
-              };
-              setPreviewTree(fallbackTree);
-              setStep('preview');
-            },
-          },
-        ]
-      );
     }
+
+    // High fidelity offline heuristic organizer fallback (no blocking popup)
+    const lines = text.split('\n');
+    let subjectName = fieldName && fieldName !== 'Study Flow' ? fieldName : 'General Studies';
+    const firstNonEmpty = lines.find((l) => l.trim().length > 0) || '';
+    if (firstNonEmpty.length < 50 && !firstNonEmpty.startsWith('#')) {
+      subjectName = firstNonEmpty.replace(/^[-*#\s]+/, '').trim() || subjectName;
+    }
+
+    const fallbackTree = {
+      subjects: [
+        {
+          name: subjectName,
+          description: `Structured notes for ${subjectName}`,
+          chunks: [
+            {
+              title: firstNonEmpty ? firstNonEmpty.slice(0, 45) : 'Study Chapter 1',
+              summary: text.slice(0, 160).replace(/[\r\n#]+/g, ' ').trim() + '...',
+              notes: text,
+              keyPoints: [
+                'Verbatim material captured for continuous active recall.',
+                'Organized section ready for self-study and revision.',
+              ],
+              terms: [],
+              quiz: [
+                {
+                  question: `Which core concept is central to this section in ${subjectName}?`,
+                  type: 'mcq',
+                  options: [
+                    'Foundational principles covered in notes',
+                    'Speculative theories',
+                    'Unrelated topics',
+                    'None of the above',
+                  ],
+                  answer: 'Foundational principles covered in notes',
+                  explanation: 'The notes provide direct factual coverage of this subject topic.',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      _meta: { usedAi: false, method: 'heuristic' },
+    };
+    setPreviewTree(fallbackTree);
+    setStep('preview');
   };
 
   const handleSaveManual = async () => {
@@ -434,6 +467,23 @@ export default function AddContentModal({
                 </View>
               )}
 
+              {/* Prompt Config Banner */}
+              {mode !== 'manual' && onOpenPromptConfig && (
+                <View style={styles.promptBar}>
+                  <TouchableOpacity
+                    style={styles.promptBarBtn}
+                    onPress={onOpenPromptConfig}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="options-outline" size={14} color="#818cf8" />
+                    <Text style={styles.promptBarText} numberOfLines={1}>
+                      AI Setup Prompt ({fieldName})
+                    </Text>
+                    <Ionicons name="chevron-forward" size={13} color="#818cf8" />
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {/* Footer */}
               <View style={styles.footerRow}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
@@ -687,6 +737,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#e2e8f0',
+  },
+  promptBar: {
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  promptBarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  promptBarText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#cbd5e1',
+    fontWeight: '600',
   },
   previewChunkSummary: {
     fontSize: 12,

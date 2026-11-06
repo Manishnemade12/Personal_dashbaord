@@ -366,6 +366,7 @@ export const CREATE_TABLES_SQL = [
     description TEXT DEFAULT '',
     icon TEXT DEFAULT 'school-outline',
     color TEXT DEFAULT '#6366f1',
+    system_prompt TEXT DEFAULT '',
     is_default INTEGER DEFAULT 0,
     order_index INTEGER DEFAULT 0,
     sync_status TEXT DEFAULT 'SYNCED',

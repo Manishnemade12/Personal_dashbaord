@@ -1,33 +1,34 @@
 const ProjectApi = require('../models/portfolio/ProjectApi');
 
-const SYSTEM_PROMPT = `You are an expert SSC exam study organizer. The user pastes a long ChatGPT conversation, syllabus dump, or raw notes. Your job is to ORGANIZE and RE-FORMAT — NOT to summarize, condense, or trim.
+function getUniversalSystemPrompt(fieldOrContext = 'Academic & Professional Studies', customInstruction = '') {
+  return `You are an expert universal study organizer and academic content architect specialized in ${fieldOrContext}.
+The user pastes study notes, ChatGPT chat transcripts, syllabus outlines, textbook excerpts, or code documentation.
+Your job is to ORGANIZE, STRUCTURE, and RE-FORMAT — NOT to summarize, condense, or discard facts.
+
+${customInstruction ? `USER CUSTOM INSTRUCTIONS:\n${customInstruction}\n` : ''}
 
 ABSOLUTE CONTENT-PRESERVATION RULES (most important):
-- Keep ~95% of the original text. If the user gives 100 lines, ~95 lines must still be present in the output (across "notes" fields). You are a FORMATTER, not a summarizer.
-- The ONLY things you may drop: greetings ("sure!", "here you go"), pure conversational filler, exact duplicate sentences, and the literal quiz/MCQ Q&A blocks (those move to the quiz array — see below). NOTHING else.
-- DO NOT shorten facts, examples, dates, names, lists, tables, formulas, explanations, definitions, side notes, or "extra" context. If in doubt, KEEP IT.
-- DO NOT replace sentences with shorter paraphrases. Use the user's wording verbatim where possible; you may only re-flow it into markdown.
-- NEVER invent facts that are not in the source.
+- Keep ~95% of the original text. You are a FORMATTER, not a summarizer.
+- Preserve all formulas, code snippets, algorithms, dates, names, historical timelines, lists, diagrams-in-text, tables, and explanations verbatim where possible.
+- The ONLY things you may drop: conversational chat filler ("sure!", "here you go"), exact duplicate lines, and raw quiz blocks (which are moved into the quiz array).
+- NEVER invent facts that are not grounded in the source notes.
 
-FORMATTING RULES (this is what you actually do):
-- Convert plain text into clean, scannable markdown using #, ##, ### headings, bullet points, numbered lists, **bold**, tables, and blank-line spacing.
-- Example: a line like "Basic Map Orientation of India" should become a heading like "### Basic Map Orientation of India" — not deleted, not rewritten.
-- Preserve original ordering of content within each chunk.
-- The "notes" field for each leaf chunk = the FULL re-formatted study content for that section (essentially all of the raw text that belongs there, just prettier).
-- The "summary" field = 2–4 short lines. This is the ONLY place compression is allowed.
-- "keyPoints" (3–8) and "terms" (term + meaning) are ADDITIVE — they do not replace the notes.
+FORMATTING RULES:
+- Convert plain text into clean, scannable markdown with #, ##, ### headers, bold terms, bullet points, code fences, and blank lines.
+- The "notes" field for each leaf chunk must contain the FULL re-formatted content.
+- The "summary" field is 2-4 lines of high-level overview.
+- "keyPoints" (3-8 bullets) and "terms" (term + meaning) are additive.
 
 STRUCTURE RULES:
-- Detect Subjects (History, Geography, Polity, Economy, Science, etc.). If everything clearly belongs to one subject, return a single subject.
-- Under each subject, detect Chapters / Eras / Sections. Use "children" for deeper sub-topics when the source has a clear hierarchy.
-- Split into chunks based on the source's own topic boundaries — do not merge unrelated topics, do not over-split a single topic.
+- Detect logical Subjects appropriate for ${fieldOrContext} (e.g. for Engineering: Data Structures, OS, Networking, Algorithms, Electronics; for SSC: History, Polity, Geography, Economy; for General: relevant overarching domains).
+- Under each subject, detect Chapters / Units / Sections with clear logical hierarchy.
+- Use "children" for deeper sub-topics when hierarchy exists.
 
-QUIZ RULES (very important — quiz Qs must be MOVED, not duplicated):
-- Scan the source for any quiz / MCQ / Q&A / "Question:" / "Q1." style blocks.
-- REMOVE every such question from the "notes" field and PUT it into that chunk's "quiz" array. The notes must NOT still contain the raw quiz text after extraction — quiz content lives ONLY in the quiz section.
-- All extracted questions MUST be type "mcq" with exactly 4 options. If the source gave options, use them. If only an answer was given, fabricate 3 plausible distractors plus the correct answer.
-- NEVER drop a question the user wrote.
-- After extracting, you MAY add 2–4 additional MCQs per leaf chunk to round it out. Same format (mcq, 4 options, answer, one-line explanation).
+QUIZ RULES:
+- Scan the source for any quiz, MCQ, or practice questions.
+- REMOVE questions from "notes" and place them into the chunk's "quiz" array.
+- All questions must be "mcq" with 4 options, a correct answer, and an explanation.
+- Add 2-4 high-yield conceptual MCQs per chunk if none existed.
 
 OUTPUT JSON:
 Respond ONLY with a valid JSON object matching this structure:
@@ -58,16 +59,20 @@ Respond ONLY with a valid JSON object matching this structure:
     }
   ]
 }`;
+}
 
-async function getApiKey() {
+async function getApiKey(userProvidedKey = null) {
+  if (userProvidedKey && userProvidedKey.trim().length > 15) {
+    return userProvidedKey.trim();
+  }
   const envKey = process.env.GROK_API_KEY || process.env.GROQ_API_KEY || process.env.XAI_API_KEY;
   if (envKey && !envKey.includes('your_') && envKey.trim().length > 15) {
     return envKey.trim();
   }
   try {
-    const doc = await ProjectApi.findOne({ 'apis.name': { $regex: /llm.*api.*key|grok/i } });
+    const doc = await ProjectApi.findOne({ 'apis.name': { $regex: /llm.*api.*key|grok|groq|gemini|openai/i } });
     if (doc) {
-      const found = doc.apis.find((a) => /llm.*api.*key|grok/i.test(a.name));
+      const found = doc.apis.find((a) => /llm.*api.*key|grok|groq|gemini|openai/i.test(a.name));
       if (found && found.endpoint) {
         return found.endpoint.replace(/["']/g, '').trim();
       }
@@ -77,15 +82,17 @@ async function getApiKey() {
 }
 
 /**
- * Fallback heuristic chunker if API is unreachable or rate-limited.
+ * Fallback heuristic chunker if API is unreachable, unconfigured, or rate-limited.
  * Guarantees zero data loss by parsing sections and headings mechanically.
  */
-function heuristicChunkContent(rawText) {
+function heuristicChunkContent(rawText, options = {}) {
   const lines = rawText.split('\n');
-  let subjectName = 'General Studies';
+  const fieldName = options.fieldName || options.fieldContext || 'General Studies';
+  let subjectName = fieldName !== 'Universal Study' ? fieldName : 'General Studies';
+  
   const firstNonEmpty = lines.find((l) => l.trim().length > 0) || '';
   if (firstNonEmpty.length < 50 && !firstNonEmpty.startsWith('#')) {
-    subjectName = firstNonEmpty.replace(/^[-*#\s]+/, '').trim() || 'General Studies';
+    subjectName = firstNonEmpty.replace(/^[-*#\s]+/, '').trim() || subjectName;
   }
 
   // Split into chunks by major headings or paragraphs
@@ -195,9 +202,9 @@ function heuristicChunkContent(rawText) {
 
     return {
       title: rc.title || `Section ${idx + 1}`,
-      summary: summary || 'Overview of key concepts and historical facts.',
+      summary: summary || 'Overview of key concepts and foundational material.',
       notes: cleanNotes,
-      keyPoints: keyPoints.length > 0 ? keyPoints : ['Essential exam concepts and definitions covered in detail.'],
+      keyPoints: keyPoints.length > 0 ? keyPoints : ['Essential concepts and definitions covered in detail.'],
       terms,
       quiz,
       children: [],
@@ -208,35 +215,46 @@ function heuristicChunkContent(rawText) {
     subjects: [
       {
         name: subjectName,
-        description: 'Auto-organized from study notes dump.',
+        description: `Organized study notes for ${subjectName}.`,
         chunks,
       },
     ],
+    _meta: {
+      usedAi: false,
+      method: 'heuristic',
+      message: 'Organized with smart offline parsing engine.',
+    },
   };
 }
 
 /**
- * Main chunking routine using Groq / LLM API with heuristic fallback.
+ * Main chunking routine using LLM API with heuristic fallback.
  */
-async function organizeContentWithAi(rawContent) {
+async function organizeContentWithAi(rawContent, options = {}) {
   if (!rawContent || rawContent.trim().length < 20) {
     throw new Error('Please paste at least a paragraph of content.');
   }
 
-  const apiKey = await getApiKey();
+  const fieldOrContext = options.fieldName || options.fieldContext || 'Academic & Professional Studies';
+  const customInstruction = options.customPrompt || '';
+  const systemPrompt = options.systemPromptOverride || getUniversalSystemPrompt(fieldOrContext, customInstruction);
+
+  const apiKey = await getApiKey(options.apiKey);
   if (!apiKey) {
-    console.warn('[studyAiChunkerService] No API key found. Using heuristic chunker.');
-    return heuristicChunkContent(rawContent);
+    console.warn('[studyAiChunkerService] No valid API key found. Using heuristic chunker.');
+    return heuristicChunkContent(rawContent, options);
   }
 
   // Model selection
   let modelName = 'llama-3.3-70b-versatile';
-  if (process.env.GROK_MODEL && !process.env.GROK_MODEL.includes('gpt-oss')) {
+  if (options.modelName) {
+    modelName = options.modelName;
+  } else if (process.env.GROK_MODEL && !process.env.GROK_MODEL.includes('gpt-oss')) {
     modelName = process.env.GROK_MODEL;
   }
 
   try {
-    const userPrompt = `ORGANIZE THE FOLLOWING STUDY CONTENT ACCORDING TO ALL RULES.\n\nRAW CONTENT:\n${rawContent.slice(0, 60000)}`;
+    const userPrompt = `ORGANIZE THE FOLLOWING STUDY CONTENT FOR "${fieldOrContext.toUpperCase()}".\n\nRAW CONTENT:\n${rawContent.slice(0, 60000)}`;
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -247,7 +265,7 @@ async function organizeContentWithAi(rawContent) {
       body: JSON.stringify({
         model: modelName,
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
         response_format: { type: 'json_object' },
@@ -257,40 +275,44 @@ async function organizeContentWithAi(rawContent) {
 
     if (!response.ok) {
       const errText = await response.text();
-      console.warn(`[studyAiChunkerService] AI response error ${response.status}: ${errText}. Using fallback.`);
-      return heuristicChunkContent(rawContent);
+      console.warn(`[studyAiChunkerService] AI response error ${response.status}: ${errText}. Using heuristic fallback.`);
+      return heuristicChunkContent(rawContent, options);
     }
 
     const data = await response.json();
     const contentStr = data.choices?.[0]?.message?.content;
     if (!contentStr) {
-      console.warn('[studyAiChunkerService] Empty choices content. Using fallback.');
-      return heuristicChunkContent(rawContent);
+      console.warn('[studyAiChunkerService] Empty choices content. Using heuristic fallback.');
+      return heuristicChunkContent(rawContent, options);
     }
 
     let parsed;
     try {
       parsed = JSON.parse(contentStr);
     } catch (parseErr) {
-      // Clean possible markdown code fences
       const cleaned = contentStr.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
       parsed = JSON.parse(cleaned);
     }
 
     if (parsed && Array.isArray(parsed.subjects) && parsed.subjects.length > 0) {
+      parsed._meta = {
+        usedAi: true,
+        method: 'llm',
+        model: modelName,
+      };
       return parsed;
     }
 
-    console.warn('[studyAiChunkerService] Parsed tree missing subjects array. Using fallback.');
-    return heuristicChunkContent(rawContent);
+    console.warn('[studyAiChunkerService] Parsed tree missing subjects array. Using heuristic fallback.');
+    return heuristicChunkContent(rawContent, options);
   } catch (err) {
     console.error('[studyAiChunkerService] Exception in AI chunker:', err.message);
-    return heuristicChunkContent(rawContent);
+    return heuristicChunkContent(rawContent, options);
   }
 }
 
 module.exports = {
+  getUniversalSystemPrompt,
   organizeContentWithAi,
   heuristicChunkContent,
 };
-

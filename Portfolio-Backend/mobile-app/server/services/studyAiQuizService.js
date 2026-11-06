@@ -1,10 +1,13 @@
 const ProjectApi = require('../models/portfolio/ProjectApi');
 
-const SYSTEM_PROMPT = `You are an expert SSC exam quiz generator. Generate high-yield Multiple Choice Questions (MCQs) strictly grounded in the provided study notes.
+function getUniversalQuizPrompt(fieldOrContext = 'Academic & Professional Studies', customInstruction = '') {
+  return `You are an expert quiz generator specialized in ${fieldOrContext}. Generate high-yield Multiple Choice Questions (MCQs) strictly grounded in the provided study notes.
+
+${customInstruction ? `USER CUSTOM INSTRUCTIONS:\n${customInstruction}\n` : ''}
 
 Rules:
 - All questions MUST be type "mcq" with exactly 4 options.
-- Mix conceptual + factual questions appropriate for competitive SSC exams.
+- Mix conceptual + factual questions appropriate for ${fieldOrContext}.
 - Difficulty levels:
   - easy: direct recall from notes.
   - medium: requires understanding / mild inference.
@@ -25,16 +28,20 @@ Respond ONLY with a valid JSON object matching this structure:
     }
   ]
 }`;
+}
 
-async function getApiKey() {
+async function getApiKey(userProvidedKey = null) {
+  if (userProvidedKey && userProvidedKey.trim().length > 15) {
+    return userProvidedKey.trim();
+  }
   const envKey = process.env.GROK_API_KEY || process.env.GROQ_API_KEY || process.env.XAI_API_KEY;
   if (envKey && !envKey.includes('your_') && envKey.trim().length > 15) {
     return envKey.trim();
   }
   try {
-    const doc = await ProjectApi.findOne({ 'apis.name': { $regex: /llm.*api.*key|grok/i } });
+    const doc = await ProjectApi.findOne({ 'apis.name': { $regex: /llm.*api.*key|grok|groq|gemini|openai/i } });
     if (doc) {
-      const found = doc.apis.find((a) => /llm.*api.*key|grok/i.test(a.name));
+      const found = doc.apis.find((a) => /llm.*api.*key|grok|groq|gemini|openai/i.test(a.name));
       if (found && found.endpoint) {
         return found.endpoint.replace(/["']/g, '').trim();
       }
@@ -44,7 +51,7 @@ async function getApiKey() {
 }
 
 /**
- * Fallback generator if LLM is unavailable.
+ * Fallback generator if LLM is unavailable or key is unconfigured.
  */
 function heuristicGenerateQuiz(notes, count = 5) {
   const lines = notes
@@ -92,7 +99,7 @@ function heuristicGenerateQuiz(notes, count = 5) {
         'Unverified theories',
       ],
       answer: 'Detailed analysis and factual recall',
-      explanation: 'The notes provide foundational facts and exam-oriented definitions.',
+      explanation: 'The notes provide foundational facts and clear definitions.',
     });
   }
 
@@ -100,15 +107,18 @@ function heuristicGenerateQuiz(notes, count = 5) {
 }
 
 /**
- * Generate MCQs from notes using AI.
+ * Main quiz generation method.
  */
-async function generateQuizFromNotes(notes, difficulty = 'medium', count = 10) {
+async function generateQuizFromNotes(notes, options = {}) {
+  const { difficulty = 'medium', count = 10, fieldName = 'General Studies', customPrompt = '', apiKey: userKey = null } = options;
+
   if (!notes || notes.trim().length < 20) {
-    throw new Error('Not enough study notes to generate a quiz.');
+    return heuristicGenerateQuiz(notes || '', count);
   }
 
-  const apiKey = await getApiKey();
+  const apiKey = await getApiKey(userKey);
   if (!apiKey) {
+    console.warn('[studyAiQuizService] No API key found. Using heuristic generator.');
     return heuristicGenerateQuiz(notes, count);
   }
 
@@ -117,8 +127,10 @@ async function generateQuizFromNotes(notes, difficulty = 'medium', count = 10) {
     modelName = process.env.GROK_MODEL;
   }
 
+  const systemPrompt = getUniversalQuizPrompt(fieldName, customPrompt);
+
   try {
-    const userPrompt = `Generate exactly ${count} SSC MCQ questions at ${difficulty} difficulty from the notes below.\n\nNOTES:\n${notes.slice(0, 45000)}`;
+    const userPrompt = `GENERATE EXACTLY ${count} MCQs FROM THE FOLLOWING STUDY NOTES (Difficulty: ${difficulty.toUpperCase()}, Domain: ${fieldName}).\n\nNOTES:\n${notes.slice(0, 40000)}`;
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -129,7 +141,7 @@ async function generateQuizFromNotes(notes, difficulty = 'medium', count = 10) {
       body: JSON.stringify({
         model: modelName,
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
         response_format: { type: 'json_object' },
@@ -138,7 +150,7 @@ async function generateQuizFromNotes(notes, difficulty = 'medium', count = 10) {
     });
 
     if (!response.ok) {
-      console.warn(`[studyAiQuizService] AI response status ${response.status}. Using fallback.`);
+      console.warn(`[studyAiQuizService] AI response error ${response.status}. Using heuristic fallback.`);
       return heuristicGenerateQuiz(notes, count);
     }
 
@@ -157,31 +169,18 @@ async function generateQuizFromNotes(notes, difficulty = 'medium', count = 10) {
     }
 
     if (parsed && Array.isArray(parsed.questions) && parsed.questions.length > 0) {
-      // Validate each question has 4 options
-      return parsed.questions.map((q) => {
-        const opts = Array.isArray(q.options) ? [...q.options] : [];
-        while (opts.length < 4) {
-          opts.push(`Option ${String.fromCharCode(65 + opts.length)}`);
-        }
-        return {
-          question: q.question,
-          type: 'mcq',
-          options: opts.slice(0, 4),
-          answer: q.answer || opts[0],
-          explanation: q.explanation || 'Verified from study notes.',
-        };
-      });
+      return parsed.questions;
     }
 
     return heuristicGenerateQuiz(notes, count);
   } catch (err) {
-    console.error('[studyAiQuizService] Exception in quiz generation:', err.message);
+    console.error('[studyAiQuizService] Exception in quiz generator:', err.message);
     return heuristicGenerateQuiz(notes, count);
   }
 }
 
 module.exports = {
+  getUniversalQuizPrompt,
   generateQuizFromNotes,
   heuristicGenerateQuiz,
 };
-
