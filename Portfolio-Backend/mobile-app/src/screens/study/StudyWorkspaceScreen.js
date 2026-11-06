@@ -240,47 +240,64 @@ export default function StudyWorkspaceScreen({ onExit, routeParams = null }) {
     <SafeAreaView style={styles.safeContainer}>
       <StatusBar barStyle="light-content" backgroundColor="#0b0f19" />
 
-      {/* Top Header - Main Sidebar is Hidden! Dedicated Exit Button Provided */}
+      {/* Top Header - Sidebar open on Left, Brand in Center, Exit & Search on Right */}
       <View style={styles.topHeader}>
-        {/* Left: Prominent Exit to Dashboard Button */}
-        <TouchableOpacity
-          style={styles.exitBtn}
-          onPress={onExit}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="arrow-back" size={16} color="#ffffff" />
-          <Text style={styles.exitBtnText} numberOfLines={1}>
-            {isDesktop ? 'Exit to Dashboard' : 'Exit'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Center: Brand (Icon bubble on mobile; title on desktop) */}
-        <View style={styles.centerBrand}>
-          <View style={styles.headerIconBubble}>
-            <Ionicons name="book" size={14} color="#ffffff" />
-          </View>
-          {isDesktop && <Text style={styles.headerBrandTitle} numberOfLines={1}>SSC Study Flow</Text>}
-        </View>
-
-        {/* Right: Quick Search & Mobile Drawer Hamburger */}
-        <View style={styles.rightActions}>
-          <TouchableOpacity
-            style={styles.headerIconBtn}
-            onPress={() => handleNavigateView('search')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="search" size={16} color="#cbd5e1" />
-          </TouchableOpacity>
-
+        {/* Left: Mobile Drawer Hamburger on mobile, Brand on desktop */}
+        <View style={styles.leftActions}>
           {!isDesktop && (
             <TouchableOpacity
               style={styles.headerIconBtn}
               onPress={() => setMobileDrawerVisible(true)}
               activeOpacity={0.7}
+              accessibilityLabel="Open Sidebar"
             >
-              <Ionicons name="menu" size={18} color="#cbd5e1" />
+              <Ionicons name="menu" size={20} color="#cbd5e1" />
             </TouchableOpacity>
           )}
+
+          {isDesktop && (
+            <View style={styles.leftBrand}>
+              <View style={styles.headerIconBubble}>
+                <Ionicons name="book" size={14} color="#ffffff" />
+              </View>
+              <Text style={styles.headerBrandTitle} numberOfLines={1}>
+                SSC Study Flow
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Center: Brand Icon on mobile */}
+        <View style={styles.centerBrand}>
+          {!isDesktop && (
+            <View style={styles.headerIconBubble}>
+              <Ionicons name="book" size={14} color="#ffffff" />
+            </View>
+          )}
+        </View>
+
+        {/* Right: Quick Search & Exit to Dashboard */}
+        <View style={styles.rightActions}>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={() => handleNavigateView('search')}
+            activeOpacity={0.7}
+            accessibilityLabel="Search"
+          >
+            <Ionicons name="search" size={16} color="#cbd5e1" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.exitBtn}
+            onPress={onExit}
+            activeOpacity={0.8}
+            accessibilityLabel="Exit to Dashboard"
+          >
+            <Ionicons name="arrow-back" size={15} color="#ffffff" />
+            <Text style={styles.exitBtnText} numberOfLines={1}>
+              {isDesktop ? 'Exit to Dashboard' : 'Exit'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -394,6 +411,17 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     overflow: 'hidden',
     zIndex: 10,
+  },
+  leftActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 0,
+  },
+  leftBrand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   exitBtn: {
     flexDirection: 'row',

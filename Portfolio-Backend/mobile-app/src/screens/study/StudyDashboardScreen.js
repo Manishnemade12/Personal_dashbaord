@@ -42,14 +42,7 @@ export default function StudyDashboardScreen({
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentWrap}
-      showsHorizontalScrollIndicator={false}
-      showsVerticalScrollIndicator={true}
-      horizontal={false}
-      alwaysBounceHorizontal={false}
-    >
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentWrap}>
       {/* Hero Banner */}
       <View style={styles.heroBanner}>
         <View style={styles.heroBadge}>
@@ -190,7 +183,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#0b0f19',
     width: '100%',
     maxWidth: '100%',
-    overflow: 'hidden',
   },
   contentWrap: {
     padding: 12,
@@ -198,7 +190,6 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     paddingBottom: 40,
-    overflow: 'hidden',
   },
   heroBanner: {
     borderRadius: 14,
