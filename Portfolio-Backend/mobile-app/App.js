@@ -41,6 +41,7 @@ import AiStockAnalyzerScreen from './src/screens/finance/AiStockAnalyzerScreen';
 import ApiManagementScreen from './src/screens/api/ApiManagementScreen';
 import ProjectApiScreen from './src/screens/api/ProjectApiScreen';
 import AiColdEmailScreen from './src/screens/ai/AiColdEmailScreen';
+import StudyWorkspaceScreen from './src/screens/study/StudyWorkspaceScreen';
 
 // Calculate safe status bar height for Android to prevent header colliding with notification bar
 const ANDROID_STATUS_BAR_HEIGHT = Platform.OS === 'android' ? Math.max(StatusBar.currentHeight || 0, 36) : 0;
@@ -302,6 +303,21 @@ export default function App() {
         return <DashboardScreen onNavigate={navigate} />;
     }
   };
+
+  // Dedicated Isolated Study Flow Workspace:
+  // When active, main SidebarDrawer, Header, and SyncStatusBar are completely bypassed
+  // Dedicated 'Exit to Dashboard' button allows returning to main dashboard
+  if (currentRoute === 'Study') {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: '#0b0f19' }]}>
+        <StatusBar barStyle="light-content" backgroundColor="#0b0f19" />
+        <StudyWorkspaceScreen
+          onExit={() => navigate('Dashboard')}
+          routeParams={routeParams}
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>

@@ -14,3 +14,4 @@ const StudySubjectSchema = new mongoose.Schema(
 StudySubjectSchema.plugin(syncPlugin);
 
 module.exports = mongoose.models.StudySubject || mongoose.model('StudySubject', StudySubjectSchema);
+

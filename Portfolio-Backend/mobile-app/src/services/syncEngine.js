@@ -8,6 +8,7 @@ import { FinanceDao } from '../db/dao/FinanceDao';
 import { InvestmentDao } from '../db/dao/InvestmentDao';
 import { PortfolioDao } from '../db/dao/PortfolioDao';
 import { NoteDao } from '../db/dao/NoteDao';
+import { StudyDao } from '../db/dao/StudyDao';
 import { reconcileAlarms } from './alarmReconciliationEngine';
 
 const LAST_SYNCED_KEY = 'SYNC_LAST_PULLED_AT';
@@ -201,6 +202,23 @@ class SyncEngine {
           if (Array.isArray(changes.noteCategories)) {
             for (const nc of changes.noteCategories) {
               await NoteDao.saveCategory(nc, true);
+            }
+          }
+
+          // Study Flow (Offline Sync)
+          if (Array.isArray(changes.studySubjects)) {
+            for (const s of changes.studySubjects) {
+              await StudyDao.saveSubject(s, true);
+            }
+          }
+          if (Array.isArray(changes.studyChunks)) {
+            for (const c of changes.studyChunks) {
+              await StudyDao.saveChunk(c, true);
+            }
+          }
+          if (Array.isArray(changes.studyWeakQuestions)) {
+            for (const w of changes.studyWeakQuestions) {
+              await StudyDao.saveWeakQuestion(w, true);
             }
           }
 

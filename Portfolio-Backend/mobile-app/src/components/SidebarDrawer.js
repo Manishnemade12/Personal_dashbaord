@@ -53,6 +53,7 @@ export default function SidebarDrawer({
   const isProfileActive = currentRoute === 'Profile';
   const isAiColdEmailActive = currentRoute === 'AiColdEmail';
   const isDashboardActive = currentRoute === 'Dashboard';
+  const isStudyActive = currentRoute === 'Study';
 
   const [activeDropdown, setActiveDropdown] = useState(() => {
     if (isPortfolioActive) return 'portfolio';
@@ -261,6 +262,38 @@ export default function SidebarDrawer({
                 </TouchableOpacity>
               </View>
             )}
+
+            {/* 2.5 Study Flow (SSC Smart Notes & Focus Mode) */}
+            <TouchableOpacity
+              style={[styles.navItem, isStudyActive && styles.navActive]}
+              onPress={() => handleNav('Study')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.navRow}>
+                <View style={styles.iconContainer}>
+                  <Ionicons
+                    name="book-outline"
+                    size={20}
+                    color={isStudyActive ? '#ffffff' : '#6366f1'}
+                  />
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                  <Text style={[styles.navText, isStudyActive && styles.navTextActive]}>
+                    Study Flow
+                  </Text>
+                  <View
+                    style={{
+                      backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 10,
+                    }}
+                  >
+                    <Text style={{ fontSize: 10, color: '#6366f1', fontWeight: '700' }}>SSC</Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
 
             {/* 3. Finance & Expenses */}
             <TouchableOpacity

@@ -353,6 +353,172 @@ export const CREATE_TABLES_SQL = [
     is_deleted INTEGER DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
+  );`,
+
+  // ================= SMART STUDY FLOW SCHEMAS =================
+  // Study Subjects
+  `CREATE TABLE IF NOT EXISTS study_subjects (
+    client_id TEXT PRIMARY KEY,
+    server_id TEXT UNIQUE,
+    user_id TEXT NOT NULL DEFAULT 'admin',
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    order_index INTEGER DEFAULT 0,
+    sync_status TEXT DEFAULT 'SYNCED',
+    is_deleted INTEGER DEFAULT 0,
+    deleted_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_study_subjects_user ON study_subjects(user_id, is_deleted);`,
+  `CREATE INDEX IF NOT EXISTS idx_study_subjects_order ON study_subjects(order_index);`,
+
+  // Study Chunks (Chapters and Leaf sections)
+  `CREATE TABLE IF NOT EXISTS study_chunks (
+    client_id TEXT PRIMARY KEY,
+    server_id TEXT UNIQUE,
+    user_id TEXT NOT NULL DEFAULT 'admin',
+    subject_id TEXT NOT NULL,
+    parent_chunk_id TEXT,
+    title TEXT NOT NULL,
+    order_index INTEGER DEFAULT 0,
+    summary TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    key_points TEXT DEFAULT '[]',
+    terms TEXT DEFAULT '[]',
+    revised INTEGER DEFAULT 0,
+    sync_status TEXT DEFAULT 'SYNCED',
+    is_deleted INTEGER DEFAULT 0,
+    deleted_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_study_chunks_subj ON study_chunks(subject_id, is_deleted);`,
+  `CREATE INDEX IF NOT EXISTS idx_study_chunks_parent ON study_chunks(parent_chunk_id, is_deleted);`,
+  `CREATE INDEX IF NOT EXISTS idx_study_chunks_revised ON study_chunks(revised);`,
+
+  // Study Quiz Questions (In-chunk quizzes)
+  `CREATE TABLE IF NOT EXISTS study_quiz_questions (
+    client_id TEXT PRIMARY KEY,
+    server_id TEXT UNIQUE,
+    user_id TEXT NOT NULL DEFAULT 'admin',
+    chunk_id TEXT NOT NULL,
+    question TEXT NOT NULL,
+    type TEXT DEFAULT 'mcq',
+    options TEXT DEFAULT '[]',
+    answer TEXT NOT NULL,
+    explanation TEXT DEFAULT '',
+    order_index INTEGER DEFAULT 0,
+    sync_status TEXT DEFAULT 'SYNCED',
+    is_deleted INTEGER DEFAULT 0,
+    deleted_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_study_quiz_chunk ON study_quiz_questions(chunk_id, is_deleted);`,
+
+  // Study Daily Quizzes (Generated Daily or Drill Quizzes)
+  `CREATE TABLE IF NOT EXISTS study_daily_quizzes (
+    client_id TEXT PRIMARY KEY,
+    server_id TEXT UNIQUE,
+    user_id TEXT NOT NULL DEFAULT 'admin',
+    subject_id TEXT NOT NULL,
+    quiz_date TEXT NOT NULL,
+    questions TEXT NOT NULL,
+    total_questions INTEGER DEFAULT 0,
+    difficulty TEXT DEFAULT 'medium',
+    source TEXT DEFAULT 'ai',
+    sync_status TEXT DEFAULT 'SYNCED',
+    is_deleted INTEGER DEFAULT 0,
+    deleted_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_study_dq_date ON study_daily_quizzes(quiz_date, user_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_study_dq_subj ON study_daily_quizzes(subject_id);`,
+
+  // Study Daily Quiz Attempts
+  `CREATE TABLE IF NOT EXISTS study_daily_quiz_attempts (
+    client_id TEXT PRIMARY KEY,
+    server_id TEXT UNIQUE,
+    user_id TEXT NOT NULL DEFAULT 'admin',
+    daily_quiz_id TEXT NOT NULL,
+    subject_id TEXT NOT NULL,
+    quiz_date TEXT NOT NULL,
+    answers TEXT NOT NULL,
+    score INTEGER NOT NULL,
+    total_questions INTEGER NOT NULL,
+    percentage REAL NOT NULL,
+    time_taken INTEGER DEFAULT 0,
+    completed INTEGER DEFAULT 1,
+    started_at TEXT NOT NULL,
+    completed_at TEXT,
+    sync_status TEXT DEFAULT 'SYNCED',
+    is_deleted INTEGER DEFAULT 0,
+    deleted_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_study_att_quiz ON study_daily_quiz_attempts(daily_quiz_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_study_att_date ON study_daily_quiz_attempts(quiz_date);`,
+
+  // Study Daily Quiz Config
+  `CREATE TABLE IF NOT EXISTS study_daily_quiz_config (
+    client_id TEXT PRIMARY KEY,
+    server_id TEXT UNIQUE,
+    user_id TEXT NOT NULL DEFAULT 'admin',
+    enabled INTEGER DEFAULT 1,
+    schedule_time TEXT DEFAULT '12:00:00',
+    timezone TEXT DEFAULT 'Asia/Kolkata',
+    difficulty TEXT DEFAULT 'mixed',
+    include_pyq INTEGER DEFAULT 1,
+    num_questions INTEGER DEFAULT 10,
+    sync_status TEXT DEFAULT 'SYNCED',
+    is_deleted INTEGER DEFAULT 0,
+    deleted_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );`,
+
+  // Study Weak Questions
+  `CREATE TABLE IF NOT EXISTS study_weak_questions (
+    client_id TEXT PRIMARY KEY,
+    server_id TEXT UNIQUE,
+    user_id TEXT NOT NULL DEFAULT 'admin',
+    subject_id TEXT NOT NULL,
+    question_hash TEXT NOT NULL,
+    question TEXT NOT NULL,
+    options TEXT DEFAULT '[]',
+    answer TEXT NOT NULL,
+    explanation TEXT DEFAULT '',
+    times_wrong INTEGER DEFAULT 1,
+    times_correct INTEGER DEFAULT 0,
+    mastered INTEGER DEFAULT 0,
+    last_wrong_at TEXT,
+    last_seen_at TEXT,
+    sync_status TEXT DEFAULT 'SYNCED',
+    is_deleted INTEGER DEFAULT 0,
+    deleted_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_study_weak_subj ON study_weak_questions(subject_id, mastered, is_deleted);`,
+  `CREATE INDEX IF NOT EXISTS idx_study_weak_hash ON study_weak_questions(subject_id, question_hash);`,
+
+  // Study User Streaks
+  `CREATE TABLE IF NOT EXISTS study_user_streaks (
+    client_id TEXT PRIMARY KEY,
+    server_id TEXT UNIQUE,
+    user_id TEXT NOT NULL DEFAULT 'admin',
+    current_streak INTEGER DEFAULT 0,
+    longest_streak INTEGER DEFAULT 0,
+    last_active_date TEXT,
+    total_quizzes_completed INTEGER DEFAULT 0,
+    sync_status TEXT DEFAULT 'SYNCED',
+    is_deleted INTEGER DEFAULT 0,
+    deleted_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
   );`
 ];
 

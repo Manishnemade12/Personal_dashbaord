@@ -8,4 +8,5 @@ export { InvestmentDao } from './dao/InvestmentDao';
 export { PortfolioDao } from './dao/PortfolioDao';
 export { SyncOutboxDao } from './dao/SyncOutboxDao';
 export { NoteDao } from './dao/NoteDao';
+export { StudyDao } from './dao/StudyDao';
 

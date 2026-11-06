@@ -18,6 +18,14 @@ const MODELS = {
   portfolio_social_link: require('../models/portfolio/SocialLink'),
   note: require('../models/Note'),
   note_category: require('../models/NoteCategory'),
+  study_subject: require('../models/StudySubject'),
+  study_chunk: require('../models/StudyChunk'),
+  study_quiz_question: require('../models/StudyQuizQuestion'),
+  study_daily_quiz: require('../models/StudyDailyQuiz'),
+  study_daily_quiz_attempt: require('../models/StudyDailyQuizAttempt'),
+  study_daily_quiz_config: require('../models/StudyDailyQuizConfig'),
+  study_weak_question: require('../models/StudyWeakQuestion'),
+  study_user_streak: require('../models/StudyUserStreak'),
 };
 
 /**
@@ -170,6 +178,14 @@ router.get('/pull', async (req, res) => {
       socialLinks,
       notes,
       noteCategories,
+      studySubjects,
+      studyChunks,
+      studyQuizQuestions,
+      studyDailyQuizzes,
+      studyDailyQuizAttempts,
+      studyDailyQuizConfigs,
+      studyWeakQuestions,
+      studyUserStreaks,
     ] = await Promise.all([
       MODELS.calendar.find(queryFilter).lean(),
       MODELS.calendar_event.find(queryFilter).lean(),
@@ -186,6 +202,14 @@ router.get('/pull', async (req, res) => {
       MODELS.portfolio_social_link.find(queryFilter).lean(),
       MODELS.note.find(queryFilter).lean(),
       MODELS.note_category.find(queryFilter).lean(),
+      MODELS.study_subject.find(queryFilter).lean(),
+      MODELS.study_chunk.find(queryFilter).lean(),
+      MODELS.study_quiz_question.find(queryFilter).lean(),
+      MODELS.study_daily_quiz.find(queryFilter).lean(),
+      MODELS.study_daily_quiz_attempt.find(queryFilter).lean(),
+      MODELS.study_daily_quiz_config.find(queryFilter).lean(),
+      MODELS.study_weak_question.find(queryFilter).lean(),
+      MODELS.study_user_streak.find(queryFilter).lean(),
     ]);
 
     res.json({
@@ -206,6 +230,14 @@ router.get('/pull', async (req, res) => {
         portfolioSocialLinks: socialLinks,
         notes,
         noteCategories,
+        studySubjects,
+        studyChunks,
+        studyQuizQuestions,
+        studyDailyQuizzes,
+        studyDailyQuizAttempts,
+        studyDailyQuizConfigs,
+        studyWeakQuestions,
+        studyUserStreaks,
       },
     });
   } catch (err) {
