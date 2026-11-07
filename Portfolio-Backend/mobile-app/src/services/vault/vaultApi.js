@@ -7,12 +7,32 @@ import { Platform } from 'react-native';
 
 const AUTH_TOKEN_KEY = 'cv_auth_token';
 const VAULT_SESSION_KEY = 'cv_pwd_vault_token';
+const CUSTOM_URL_KEY = 'VAULT_CUSTOM_API_URL';
 
-function getBaseUrl() {
-  // Expo public env vars are inlined at build time
+let _customBaseUrl = null;
+
+export function getBaseUrl() {
+  if (_customBaseUrl) return _customBaseUrl;
   const envUrl =
-    typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_VAULT_API_URL;
+    (typeof process !== 'undefined' &&
+      (process.env?.EXPO_PUBLIC_VAULT_API_URL ||
+        process.env?.VAULT_API_URL ||
+        process.env?.CIPHERVAULT_API_URL)) ||
+    (typeof window !== 'undefined' && window.__VAULT_API_URL__);
   return (envUrl || 'http://localhost:3000').replace(/\/+$/, '');
+}
+
+export async function setCustomVaultUrl(url) {
+  _customBaseUrl = url ? url.trim().replace(/\/+$/, '') : null;
+  if (_customBaseUrl) {
+    await AsyncStorage.setItem(CUSTOM_URL_KEY, _customBaseUrl);
+  } else {
+    await AsyncStorage.removeItem(CUSTOM_URL_KEY);
+  }
+}
+
+export function getCustomVaultUrl() {
+  return _customBaseUrl;
 }
 
 /* ───────── Token helpers ───────── */
@@ -23,6 +43,10 @@ let _vaultSessionToken = null;
 export async function loadTokens() {
   _authToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
   _vaultSessionToken = await AsyncStorage.getItem(VAULT_SESSION_KEY);
+  const savedUrl = await AsyncStorage.getItem(CUSTOM_URL_KEY);
+  if (savedUrl) {
+    _customBaseUrl = savedUrl.replace(/\/+$/, '');
+  }
 }
 
 export async function setAuthToken(token) {

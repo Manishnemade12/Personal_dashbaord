@@ -5,6 +5,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import tw from '../../utils/tw';
@@ -14,6 +16,8 @@ import {
   getAuthToken,
   setAuthToken,
   clearAllVaultTokens,
+  getBaseUrl,
+  setCustomVaultUrl,
 } from '../../services/vault/vaultApi';
 import VaultAuthView from './components/VaultAuthView';
 import VaultFoldersView from './components/VaultFoldersView';
@@ -30,6 +34,12 @@ export default function VaultScreen({ onExitToDashboard }) {
   const [view, setView] = useState('folders'); // 'auth' | 'folders' | 'folder-files' | 'password-vault' | 'trash'
   const [activeFolderData, setActiveFolderData] = useState(null); // { folder, unlockToken, derivedKey, expiresIn }
 
+  // Custom Endpoint Modal state
+  const [endpointModalOpen, setEndpointModalOpen] = useState(false);
+  const [endpointInput, setEndpointInput] = useState('');
+  const [pingStatus, setPingStatus] = useState(null); // { type: 'success'|'error', msg: string }
+  const [testingPing, setTestingPing] = useState(false);
+
   useEffect(() => {
     bootstrap();
   }, []);
@@ -37,6 +47,7 @@ export default function VaultScreen({ onExitToDashboard }) {
   const bootstrap = async () => {
     setLoading(true);
     await loadTokens();
+    setEndpointInput(getBaseUrl());
 
     // Check connection to vault backend
     try {
@@ -84,6 +95,34 @@ export default function VaultScreen({ onExitToDashboard }) {
     setView('auth');
   }, []);
 
+  const handleTestPing = async (targetUrl) => {
+    setTestingPing(true);
+    setPingStatus(null);
+    const url = (targetUrl || endpointInput || '').trim().replace(/\/+$/, '');
+    try {
+      const res = await fetch(`${url}/api/status`, { method: 'GET' });
+      if (res.ok) {
+        setPingStatus({ type: 'success', msg: 'Connected successfully (HTTP 200 OK)' });
+        setConnectionStatus('online');
+      } else {
+        setPingStatus({ type: 'error', msg: `Server replied with HTTP ${res.status}` });
+        setConnectionStatus('offline');
+      }
+    } catch (e) {
+      setPingStatus({ type: 'error', msg: e.message || 'Cannot reach endpoint' });
+      setConnectionStatus('offline');
+    } finally {
+      setTestingPing(false);
+    }
+  };
+
+  const handleSaveEndpoint = async () => {
+    const trimmed = endpointInput.trim().replace(/\/+$/, '');
+    await setCustomVaultUrl(trimmed || null);
+    setEndpointModalOpen(false);
+    bootstrap();
+  };
+
   const handleFolderUnlocked = useCallback((data) => {
     setActiveFolderData(data);
     setView('folder-files');
@@ -130,19 +169,25 @@ export default function VaultScreen({ onExitToDashboard }) {
           </Text>
         </View>
 
-        {/* Connection status pill */}
-        <View
-          style={tw`flex-row items-center px-2.5 py-1 rounded-full ${
+        {/* Interactive connection status & config pill */}
+        <TouchableOpacity
+          onPress={() => {
+            setEndpointInput(getBaseUrl());
+            setPingStatus(null);
+            setEndpointModalOpen(true);
+          }}
+          activeOpacity={0.7}
+          style={tw`flex-row items-center px-2.5 py-1 rounded-full border border-vault-border ${
             connectionStatus === 'online'
-              ? 'bg-green-900/40'
+              ? 'bg-green-900/30'
               : connectionStatus === 'offline'
-              ? 'bg-red-900/40'
-              : 'bg-yellow-900/40'
+              ? 'bg-red-900/30'
+              : 'bg-yellow-900/30'
           }`}
         >
           <View
             style={[
-              tw`w-1.5 h-1.5 rounded-full mr-1.5`,
+              tw`w-2 h-2 rounded-full mr-1.5`,
               {
                 backgroundColor:
                   connectionStatus === 'online'
@@ -154,7 +199,7 @@ export default function VaultScreen({ onExitToDashboard }) {
             ]}
           />
           <Text
-            style={tw`text-xs font-semibold ${
+            style={tw`text-xs font-semibold mr-1.5 ${
               connectionStatus === 'online'
                 ? 'text-green-400'
                 : connectionStatus === 'offline'
@@ -168,7 +213,8 @@ export default function VaultScreen({ onExitToDashboard }) {
               ? 'Offline'
               : '…'}
           </Text>
-        </View>
+          <Ionicons name="settings-outline" size={12} color="#94a3b8" />
+        </TouchableOpacity>
 
         {/* User & Logout */}
         {user && (
@@ -216,6 +262,114 @@ export default function VaultScreen({ onExitToDashboard }) {
           />
         )}
       </View>
+
+      {/* Backend Endpoint Settings Modal */}
+      <Modal
+        visible={endpointModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEndpointModalOpen(false)}
+      >
+        <View style={tw`flex-1 bg-black/75 items-center justify-center p-4`}>
+          <View style={tw`bg-vault-card border border-vault-border rounded-2xl w-full max-w-md p-5 shadow-2xl`}>
+            {/* Modal Header */}
+            <View style={tw`flex-row items-center justify-between pb-3 border-b border-vault-border mb-4`}>
+              <View style={tw`flex-row items-center gap-2`}>
+                <Ionicons name="server-outline" size={20} color="#6366f1" />
+                <Text style={tw`text-txt-primary text-base font-bold`}>
+                  Vault Backend Host
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setEndpointModalOpen(false)}
+                style={tw`p-1 rounded-lg bg-vault-surface`}
+              >
+                <Ionicons name="close" size={18} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Instruction description */}
+            <Text style={tw`text-txt-muted text-xs mb-3 leading-5`}>
+              Enter your standalone CipherVault backend URL (e.g. hosted on Vercel, Railway, Render, or localhost:3000).
+            </Text>
+
+            {/* Input field */}
+            <View style={tw`bg-vault-surface border border-vault-border-light rounded-xl px-3 py-2.5 mb-3 flex-row items-center gap-2`}>
+              <Ionicons name="link-outline" size={16} color="#64748b" />
+              <TextInput
+                value={endpointInput}
+                onChangeText={setEndpointInput}
+                placeholder="http://localhost:3000"
+                placeholderTextColor="#64748b"
+                style={tw`flex-1 text-txt-primary text-sm font-mono`}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            {/* Ping Feedback */}
+            {pingStatus && (
+              <View
+                style={tw`p-2.5 rounded-xl mb-3 flex-row items-center gap-2 ${
+                  pingStatus.type === 'success' ? 'bg-green-950/40 border border-green-800' : 'bg-red-950/40 border border-red-800'
+                }`}
+              >
+                <Ionicons
+                  name={pingStatus.type === 'success' ? 'checkmark-circle' : 'alert-circle'}
+                  size={16}
+                  color={pingStatus.type === 'success' ? '#10b981' : '#f43f5e'}
+                />
+                <Text
+                  style={tw`text-xs flex-1 ${
+                    pingStatus.type === 'success' ? 'text-green-300 font-semibold' : 'text-red-300 font-semibold'
+                  }`}
+                >
+                  {pingStatus.msg}
+                </Text>
+              </View>
+            )}
+
+            {/* Action buttons */}
+            <View style={tw`flex-row gap-2 mt-2`}>
+              <TouchableOpacity
+                onPress={() => handleTestPing(endpointInput)}
+                disabled={testingPing}
+                style={tw`flex-1 py-2.5 px-3 rounded-xl bg-vault-surface border border-vault-border items-center justify-center flex-row gap-1.5`}
+              >
+                {testingPing ? (
+                  <ActivityIndicator size="small" color="#818cf8" />
+                ) : (
+                  <>
+                    <Ionicons name="flash-outline" size={14} color="#818cf8" />
+                    <Text style={tw`text-indigo-400 text-xs font-semibold`}>Test Ping</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSaveEndpoint}
+                style={tw`flex-1 py-2.5 px-3 rounded-xl bg-indigo-600 items-center justify-center`}
+              >
+                <Text style={tw`text-white text-xs font-bold`}>Save & Apply</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Reset to env option */}
+            <TouchableOpacity
+              onPress={() => {
+                const defaultUrl = (typeof process !== 'undefined' && (process.env?.EXPO_PUBLIC_VAULT_API_URL || process.env?.VAULT_API_URL)) || 'http://localhost:3000';
+                setEndpointInput(defaultUrl);
+                handleTestPing(defaultUrl);
+              }}
+              style={tw`mt-3 py-1.5 items-center`}
+            >
+              <Text style={tw`text-txt-dim text-xs underline`}>
+                Reset to .env default
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
