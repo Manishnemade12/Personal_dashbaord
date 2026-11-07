@@ -33,6 +33,8 @@ export default function VaultScreen({ onExitToDashboard }) {
   // Sub-view navigation
   const [view, setView] = useState('folders'); // 'auth' | 'folders' | 'folder-files' | 'password-vault' | 'trash'
   const [activeFolderData, setActiveFolderData] = useState(null); // { folder, unlockToken, derivedKey, expiresIn }
+  const [sessionSecondsLeft, setSessionSecondsLeft] = useState(300); // 5 min session
+  const sessionTimerRef = React.useRef(null);
 
   // Custom Endpoint Modal state
   const [endpointModalOpen, setEndpointModalOpen] = useState(false);
@@ -90,10 +92,36 @@ export default function VaultScreen({ onExitToDashboard }) {
   }, []);
 
   const handleLogout = useCallback(async () => {
+    if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
     await clearAllVaultTokens();
     setUser(null);
+    setActiveFolderData(null);
     setView('auth');
   }, []);
+
+  // 5-minute Master Vault session management
+  useEffect(() => {
+    if (user && view !== 'auth') {
+      setSessionSecondsLeft(300); // 5 minutes
+      if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
+      sessionTimerRef.current = setInterval(() => {
+        setSessionSecondsLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(sessionTimerRef.current);
+            // Auto logout and return to login screen
+            handleLogout();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
+    }
+    return () => {
+      if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
+    };
+  }, [user, view === 'auth', handleLogout]);
 
   const handleTestPing = async (targetUrl) => {
     setTestingPing(true);
@@ -218,13 +246,22 @@ export default function VaultScreen({ onExitToDashboard }) {
 
         {/* User & Logout */}
         {user && (
-          <TouchableOpacity
-            onPress={handleLogout}
-            style={tw`ml-3 py-1 px-2`}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="log-out-outline" size={18} color="#f43f5e" />
-          </TouchableOpacity>
+          <View style={tw`flex-row items-center ml-2`}>
+            {/* Live 5-minute session countdown badge */}
+            <View style={tw`flex-row items-center bg-vault-surface border border-vault-border rounded-lg px-2 py-1 mr-2`}>
+              <Ionicons name="time-outline" size={13} color="#f59e0b" style={tw`mr-1`} />
+              <Text style={tw`text-amber-400 text-xs font-semibold`}>
+                {Math.floor(sessionSecondsLeft / 60)}:{String(sessionSecondsLeft % 60).padStart(2, '0')}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={tw`py-1 px-1.5`}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="log-out-outline" size={18} color="#f43f5e" />
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 
@@ -237,6 +274,7 @@ export default function VaultScreen({ onExitToDashboard }) {
             onFolderUnlocked={handleFolderUnlocked}
             onOpenPasswordVault={() => setView('password-vault')}
             onOpenTrash={() => setView('trash')}
+            onForceLogout={handleLogout}
           />
         )}
 

@@ -142,7 +142,7 @@ export default function VaultFolderFilesView({
 
   /* ── Auto-lock timer ── */
   useEffect(() => {
-    setCountdown(expiresIn || 900);
+    setCountdown(expiresIn || 300); // 5 minutes default
     countdownRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {

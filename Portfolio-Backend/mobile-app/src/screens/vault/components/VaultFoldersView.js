@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import tw from '../../../utils/tw';
 import { vaultApi } from '../../../services/vault/vaultApi';
 
-const VaultFoldersView = ({ onFolderUnlocked, onOpenTrash, onOpenPasswordVault }) => {
+const VaultFoldersView = ({ onFolderUnlocked, onOpenTrash, onOpenPasswordVault, onForceLogout }) => {
   const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -122,7 +122,26 @@ const VaultFoldersView = ({ onFolderUnlocked, onOpenTrash, onOpenPasswordVault }
       }
     } catch (err) {
       console.error('Failed to unlock folder:', err);
-      Alert.alert('Error', err?.message || 'Incorrect password or unlock failed.');
+      setUnlockModalVisible(false);
+      setUnlockPassword('');
+      Alert.alert(
+        'Security Alert - Incorrect Password',
+        'Galat password daalne ki wajah se security protocol ke taht session terminate kar diya gaya hai. Kripya dobara login karein.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              if (onForceLogout) {
+                onForceLogout();
+              }
+            },
+          },
+        ]
+      );
+      // Also immediately trigger logout so user cannot stay logged in
+      if (onForceLogout) {
+        onForceLogout();
+      }
     } finally {
       setUnlocking(false);
     }

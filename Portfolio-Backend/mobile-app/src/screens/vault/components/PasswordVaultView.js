@@ -17,7 +17,7 @@ import tw from '../../../utils/tw';
 import { vaultApi, getVaultSessionToken, setVaultSessionToken } from '../../../services/vault/vaultApi';
 
 /* ─── constants ─── */
-const SESSION_DURATION_SEC = 15 * 60; // 15 minutes
+const SESSION_DURATION_SEC = 5 * 60; // 5 minutes
 
 /* ═══════════════════════════════════════════════════════════
    Helper: Clipboard (platform-aware)
