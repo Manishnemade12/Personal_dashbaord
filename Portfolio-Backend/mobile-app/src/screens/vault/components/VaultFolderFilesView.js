@@ -88,17 +88,14 @@ export default function VaultFolderFilesView({
   const fileInputRef = useRef(null);
   const countdownRef = useRef(null);
 
-  const folderId = folder?.id || folder?._id;
-
   /* ── Load files ── */
   const loadFiles = useCallback(async () => {
-    if (!folderId) return;
     setLoading(true);
     setError('');
     try {
-      const res = await vaultApi.getFilesInFolder(folderId, unlockToken);
+      const res = await vaultApi.getFilesInFolder(folder.id, unlockToken);
       if (res.ok) {
-        setFiles(res.data?.files || res.data || []);
+        setFiles(res.data.files || res.data || []);
       } else {
         setError(res.data?.error || 'Failed to load files');
       }
@@ -107,7 +104,7 @@ export default function VaultFolderFilesView({
     } finally {
       setLoading(false);
     }
-  }, [folderId, unlockToken]);
+  }, [folder.id, unlockToken]);
 
   useEffect(() => {
     loadFiles();
@@ -134,7 +131,7 @@ export default function VaultFolderFilesView({
   const handleLock = async (isAuto = false) => {
     setLockingFolder(true);
     try {
-      if (folderId) await vaultApi.lockFolder(folderId, unlockToken);
+      await vaultApi.lockFolder(folder.id, unlockToken);
     } catch (_) {
       // silent – folder may already be locked
     } finally {
@@ -153,7 +150,7 @@ export default function VaultFolderFilesView({
 
   const handleFileSelected = async (e) => {
     const file = e?.target?.files?.[0];
-    if (!file || !folderId) return;
+    if (!file) return;
 
     setUploading(true);
     setUploadProgress(0);
@@ -174,7 +171,7 @@ export default function VaultFolderFilesView({
         });
       }, 300);
 
-      const res = await vaultApi.uploadFileFormData(folderId, formData, unlockToken);
+      const res = await vaultApi.uploadFileFormData(folder.id, formData, unlockToken);
 
       clearInterval(progressInterval);
       setUploadProgress(100);
@@ -196,20 +193,18 @@ export default function VaultFolderFilesView({
 
   /* ── Download ── */
   const handleDownload = async (file) => {
-    const fileId = file.id || file._id;
-    if (!folderId || !fileId) return;
-    setDownloadingId(fileId);
+    setDownloadingId(file.id || file._id);
     setError('');
     try {
-      const res = await vaultApi.getDownloadToken(folderId, fileId, unlockToken);
+      const res = await vaultApi.getDownloadToken(folder.id, file.id || file._id, unlockToken);
       if (!res.ok) {
         setError(res.data?.error || 'Failed to get download token');
         return;
       }
 
-      const downloadToken = res.data.downloadToken || res.data.token || unlockToken;
+      const downloadToken = res.data.downloadToken || res.data.token;
       const baseUrl = (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_VAULT_API_URL) || 'http://localhost:3000';
-      const downloadUrl = `${baseUrl.replace(/\/+$/, '')}/folders/${folderId}/files/${fileId}/download?token=${downloadToken}`;
+      const downloadUrl = `${baseUrl.replace(/\/+$/, '')}/folders/${folder.id}/files/${file.id || file._id}/download?token=${downloadToken}`;
 
       if (Platform.OS === 'web') {
         window.open(downloadUrl, '_blank');

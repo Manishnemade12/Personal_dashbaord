@@ -71,11 +71,18 @@ export default function VaultAuthView({ onLoginSuccess }) {
     setLoading(true);
     try {
       if (isLogin) {
-        const data = await vaultApi.login(email.trim(), password);
-        setAuthToken(data.token);
-        onLoginSuccess(data);
+        const res = await vaultApi.login(email.trim(), password);
+        if (!res.ok) {
+          throw new Error(res.data?.error || res.data?.message || 'Login failed. Please check your credentials.');
+        }
+        const token = res.data?.token || res.token;
+        await setAuthToken(token);
+        onLoginSuccess(res.data || res);
       } else {
-        await vaultApi.register(email.trim(), password);
+        const res = await vaultApi.register(email.trim(), password);
+        if (!res.ok) {
+          throw new Error(res.data?.error || res.data?.message || 'Registration failed.');
+        }
         showToast('Account created! Please log in.');
         resetForm();
         setActiveTab(TAB_LOGIN);

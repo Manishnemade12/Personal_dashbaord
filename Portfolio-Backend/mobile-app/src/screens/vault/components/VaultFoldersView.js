@@ -36,12 +36,8 @@ const VaultFoldersView = ({ onFolderUnlocked, onOpenTrash, onOpenPasswordVault }
       const res = await vaultApi.getFolders();
       if (Array.isArray(res)) {
         setFolders(res);
-      } else if (Array.isArray(res?.data?.folders)) {
-        setFolders(res.data.folders);
-      } else if (Array.isArray(res?.folders)) {
-        setFolders(res.folders);
       } else {
-        setFolders([]);
+        setFolders(res?.data?.folders || res?.folders || res?.data || []);
       }
     } catch (err) {
       console.error('Failed to fetch folders:', err);
@@ -85,9 +81,8 @@ const VaultFoldersView = ({ onFolderUnlocked, onOpenTrash, onOpenPasswordVault }
     setCreating(true);
     try {
       const res = await vaultApi.createFolder(newFolderName.trim(), newFolderPassword);
-      if (res && res.ok === false) {
-        Alert.alert('Error', res.data?.message || res.data?.error || 'Failed to create folder.');
-        return;
+      if (!res.ok) {
+        throw new Error(res.data?.error || res.data?.message || 'Failed to create folder.');
       }
       setCreateModalVisible(false);
       setNewFolderName('');
@@ -111,11 +106,10 @@ const VaultFoldersView = ({ onFolderUnlocked, onOpenTrash, onOpenPasswordVault }
     setUnlocking(true);
     try {
       const res = await vaultApi.unlockFolder(selectedFolder._id || selectedFolder.id, unlockPassword);
-      if (res && res.ok === false) {
-        Alert.alert('Error', res.data?.message || res.data?.error || 'Incorrect password or unlock failed.');
-        return;
+      if (!res.ok) {
+        throw new Error(res.data?.error || res.data?.message || 'Incorrect password or unlock failed.');
       }
-      const data = res?.data || res || {};
+      const data = res.data || res;
       setUnlockModalVisible(false);
       setUnlockPassword('');
       if (onFolderUnlocked) {
@@ -123,7 +117,7 @@ const VaultFoldersView = ({ onFolderUnlocked, onOpenTrash, onOpenPasswordVault }
           folder: selectedFolder,
           unlockToken: data.unlockToken || data.token,
           derivedKey: data.derivedKey || data.key,
-          expiresIn: data.expiresIn || 900,
+          expiresIn: data.expiresIn,
         });
       }
     } catch (err) {
@@ -146,11 +140,7 @@ const VaultFoldersView = ({ onFolderUnlocked, onOpenTrash, onOpenPasswordVault }
           style: 'destructive',
           onPress: async () => {
             try {
-              const res = await vaultApi.deleteFolder(folder._id || folder.id);
-              if (res && res.ok === false) {
-                Alert.alert('Error', res.data?.message || res.data?.error || 'Failed to delete folder.');
-                return;
-              }
+              await vaultApi.deleteFolder(folder._id || folder.id);
               fetchFolders();
             } catch (err) {
               console.error('Failed to delete folder:', err);

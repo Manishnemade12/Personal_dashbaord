@@ -86,7 +86,7 @@ export default function VaultTrashView({ username, onBack }) {
       const data = res?.data || res || {};
       setFolders(data.folders || []);
       setFiles(data.files || []);
-      setTotalItems(data.totalItems ?? ((data.folders?.length || 0) + (data.files?.length || 0)));
+      setTotalItems(data.totalItems || (data.folders?.length || 0) + (data.files?.length || 0));
     } catch (err) {
       Alert.alert('Error', err.message || 'Failed to load trash items.');
     } finally {
