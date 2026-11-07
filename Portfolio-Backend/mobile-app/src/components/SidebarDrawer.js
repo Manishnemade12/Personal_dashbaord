@@ -54,6 +54,7 @@ export default function SidebarDrawer({
   const isAiColdEmailActive = currentRoute === 'AiColdEmail';
   const isDashboardActive = currentRoute === 'Dashboard';
   const isStudyActive = currentRoute === 'Study';
+  const isVaultActive = currentRoute === 'Vault';
 
   const [activeDropdown, setActiveDropdown] = useState(() => {
     if (isPortfolioActive) return 'portfolio';
@@ -290,6 +291,38 @@ export default function SidebarDrawer({
                     }}
                   >
                     <Text style={{ fontSize: 10, color: '#6366f1', fontWeight: '700' }}>SSC</Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            {/* 2.6 CipherVault (Encrypted Cloud Storage & Password Vault) */}
+            <TouchableOpacity
+              style={[styles.navItem, isVaultActive && styles.navActive]}
+              onPress={() => handleNav('Vault')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.navRow}>
+                <View style={styles.iconContainer}>
+                  <Ionicons
+                    name="shield-checkmark-outline"
+                    size={20}
+                    color={isVaultActive ? '#ffffff' : '#10b981'}
+                  />
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                  <Text style={[styles.navText, isVaultActive && styles.navTextActive]}>
+                    Vault
+                  </Text>
+                  <View
+                    style={{
+                      backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 10,
+                    }}
+                  >
+                    <Text style={{ fontSize: 10, color: '#10b981', fontWeight: '700' }}>E2E</Text>
                   </View>
                 </View>
               </View>

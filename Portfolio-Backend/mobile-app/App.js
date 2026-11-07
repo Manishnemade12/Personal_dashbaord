@@ -43,6 +43,7 @@ import ProjectApiScreen from './src/screens/api/ProjectApiScreen';
 import AiColdEmailScreen from './src/screens/ai/AiColdEmailScreen';
 import StudyHubScreen from './src/screens/study/StudyHubScreen';
 import StudyWorkspaceScreen from './src/screens/study/StudyWorkspaceScreen';
+import VaultScreen from './src/screens/vault/VaultScreen';
 
 // Calculate safe status bar height for Android to prevent header colliding with notification bar
 const ANDROID_STATUS_BAR_HEIGHT = Platform.OS === 'android' ? Math.max(StatusBar.currentHeight || 0, 36) : 0;
@@ -324,10 +325,23 @@ export default function App() {
       case 'Profile':
         return <ProfileScreen onBack={() => navigate('Dashboard')} />;
 
+      case 'Vault':
+        return <VaultScreen onExitToDashboard={() => navigate('Dashboard')} />;
+
       default:
         return <DashboardScreen onNavigate={navigate} />;
     }
   };
+
+  // Dedicated Isolated CipherVault Workspace:
+  if (currentRoute === 'Vault') {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0b0f19', width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
+        <StatusBar barStyle="light-content" backgroundColor="#0b0f19" />
+        <VaultScreen onExitToDashboard={() => navigate('Dashboard')} />
+      </View>
+    );
+  }
 
   // Dedicated Isolated Study Flow Workspace & Folders Hub:
   // When active, main SidebarDrawer, Header, and SyncStatusBar are completely bypassed

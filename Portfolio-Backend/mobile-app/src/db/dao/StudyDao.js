@@ -2,6 +2,17 @@ import { getDatabase } from '../database';
 import { generateUUID } from '../../utils/uuid';
 import { SyncOutboxDao } from './SyncOutboxDao';
 
+const safeEnqueue = async (...args) => {
+  try {
+    if (typeof SyncOutboxDao?.enqueue === 'function') {
+      return await safeEnqueue(...args);
+    }
+  } catch (e) {
+    console.warn('[StudyDao safeEnqueue warn]', e?.message);
+  }
+  return null;
+};
+
 /**
  * Stable hash for a question (subject-scoped).
  * Uses a fast non-crypto 64-bit style hash on the normalized question text
@@ -269,7 +280,7 @@ export const StudyDao = {
     const formatted = formatFieldRow(inserted);
 
     if (!isSyncPull) {
-      await SyncOutboxDao.enqueue('CREATE', 'study_field', clientId, {
+      await safeEnqueue('CREATE', 'study_field', clientId, {
         name: trimmed,
         code: cleanCode,
         description,
@@ -307,7 +318,7 @@ export const StudyDao = {
     );
 
     if (!isSyncPull) {
-      await SyncOutboxDao.enqueue('UPDATE', 'study_field', target.client_id, {
+      await safeEnqueue('UPDATE', 'study_field', target.client_id, {
         name: newName,
         code: newCode,
         description: newDesc,
@@ -348,7 +359,7 @@ export const StudyDao = {
     );
 
     if (!isSyncPull) {
-      await SyncOutboxDao.enqueue('DELETE', 'study_field', target.client_id, {}, target.server_id);
+      await safeEnqueue('DELETE', 'study_field', target.client_id, {}, target.server_id);
     }
   },
 
@@ -415,7 +426,7 @@ export const StudyDao = {
     const formatted = formatSubjectRow(inserted);
 
     if (!isSyncPull) {
-      await SyncOutboxDao.enqueue('CREATE', 'study_subject', clientId, {
+      await safeEnqueue('CREATE', 'study_subject', clientId, {
         name: trimmed,
         fieldId,
         description,
@@ -451,7 +462,7 @@ export const StudyDao = {
     );
 
     if (!isSyncPull) {
-      await SyncOutboxDao.enqueue('DELETE', 'study_subject', target.client_id, {}, target.server_id);
+      await safeEnqueue('DELETE', 'study_subject', target.client_id, {}, target.server_id);
     }
   },
 
@@ -583,7 +594,7 @@ export const StudyDao = {
       });
 
       if (!isSyncPull) {
-        await SyncOutboxDao.enqueue('CREATE', 'study_quiz_question', qClientId, {
+        await safeEnqueue('CREATE', 'study_quiz_question', qClientId, {
           chunkId: clientId,
           question: q.question,
           type: q.type || 'mcq',
@@ -597,7 +608,7 @@ export const StudyDao = {
     }
 
     if (!isSyncPull) {
-      await SyncOutboxDao.enqueue('CREATE', 'study_chunk', clientId, {
+      await safeEnqueue('CREATE', 'study_chunk', clientId, {
         subjectId,
         parentChunkId,
         title,
@@ -683,7 +694,7 @@ export const StudyDao = {
     await db.runAsync(`UPDATE study_chunks SET ${updates.join(', ')} WHERE client_id = ?`, params);
 
     if (!isSyncPull) {
-      await SyncOutboxDao.enqueue('UPDATE', 'study_chunk', target.client_id, payload, target.server_id);
+      await safeEnqueue('UPDATE', 'study_chunk', target.client_id, payload, target.server_id);
     }
 
     return this.getChunkById(target.client_id);
@@ -707,7 +718,7 @@ export const StudyDao = {
     );
 
     if (!isSyncPull) {
-      await SyncOutboxDao.enqueue('DELETE', 'study_chunk', target.client_id, {}, target.server_id);
+      await safeEnqueue('DELETE', 'study_chunk', target.client_id, {}, target.server_id);
     }
   },
 
@@ -827,7 +838,7 @@ export const StudyDao = {
     );
 
     if (!isSyncPull) {
-      await SyncOutboxDao.enqueue('CREATE', 'study_daily_quiz', clientId, {
+      await safeEnqueue('CREATE', 'study_daily_quiz', clientId, {
         subjectId: quizData.subjectId || quizData.subject_id,
         quizDate: today,
         questions,
@@ -899,7 +910,7 @@ export const StudyDao = {
     );
 
     if (!isSyncPull) {
-      await SyncOutboxDao.enqueue('CREATE', 'study_daily_quiz_attempt', clientId, {
+      await safeEnqueue('CREATE', 'study_daily_quiz_attempt', clientId, {
         dailyQuizId: attemptData.dailyQuizId || attemptData.daily_quiz_id,
         subjectId: attemptData.subjectId || attemptData.subject_id,
         quizDate: attemptData.quizDate || attemptData.quiz_date,
@@ -943,7 +954,7 @@ export const StudyDao = {
               [now, now, now, existing.client_id]
             );
             if (!isSyncPull) {
-              await SyncOutboxDao.enqueue('UPDATE', 'study_weak_question', existing.client_id, {
+              await safeEnqueue('UPDATE', 'study_weak_question', existing.client_id, {
                 timesWrong: existing.times_wrong + 1,
                 mastered: false,
                 lastWrongAt: now,
@@ -965,7 +976,7 @@ export const StudyDao = {
               ]
             );
             if (!isSyncPull) {
-              await SyncOutboxDao.enqueue('CREATE', 'study_weak_question', weakClientId, {
+              await safeEnqueue('CREATE', 'study_weak_question', weakClientId, {
                 subjectId: attemptData.subjectId || attemptData.subject_id,
                 questionHash: qHash,
                 question: q.question,
@@ -1001,7 +1012,7 @@ export const StudyDao = {
               [nextCorrect, isMastered, now, now, existing.client_id]
             );
             if (!isSyncPull) {
-              await SyncOutboxDao.enqueue('UPDATE', 'study_weak_question', existing.client_id, {
+              await safeEnqueue('UPDATE', 'study_weak_question', existing.client_id, {
                 timesCorrect: nextCorrect,
                 mastered: Boolean(isMastered),
                 lastSeenAt: now,
@@ -1072,7 +1083,7 @@ export const StudyDao = {
         [clientId, userId, todayStr, now, now]
       );
       if (!isSyncPull) {
-        await SyncOutboxDao.enqueue('CREATE', 'study_user_streak', clientId, {
+        await safeEnqueue('CREATE', 'study_user_streak', clientId, {
           currentStreak: 1,
           longestStreak: 1,
           lastActiveDate: todayStr,
@@ -1119,7 +1130,7 @@ export const StudyDao = {
     );
 
     if (!isSyncPull) {
-      await SyncOutboxDao.enqueue('UPDATE', 'study_user_streak', row.client_id, {
+      await safeEnqueue('UPDATE', 'study_user_streak', row.client_id, {
         currentStreak: current,
         longestStreak: longest,
         lastActiveDate: todayStr,
@@ -1200,7 +1211,7 @@ export const StudyDao = {
     );
 
     if (!isSyncPull) {
-      await SyncOutboxDao.enqueue('UPDATE', 'study_weak_question', target.client_id, {
+      await safeEnqueue('UPDATE', 'study_weak_question', target.client_id, {
         mastered: true,
         timesCorrect: 99,
       }, target.server_id);
@@ -1224,7 +1235,7 @@ export const StudyDao = {
     );
 
     if (!isSyncPull) {
-      await SyncOutboxDao.enqueue('DELETE', 'study_weak_question', target.client_id, {}, target.server_id);
+      await safeEnqueue('DELETE', 'study_weak_question', target.client_id, {}, target.server_id);
     }
   },
 
@@ -1524,7 +1535,7 @@ export const StudyDao = {
         ]
       );
       if (!isSyncPull) {
-        await SyncOutboxDao.enqueue('CREATE', 'study_daily_quiz_config', clientId, {
+        await safeEnqueue('CREATE', 'study_daily_quiz_config', clientId, {
           ...merged,
           userId,
         });
@@ -1547,7 +1558,7 @@ export const StudyDao = {
         ]
       );
       if (!isSyncPull) {
-        await SyncOutboxDao.enqueue('UPDATE', 'study_daily_quiz_config', existing.client_id, merged, existing.server_id);
+        await safeEnqueue('UPDATE', 'study_daily_quiz_config', existing.client_id, merged, existing.server_id);
       }
     }
 
