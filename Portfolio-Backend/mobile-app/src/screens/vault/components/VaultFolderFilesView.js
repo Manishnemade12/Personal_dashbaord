@@ -9,6 +9,7 @@ import {
   Platform,
   Image,
   Dimensions,
+  PanResponder,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import tw from '../../../utils/tw';
@@ -90,6 +91,8 @@ export default function VaultFolderFilesView({
   // Lightbox / Image Viewer state
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [zoomScale, setZoomScale] = useState(1);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
 
   // Upload & Delete
   const [uploading, setUploading] = useState(false);
@@ -164,7 +167,7 @@ export default function VaultFolderFilesView({
     onLock?.();
   };
 
-  /* ── Background Decrypt Thumbnails for Images ── */
+  /* ── Background Concurrent Decrypt Thumbnails for Images ── */
   useEffect(() => {
     if (!files || files.length === 0 || !unlockToken || !derivedKey) return;
     if (Platform.OS !== 'web') return;
@@ -174,54 +177,62 @@ export default function VaultFolderFilesView({
     const baseUrl = getBaseUrl();
     const folderId = folder.id || folder._id;
 
-    const decryptThumbnails = async () => {
-      const imageFilesList = files.filter((f) => isImageFile(f) && !thumbnails[f.id || f._id]);
+    const decryptSingleImage = async (file) => {
+      const fid = file.id || file._id;
+      if (thumbnailsRef.current[fid]) return; // already decrypted
 
-      for (const file of imageFilesList) {
-        if (cancelled) break;
-        const fid = file.id || file._id;
+      try {
+        setLoadingThumbs((prev) => ({ ...prev, [fid]: true }));
+        const url = `${baseUrl}/folders/${folderId}/files/${fid}/raw`;
+        const resp = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            'x-folder-token': unlockToken,
+          },
+        });
 
-        try {
-          setLoadingThumbs((prev) => ({ ...prev, [fid]: true }));
-          // Fetch raw encrypted blob
-          const url = `${baseUrl}/folders/${folderId}/files/${fid}/raw`;
-          const resp = await fetch(url, {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              'x-folder-token': unlockToken,
-            },
-          });
-
-          if (!resp.ok) {
-            setLoadingThumbs((prev) => ({ ...prev, [fid]: false }));
-            continue;
-          }
-
-          const encBuffer = await resp.arrayBuffer();
-          if (cancelled) break;
-
-          const plainBuffer = await vaultCrypto.decryptBuffer(
-            encBuffer,
-            derivedKey,
-            file.iv,
-            file.authTag,
-          );
-
-          if (cancelled) break;
-
-          const blob = new Blob([plainBuffer], { type: file.mimeType || 'image/jpeg' });
-          const blobUrl = URL.createObjectURL(blob);
-
-          setThumbnails((prev) => ({ ...prev, [fid]: blobUrl }));
-        } catch (e) {
-          // Decryption failed or cancelled
-        } finally {
+        if (!resp.ok) {
           setLoadingThumbs((prev) => ({ ...prev, [fid]: false }));
+          return;
         }
+
+        const encBuffer = await resp.arrayBuffer();
+        if (cancelled) return;
+
+        const plainBuffer = await vaultCrypto.decryptBuffer(
+          encBuffer,
+          derivedKey,
+          file.iv,
+          file.authTag,
+        );
+
+        if (cancelled) return;
+
+        const blob = new Blob([plainBuffer], { type: file.mimeType || 'image/jpeg' });
+        const blobUrl = URL.createObjectURL(blob);
+
+        setThumbnails((prev) => ({ ...prev, [fid]: blobUrl }));
+      } catch (e) {
+        // Ignore single image failure
+      } finally {
+        setLoadingThumbs((prev) => ({ ...prev, [fid]: false }));
       }
     };
 
-    decryptThumbnails();
+    const decryptAllThumbnails = async () => {
+      const imageFilesList = files.filter((f) => isImageFile(f) && !thumbnailsRef.current[f.id || f._id]);
+      if (imageFilesList.length === 0) return;
+
+      // Parallel batch execution with chunk size of 6 concurrent requests
+      const CHUNK_SIZE = 6;
+      for (let i = 0; i < imageFilesList.length; i += CHUNK_SIZE) {
+        if (cancelled) break;
+        const chunk = imageFilesList.slice(i, i + CHUNK_SIZE);
+        await Promise.allSettled(chunk.map((f) => decryptSingleImage(f)));
+      }
+    };
+
+    decryptAllThumbnails();
 
     return () => {
       cancelled = true;
@@ -235,9 +246,74 @@ export default function VaultFolderFilesView({
     const idx = imageFiles.findIndex((f) => (f.id || f._id) === (file.id || file._id));
     if (idx !== -1) {
       setViewerIndex(idx);
+      setZoomScale(1);
+      setPanPosition({ x: 0, y: 0 });
       setViewerOpen(true);
     }
   };
+
+  // Keyboard navigation & Esc in Lightbox
+  useEffect(() => {
+    if (!viewerOpen || Platform.OS !== 'web') return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowRight') {
+        setViewerIndex((prev) => Math.min(imageFiles.length - 1, prev + 1));
+        setZoomScale(1);
+        setPanPosition({ x: 0, y: 0 });
+      } else if (e.key === 'ArrowLeft') {
+        setViewerIndex((prev) => Math.max(0, prev - 1));
+        setZoomScale(1);
+        setPanPosition({ x: 0, y: 0 });
+      } else if (e.key === 'Escape') {
+        setViewerOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewerOpen, imageFiles.length]);
+
+  // Touch Swipe & Drag PanResponder for Lightbox
+  const panResponder = useMemo(() => {
+    let startX = 0;
+    let startY = 0;
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10;
+      },
+      onPanResponderGrant: (_, gestureState) => {
+        startX = gestureState.x0;
+        startY = gestureState.y0;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (zoomScale > 1) {
+          // Pan when zoomed in
+          setPanPosition((prev) => ({
+            x: prev.x + gestureState.vx * 15,
+            y: prev.y + gestureState.vy * 15,
+          }));
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (zoomScale <= 1) {
+          // Horizontal swipe threshold: 40px
+          if (gestureState.dx < -40) {
+            // Swipe Left -> Next
+            setViewerIndex((prev) => Math.min(imageFiles.length - 1, prev + 1));
+            setZoomScale(1);
+            setPanPosition({ x: 0, y: 0 });
+          } else if (gestureState.dx > 40) {
+            // Swipe Right -> Prev
+            setViewerIndex((prev) => Math.max(0, prev - 1));
+            setZoomScale(1);
+            setPanPosition({ x: 0, y: 0 });
+          }
+        }
+      },
+    });
+  }, [zoomScale, imageFiles.length]);
 
   /* ── Download ── */
   const handleDownload = async (file) => {
@@ -672,11 +748,44 @@ export default function VaultFolderFilesView({
               </Text>
             </View>
 
+            {/* Viewer action controls: Zoom in/out, Download, Close */}
             <View style={tw`flex-row items-center gap-2`}>
+              <TouchableOpacity
+                onPress={() => {
+                  setZoomScale((prev) => Math.max(1, prev - 0.5));
+                  if (zoomScale <= 1.5) setPanPosition({ x: 0, y: 0 });
+                }}
+                style={tw`p-2 rounded-lg bg-white/10`}
+                title="Zoom Out"
+              >
+                <Ionicons name="remove-circle-outline" size={18} color="#ffffff" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setZoomScale((prev) => (prev === 1 ? 2 : 1));
+                  setPanPosition({ x: 0, y: 0 });
+                }}
+                style={tw`px-2.5 py-1.5 rounded-lg bg-white/10`}
+                title="Toggle Zoom"
+              >
+                <Text style={tw`text-white text-xs font-bold`}>{zoomScale.toFixed(1)}x</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setZoomScale((prev) => Math.min(3.5, prev + 0.5));
+                }}
+                style={tw`p-2 rounded-lg bg-white/10`}
+                title="Zoom In"
+              >
+                <Ionicons name="add-circle-outline" size={18} color="#ffffff" />
+              </TouchableOpacity>
+
               {currentViewerImage ? (
                 <TouchableOpacity
                   onPress={() => handleDownload(currentViewerImage)}
-                  style={tw`p-2 rounded-lg bg-white/10`}
+                  style={tw`p-2 rounded-lg bg-white/10 ml-1`}
                   title="Download"
                 >
                   <Ionicons name="download-outline" size={18} color="#ffffff" />
@@ -684,7 +793,11 @@ export default function VaultFolderFilesView({
               ) : null}
 
               <TouchableOpacity
-                onPress={() => setViewerOpen(false)}
+                onPress={() => {
+                  setViewerOpen(false);
+                  setZoomScale(1);
+                  setPanPosition({ x: 0, y: 0 });
+                }}
                 style={tw`p-2 rounded-lg bg-white/10`}
                 title="Close"
               >
@@ -693,30 +806,51 @@ export default function VaultFolderFilesView({
             </View>
           </View>
 
-          {/* Central Image with Previous / Next Arrows */}
-          <View style={tw`flex-1 items-center justify-center relative p-2`}>
+          {/* Central Image with PanResponder Swipe & Zoom Container */}
+          <View
+            style={tw`flex-1 items-center justify-center relative p-2 overflow-hidden`}
+            {...panResponder.panHandlers}
+          >
             {/* Prev button */}
             {imageFiles.length > 1 && viewerIndex > 0 ? (
               <TouchableOpacity
-                onPress={() => setViewerIndex((prev) => Math.max(0, prev - 1))}
+                onPress={() => {
+                  setViewerIndex((prev) => Math.max(0, prev - 1));
+                  setZoomScale(1);
+                  setPanPosition({ x: 0, y: 0 });
+                }}
                 style={tw`absolute left-3 z-30 p-2.5 rounded-full bg-black/60 border border-white/20`}
               >
                 <Ionicons name="chevron-back" size={22} color="#ffffff" />
               </TouchableOpacity>
             ) : null}
 
-            {/* The Image */}
+            {/* The Image with dynamic scale & pan */}
             {currentViewerUrl ? (
-              <Image
-                source={{ uri: currentViewerUrl }}
+              <View
                 style={{
                   width: '95%',
-                  height: '80%',
-                  maxWidth: 900,
-                  maxHeight: Dimensions.get('window').height * 0.75,
+                  height: '85%',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transform: [
+                    { scale: zoomScale },
+                    { translateX: panPosition.x },
+                    { translateY: panPosition.y },
+                  ],
                 }}
-                resizeMode="contain"
-              />
+              >
+                <Image
+                  source={{ uri: currentViewerUrl }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    maxWidth: 1000,
+                    maxHeight: Dimensions.get('window').height * 0.8,
+                  }}
+                  resizeMode="contain"
+                />
+              </View>
             ) : (
               <View style={tw`items-center justify-center p-8`}>
                 <ActivityIndicator size="large" color="#6366f1" />
@@ -727,7 +861,11 @@ export default function VaultFolderFilesView({
             {/* Next button */}
             {imageFiles.length > 1 && viewerIndex < imageFiles.length - 1 ? (
               <TouchableOpacity
-                onPress={() => setViewerIndex((prev) => Math.min(imageFiles.length - 1, prev + 1))}
+                onPress={() => {
+                  setViewerIndex((prev) => Math.min(imageFiles.length - 1, prev + 1));
+                  setZoomScale(1);
+                  setPanPosition({ x: 0, y: 0 });
+                }}
                 style={tw`absolute right-3 z-30 p-2.5 rounded-full bg-black/60 border border-white/20`}
               >
                 <Ionicons name="chevron-forward" size={22} color="#ffffff" />
@@ -736,9 +874,12 @@ export default function VaultFolderFilesView({
           </View>
 
           {/* Bottom metadata */}
-          <View style={tw`p-4 items-center`}>
+          <View style={tw`p-3 items-center flex-row justify-between px-5`}>
             <Text style={tw`text-gray-400 text-xs`}>
-              Uploaded {formatDate(currentViewerImage?.uploadedAt)} • AES-256-GCM Decrypted
+              Swipe left / right to change • Pinch or tap zoom to inspect
+            </Text>
+            <Text style={tw`text-gray-500 text-xs`}>
+              Uploaded {formatDate(currentViewerImage?.uploadedAt)}
             </Text>
           </View>
         </View>
