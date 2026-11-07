@@ -734,7 +734,8 @@ function SetupModal({ visible, onClose, onSuccess }) {
     try {
       const res = await vaultApi.verifyPasswordVaultSetup(code);
       if (res.ok) {
-        const token = res.data.sessionToken || res.data.token;
+        const token =
+          res.data?.vaultSessionToken || res.data?.sessionToken || res.data?.token;
         if (token) onSuccess(token);
         else setError('Setup verified but no session token received.');
       } else {
@@ -890,7 +891,8 @@ function UnlockModal({ visible, onClose, onSuccess }) {
     try {
       const res = await vaultApi.unlockPasswordVault(password, code);
       if (res.ok) {
-        const token = res.data.sessionToken || res.data.token;
+        const token =
+          res.data?.vaultSessionToken || res.data?.sessionToken || res.data?.token;
         if (token) onSuccess(token);
         else setError('Unlock succeeded but no session token received.');
       } else {

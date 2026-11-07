@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,13 @@ import {
   Modal,
   ActivityIndicator,
   Platform,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import tw from '../../../utils/tw';
-import { vaultApi } from '../../../services/vault/vaultApi';
-
-/* ───── Helpers ───── */
+import { vaultApi, getAuthToken, getBaseUrl } from '../../../services/vault/vaultApi';
+import { vaultCrypto } from '../../../services/vault/vaultCrypto';
 
 function formatBytes(bytes) {
   if (bytes == null || isNaN(bytes)) return '0 B';
@@ -21,22 +22,18 @@ function formatBytes(bytes) {
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   const idx = Math.min(i, units.length - 1);
   const value = bytes / Math.pow(1024, idx);
-  return `${value < 10 ? value.toFixed(2) : value < 100 ? value.toFixed(1) : Math.round(value)} ${units[idx]}`;
+  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[idx]}`;
 }
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const day = d.getDate();
-  const month = months[d.getMonth()];
-  const year = d.getFullYear();
-  const hours = d.getHours();
-  const mins = d.getMinutes().toString().padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  const h12 = hours % 12 || 12;
-  return `${month} ${day}, ${year} · ${h12}:${mins} ${ampm}`;
+  return d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function formatCountdown(seconds) {
@@ -45,26 +42,32 @@ function formatCountdown(seconds) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-function getFileIcon(mimeType) {
-  if (!mimeType) return { name: 'document-outline', color: '#94a3b8' };
-  if (mimeType.startsWith('image/')) return { name: 'image-outline', color: '#6366f1' };
-  if (mimeType.startsWith('video/')) return { name: 'videocam-outline', color: '#f43f5e' };
-  if (mimeType.startsWith('audio/')) return { name: 'musical-notes-outline', color: '#f59e0b' };
-  if (mimeType.includes('pdf')) return { name: 'document-text-outline', color: '#ef4444' };
-  if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar') || mimeType.includes('gzip') || mimeType.includes('compress') || mimeType.includes('archive'))
-    return { name: 'archive-outline', color: '#f59e0b' };
-  if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || mimeType.includes('csv'))
-    return { name: 'grid-outline', color: '#10b981' };
-  if (mimeType.includes('presentation') || mimeType.includes('powerpoint'))
-    return { name: 'easel-outline', color: '#f97316' };
-  if (mimeType.includes('word') || mimeType.includes('document') || mimeType.startsWith('text/'))
-    return { name: 'document-text-outline', color: '#3b82f6' };
-  if (mimeType.includes('json') || mimeType.includes('javascript') || mimeType.includes('xml'))
-    return { name: 'code-slash-outline', color: '#8b5cf6' };
-  return { name: 'document-outline', color: '#94a3b8' };
+function isImageFile(file) {
+  const name = file?.originalName || '';
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  const mime = (file?.mimeType || '').toLowerCase();
+  return (
+    ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'avif'].includes(ext) ||
+    mime.startsWith('image/')
+  );
 }
 
-/* ───── Component ───── */
+function isVideoFile(file) {
+  const name = file?.originalName || '';
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  const mime = (file?.mimeType || '').toLowerCase();
+  return ['mp4', 'webm', 'mov', 'mkv', 'avi'].includes(ext) || mime.startsWith('video/');
+}
+
+function getFileBadge(file) {
+  const ext = (file?.originalName || '').split('.').pop()?.toUpperCase() || 'FILE';
+  if (isImageFile(file)) return { label: ext, color: '#6366f1', bg: 'rgba(99,102,241,0.15)' };
+  if (isVideoFile(file)) return { label: ext, color: '#f43f5e', bg: 'rgba(244,63,94,0.15)' };
+  if (file?.mimeType?.includes('pdf')) return { label: 'PDF', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' };
+  if (file?.mimeType?.includes('zip') || file?.mimeType?.includes('archive'))
+    return { label: 'ZIP', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' };
+  return { label: ext.slice(0, 4), color: '#38bdf8', bg: 'rgba(56,189,248,0.15)' };
+}
 
 export default function VaultFolderFilesView({
   folder,
@@ -77,25 +80,52 @@ export default function VaultFolderFilesView({
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [countdown, setCountdown] = useState(expiresIn || 300);
+  const [countdown, setCountdown] = useState(expiresIn || 900);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+
+  // Decrypted thumbnails cache: { [fileId]: objectUrl }
+  const [thumbnails, setThumbnails] = useState({});
+  const [loadingThumbs, setLoadingThumbs] = useState({});
+
+  // Lightbox / Image Viewer state
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+
+  // Upload & Delete
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [deleteModal, setDeleteModal] = useState(null); // file obj or null
+  const [deleteModal, setDeleteModal] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
-  const [lockingFolder, setLockingFolder] = useState(false);
 
   const fileInputRef = useRef(null);
   const countdownRef = useRef(null);
+  const thumbnailsRef = useRef({});
+
+  // Synchronize ref for cleanup
+  useEffect(() => {
+    thumbnailsRef.current = thumbnails;
+  }, [thumbnails]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(thumbnailsRef.current).forEach((url) => {
+        if (typeof url === 'string' && url.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(url);
+          } catch (_) {}
+        }
+      });
+    };
+  }, []);
 
   /* ── Load files ── */
   const loadFiles = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await vaultApi.getFilesInFolder(folder.id, unlockToken);
+      const res = await vaultApi.getFilesInFolder(folder.id || folder._id, unlockToken);
       if (res.ok) {
-        setFiles(res.data.files || res.data || []);
+        setFiles(res.data?.files || res.data || []);
       } else {
         setError(res.data?.error || 'Failed to load files');
       }
@@ -104,15 +134,15 @@ export default function VaultFolderFilesView({
     } finally {
       setLoading(false);
     }
-  }, [folder.id, unlockToken]);
+  }, [folder.id, folder._id, unlockToken]);
 
   useEffect(() => {
     loadFiles();
   }, [loadFiles]);
 
-  /* ── Countdown timer ── */
+  /* ── Auto-lock timer ── */
   useEffect(() => {
-    setCountdown(expiresIn || 300);
+    setCountdown(expiresIn || 900);
     countdownRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -124,373 +154,628 @@ export default function VaultFolderFilesView({
       });
     }, 1000);
     return () => clearInterval(countdownRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expiresIn]);
 
-  /* ── Lock folder ── */
-  const handleLock = async (isAuto = false) => {
-    setLockingFolder(true);
+  const handleLock = async () => {
     try {
-      await vaultApi.lockFolder(folder.id, unlockToken);
-    } catch (_) {
-      // silent – folder may already be locked
-    } finally {
-      setLockingFolder(false);
-      clearInterval(countdownRef.current);
-      onLock?.();
-    }
+      await vaultApi.lockFolder(folder.id || folder._id, unlockToken);
+    } catch (_) {}
+    clearInterval(countdownRef.current);
+    onLock?.();
   };
 
-  /* ── Upload (web) ── */
-  const handleUploadPress = () => {
-    if (Platform.OS === 'web' && fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
+  /* ── Background Decrypt Thumbnails for Images ── */
+  useEffect(() => {
+    if (!files || files.length === 0 || !unlockToken || !derivedKey) return;
+    if (Platform.OS !== 'web') return;
 
-  const handleFileSelected = async (e) => {
-    const file = e?.target?.files?.[0];
-    if (!file) return;
+    let cancelled = false;
+    const authToken = getAuthToken();
+    const baseUrl = getBaseUrl();
+    const folderId = folder.id || folder._id;
 
-    setUploading(true);
-    setUploadProgress(0);
-    setError('');
+    const decryptThumbnails = async () => {
+      const imageFilesList = files.filter((f) => isImageFile(f) && !thumbnails[f.id || f._id]);
 
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
+      for (const file of imageFilesList) {
+        if (cancelled) break;
+        const fid = file.id || file._id;
 
-      // Simulate progress since fetch doesn't support progress natively
-      const progressInterval = setInterval(() => {
-        setUploadProgress((prev) => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
+        try {
+          setLoadingThumbs((prev) => ({ ...prev, [fid]: true }));
+          // Fetch raw encrypted blob
+          const url = `${baseUrl}/folders/${folderId}/files/${fid}/raw`;
+          const resp = await fetch(url, {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              'x-folder-token': unlockToken,
+            },
+          });
+
+          if (!resp.ok) {
+            setLoadingThumbs((prev) => ({ ...prev, [fid]: false }));
+            continue;
           }
-          return prev + 10;
-        });
-      }, 300);
 
-      const res = await vaultApi.uploadFileFormData(folder.id, formData, unlockToken);
+          const encBuffer = await resp.arrayBuffer();
+          if (cancelled) break;
 
-      clearInterval(progressInterval);
-      setUploadProgress(100);
+          const plainBuffer = await vaultCrypto.decryptBuffer(
+            encBuffer,
+            derivedKey,
+            file.iv,
+            file.authTag,
+          );
 
-      if (res.ok) {
-        await loadFiles();
-      } else {
-        setError(res.data?.error || 'Upload failed');
+          if (cancelled) break;
+
+          const blob = new Blob([plainBuffer], { type: file.mimeType || 'image/jpeg' });
+          const blobUrl = URL.createObjectURL(blob);
+
+          setThumbnails((prev) => ({ ...prev, [fid]: blobUrl }));
+        } catch (e) {
+          // Decryption failed or cancelled
+        } finally {
+          setLoadingThumbs((prev) => ({ ...prev, [fid]: false }));
+        }
       }
-    } catch (err) {
-      setError(err.message || 'Upload failed');
-    } finally {
-      setUploading(false);
-      setUploadProgress(0);
-      // Reset the file input so the same file can be re-selected
-      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    decryptThumbnails();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [files, unlockToken, derivedKey, folder.id, folder._id]);
+
+  /* ── Filter images for viewer ── */
+  const imageFiles = useMemo(() => files.filter(isImageFile), [files]);
+
+  const openLightbox = (file) => {
+    const idx = imageFiles.findIndex((f) => (f.id || f._id) === (file.id || file._id));
+    if (idx !== -1) {
+      setViewerIndex(idx);
+      setViewerOpen(true);
     }
   };
 
   /* ── Download ── */
   const handleDownload = async (file) => {
-    setDownloadingId(file.id || file._id);
-    setError('');
+    const fid = file.id || file._id;
+    const folderId = folder.id || folder._id;
+    setDownloadingId(fid);
     try {
-      const res = await vaultApi.getDownloadToken(folder.id, file.id || file._id, unlockToken);
-      if (!res.ok) {
-        setError(res.data?.error || 'Failed to get download token');
+      const thumbUrl = thumbnails[fid];
+      if (Platform.OS === 'web' && thumbUrl) {
+        const a = document.createElement('a');
+        a.href = thumbUrl;
+        a.download = file.originalName || 'file';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
         return;
       }
 
-      const downloadToken = res.data.downloadToken || res.data.token;
-      const baseUrl = (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_VAULT_API_URL) || 'http://localhost:3000';
-      const downloadUrl = `${baseUrl.replace(/\/+$/, '')}/folders/${folder.id}/files/${file.id || file._id}/download?token=${downloadToken}`;
-
-      if (Platform.OS === 'web') {
-        window.open(downloadUrl, '_blank');
+      // Download via token
+      const res = await vaultApi.getDownloadToken(folderId, fid, unlockToken);
+      if (res.ok) {
+        const token = res.data?.downloadToken || res.data?.token || unlockToken;
+        const baseUrl = getBaseUrl();
+        const url = `${baseUrl}/folders/${folderId}/files/${fid}/download?token=${token}&download=1`;
+        if (Platform.OS === 'web') {
+          window.open(url, '_blank');
+        }
       }
-    } catch (err) {
-      setError(err.message || 'Download failed');
+    } catch (_) {
+      setError('Download failed.');
     } finally {
       setDownloadingId(null);
     }
   };
 
   /* ── Delete ── */
-  const handleDelete = async () => {
+  const confirmDelete = async () => {
     if (!deleteModal) return;
     setDeleting(true);
-    setError('');
+    const fid = deleteModal.id || deleteModal._id;
     try {
-      const fileId = deleteModal.id || deleteModal._id;
-      const res = await vaultApi.deleteFile(fileId, unlockToken);
+      const res = await vaultApi.deleteFile(fid, unlockToken);
       if (res.ok) {
-        setFiles((prev) => prev.filter((f) => (f.id || f._id) !== fileId));
+        setFiles((prev) => prev.filter((f) => (f.id || f._id) !== fid));
         setDeleteModal(null);
       } else {
-        setError(res.data?.error || 'Delete failed');
+        setError(res.data?.error || 'Failed to delete file.');
       }
-    } catch (err) {
-      setError(err.message || 'Delete failed');
+    } catch (e) {
+      setError(e.message || 'Error deleting file.');
     } finally {
       setDeleting(false);
     }
   };
 
-  /* ── Countdown color ── */
-  const countdownColor =
-    countdown <= 30 ? '#f43f5e' : countdown <= 60 ? '#f59e0b' : '#10b981';
+  /* ── Upload ── */
+  const handleUploadPress = () => {
+    if (Platform.OS === 'web' && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
-  /* ──────────── Render ──────────── */
+  const handleFileChange = async (e) => {
+    const picked = e?.target?.files?.[0];
+    if (!picked) return;
+    setUploading(true);
+    setError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', picked);
+
+      const res = await vaultApi.uploadFileFormData(folder.id || folder._id, formData, unlockToken);
+      if (res.ok) {
+        await loadFiles();
+      } else {
+        setError(res.data?.error || res.data?.message || 'Upload failed.');
+      }
+    } catch (err) {
+      setError(err.message || 'Upload failed.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const currentViewerImage = imageFiles[viewerIndex] || null;
+  const currentViewerUrl = currentViewerImage ? thumbnails[currentViewerImage.id || currentViewerImage._id] : null;
+
   return (
     <View style={tw`flex-1 bg-vault-bg`}>
-      {/* ── Header ── */}
-      <View style={tw`flex-row items-center justify-between px-4 pt-4 pb-3`}>
-        <View style={tw`flex-row items-center flex-1 mr-3`}>
+      {/* Hidden file input for web */}
+      {Platform.OS === 'web' && (
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+        />
+      )}
+
+      {/* ── Top Bar ── */}
+      <View style={tw`flex-row items-center justify-between px-4 py-3 border-b border-vault-border bg-vault-card`}>
+        <View style={tw`flex-row items-center flex-1 mr-2`}>
           <TouchableOpacity
             onPress={onBack}
-            style={tw`p-2 rounded-full bg-vault-card mr-3`}
-            accessibilityLabel="Go back"
+            style={tw`p-1.5 rounded-lg bg-vault-surface border border-vault-border mr-2.5`}
+            activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={20} color="#f8fafc" />
+            <Ionicons name="arrow-back" size={18} color="#94a3b8" />
           </TouchableOpacity>
-          <View style={tw`flex-1`}>
-            <Text
-              style={tw`text-txt-primary text-lg font-bold`}
-              numberOfLines={1}
-            >
+          <View>
+            <Text style={tw`text-txt-primary text-base font-bold`} numberOfLines={1}>
               {folder.name || 'Folder'}
             </Text>
-            <View style={tw`flex-row items-center mt-0.5`}>
-              <Ionicons name="time-outline" size={13} color={countdownColor} />
-              <Text style={[tw`text-xs ml-1 font-medium`, { color: countdownColor }]}>
-                {formatCountdown(countdown)}
+            <View style={tw`flex-row items-center gap-1.5 mt-0.5`}>
+              <Ionicons name="time-outline" size={12} color="#10b981" />
+              <Text style={tw`text-green-400 text-xs font-mono font-medium`}>
+                {formatCountdown(countdown)} remaining
               </Text>
-              <Text style={tw`text-txt-dim text-xs ml-1`}>remaining</Text>
             </View>
           </View>
         </View>
 
-        <TouchableOpacity
-          onPress={() => handleLock(false)}
-          disabled={lockingFolder}
-          style={tw`flex-row items-center px-3 py-2 rounded-lg bg-accent-danger/15`}
-        >
-          {lockingFolder ? (
-            <ActivityIndicator size="small" color="#f43f5e" />
-          ) : (
-            <>
-              <Ionicons name="lock-closed" size={16} color="#f43f5e" />
-              <Text style={tw`text-accent-danger text-sm font-semibold ml-1.5`}>
-                Lock
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
+        {/* View Toggle & Actions */}
+        <View style={tw`flex-row items-center gap-2`}>
+          {/* Grid / List toggle */}
+          <View style={tw`flex-row bg-vault-surface rounded-lg border border-vault-border p-0.5`}>
+            <TouchableOpacity
+              onPress={() => setViewMode('grid')}
+              style={tw`p-1.5 rounded-md ${viewMode === 'grid' ? 'bg-indigo-600' : ''}`}
+            >
+              <Ionicons name="grid-outline" size={14} color={viewMode === 'grid' ? '#ffffff' : '#94a3b8'} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setViewMode('list')}
+              style={tw`p-1.5 rounded-md ${viewMode === 'list' ? 'bg-indigo-600' : ''}`}
+            >
+              <Ionicons name="list-outline" size={14} color={viewMode === 'list' ? '#ffffff' : '#94a3b8'} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Upload Button */}
+          <TouchableOpacity
+            onPress={handleUploadPress}
+            disabled={uploading}
+            style={tw`flex-row items-center bg-indigo-600 px-3 py-1.5 rounded-lg gap-1.5`}
+            activeOpacity={0.7}
+          >
+            {uploading ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <>
+                <Ionicons name="cloud-upload-outline" size={14} color="#ffffff" />
+                <Text style={tw`text-white text-xs font-bold`}>Upload</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Lock Button */}
+          <TouchableOpacity
+            onPress={handleLock}
+            style={tw`p-2 rounded-lg bg-red-950/40 border border-red-800/60`}
+            activeOpacity={0.7}
+            title="Lock Folder"
+          >
+            <Ionicons name="lock-closed" size={14} color="#f43f5e" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* ── Error banner ── */}
+      {/* ── Error Banner ── */}
       {error ? (
-        <View style={tw`mx-4 mb-2 p-3 rounded-lg bg-accent-danger/15 flex-row items-center`}>
-          <Ionicons name="alert-circle" size={18} color="#f43f5e" />
-          <Text style={tw`text-accent-danger text-sm ml-2 flex-1`}>{error}</Text>
+        <View style={tw`mx-4 mt-3 p-3 rounded-xl bg-red-950/40 border border-red-800/80 flex-row items-center gap-2`}>
+          <Ionicons name="alert-circle" size={16} color="#f43f5e" />
+          <Text style={tw`text-red-300 text-xs flex-1`}>{error}</Text>
           <TouchableOpacity onPress={() => setError('')}>
-            <Ionicons name="close" size={18} color="#f43f5e" />
+            <Ionicons name="close" size={14} color="#f43f5e" />
           </TouchableOpacity>
         </View>
       ) : null}
 
-      {/* ── Upload progress ── */}
-      {uploading && (
-        <View style={tw`mx-4 mb-2 p-3 rounded-lg bg-vault-card`}>
-          <View style={tw`flex-row items-center mb-2`}>
-            <ActivityIndicator size="small" color="#6366f1" />
-            <Text style={tw`text-txt-secondary text-sm ml-2`}>
-              Uploading… {uploadProgress}%
-            </Text>
-          </View>
-          <View style={tw`h-1.5 rounded-full bg-vault-border overflow-hidden`}>
-            <View
-              style={[
-                tw`h-1.5 rounded-full bg-accent-primary`,
-                { width: `${uploadProgress}%` },
-              ]}
-            />
-          </View>
+      {/* ── Content View ── */}
+      {loading ? (
+        <View style={tw`flex-1 items-center justify-center p-8`}>
+          <ActivityIndicator size="large" color="#6366f1" />
+          <Text style={tw`text-txt-muted text-xs mt-3`}>Decrypting folder contents...</Text>
         </View>
-      )}
+      ) : files.length === 0 ? (
+        <View style={tw`flex-1 items-center justify-center p-8`}>
+          <View style={tw`w-16 h-16 rounded-2xl bg-vault-card border border-vault-border items-center justify-center mb-3`}>
+            <Ionicons name="images-outline" size={28} color="#64748b" />
+          </View>
+          <Text style={tw`text-txt-primary text-base font-bold mb-1`}>No files in this vault</Text>
+          <Text style={tw`text-txt-muted text-xs text-center max-w-xs mb-4`}>
+            Upload photos, documents, or media to protect them with end-to-end encryption.
+          </Text>
+          <TouchableOpacity
+            onPress={handleUploadPress}
+            style={tw`bg-indigo-600 px-4 py-2.5 rounded-xl flex-row items-center gap-2`}
+          >
+            <Ionicons name="cloud-upload" size={16} color="#ffffff" />
+            <Text style={tw`text-white text-xs font-bold`}>Upload Files</Text>
+          </TouchableOpacity>
+        </View>
+      ) : viewMode === 'grid' ? (
+        /* ══════════════════════════════════════════════════════════════ */
+        /* GALLERY / PHOTO GRID VIEW                                     */
+        /* ══════════════════════════════════════════════════════════════ */
+        <ScrollView contentContainerStyle={tw`p-3.5 pb-24`} showsVerticalScrollIndicator={false}>
+          <View style={tw`flex-row flex-wrap -mx-1.5`}>
+            {files.map((file) => {
+              const fid = file.id || file._id;
+              const isImg = isImageFile(file);
+              const thumb = thumbnails[fid];
+              const isThumbLoading = loadingThumbs[fid];
+              const badge = getFileBadge(file);
 
-      {/* ── File list ── */}
-      <ScrollView
-        style={tw`flex-1`}
-        contentContainerStyle={tw`px-4 pb-28`}
-        showsVerticalScrollIndicator={false}
-      >
-        {loading ? (
-          <View style={tw`items-center justify-center py-20`}>
-            <ActivityIndicator size="large" color="#6366f1" />
-            <Text style={tw`text-txt-muted text-sm mt-3`}>Loading files…</Text>
-          </View>
-        ) : files.length === 0 ? (
-          /* ── Empty state ── */
-          <View style={tw`items-center justify-center py-20 px-6`}>
-            <View style={tw`w-20 h-20 rounded-full bg-vault-card items-center justify-center mb-4`}>
-              <Ionicons name="cloud-upload-outline" size={40} color="#64748b" />
-            </View>
-            <Text style={tw`text-txt-secondary text-base font-semibold text-center mb-2`}>
-              No files in this folder
-            </Text>
-            <Text style={tw`text-txt-dim text-sm text-center`}>
-              Upload your first encrypted file.
-            </Text>
-          </View>
-        ) : (
-          files.map((file) => {
-            const fid = file.id || file._id;
-            const icon = getFileIcon(file.mimeType || file.contentType);
-            const isDownloading = downloadingId === fid;
-            return (
-              <View
-                key={fid}
-                style={tw`bg-vault-card rounded-xl p-4 mb-3 border border-vault-border`}
-              >
-                <View style={tw`flex-row items-center`}>
-                  {/* Icon */}
+              return (
+                <View
+                  key={fid}
+                  style={[
+                    tw`p-1.5`,
+                    {
+                      width:
+                        Platform.OS === 'web' && typeof window !== 'undefined' && window.innerWidth >= 900
+                          ? '25%'
+                          : Platform.OS === 'web' && typeof window !== 'undefined' && window.innerWidth >= 600
+                          ? '33.33%'
+                          : '50%',
+                    },
+                  ]}
+                >
                   <View
-                    style={[
-                      tw`w-11 h-11 rounded-lg items-center justify-center mr-3`,
-                      { backgroundColor: icon.color + '20' },
-                    ]}
+                    style={tw`bg-vault-card border border-vault-border rounded-xl overflow-hidden shadow-lg`}
                   >
-                    <Ionicons name={icon.name} size={22} color={icon.color} />
-                  </View>
-
-                  {/* File info */}
-                  <View style={tw`flex-1 mr-2`}>
-                    <Text
-                      style={tw`text-txt-primary text-sm font-semibold`}
-                      numberOfLines={1}
+                    {/* Thumbnail / Image Container */}
+                    <TouchableOpacity
+                      activeOpacity={isImg ? 0.85 : 0.95}
+                      onPress={() => (isImg ? openLightbox(file) : handleDownload(file))}
+                      style={[tw`w-full bg-vault-surface relative items-center justify-center`, { height: 135 }]}
                     >
-                      {file.originalName || file.filename || 'Untitled'}
-                    </Text>
-                    <View style={tw`flex-row items-center mt-1`}>
-                      <Text style={tw`text-txt-dim text-xs`}>
-                        {formatBytes(file.size || file.fileSize)}
-                      </Text>
-                      {(file.createdAt || file.uploadedAt) ? (
-                        <>
-                          <Text style={tw`text-txt-dim text-xs mx-1`}>·</Text>
-                          <Text style={tw`text-txt-dim text-xs`}>
-                            {formatDate(file.createdAt || file.uploadedAt)}
-                          </Text>
-                        </>
+                      {/* Badge in top left */}
+                      <View
+                        style={[
+                          tw`absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded-md`,
+                          { backgroundColor: badge.bg },
+                        ]}
+                      >
+                        <Text style={[tw`text-[10px] font-bold`, { color: badge.color }]}>{badge.label}</Text>
+                      </View>
+
+                      {/* Image Preview / Icon fallback */}
+                      {isImg && thumb ? (
+                        <Image
+                          source={{ uri: thumb }}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="cover"
+                        />
+                      ) : isThumbLoading ? (
+                        <View style={tw`items-center justify-center gap-1`}>
+                          <ActivityIndicator size="small" color="#6366f1" />
+                          <Text style={tw`text-txt-dim text-[10px]`}>Decrypting...</Text>
+                        </View>
+                      ) : (
+                        <View style={tw`items-center justify-center p-4`}>
+                          <Ionicons
+                            name={isImg ? 'image-outline' : isVideoFile(file) ? 'videocam-outline' : 'document-outline'}
+                            size={36}
+                            color="#64748b"
+                          />
+                        </View>
+                      )}
+
+                      {/* Preview Overlay Icon for Images */}
+                      {isImg && thumb ? (
+                        <View style={tw`absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 items-center justify-center`}>
+                          <View style={tw`p-2 rounded-full bg-black/60`}>
+                            <Ionicons name="expand-outline" size={16} color="#ffffff" />
+                          </View>
+                        </View>
                       ) : null}
+                    </TouchableOpacity>
+
+                    {/* Metadata & Actions row */}
+                    <View style={tw`p-2.5 bg-vault-card`}>
+                      <Text
+                        style={tw`text-txt-primary text-xs font-semibold`}
+                        numberOfLines={1}
+                        title={file.originalName}
+                      >
+                        {file.originalName}
+                      </Text>
+
+                      <View style={tw`flex-row items-center justify-between mt-1`}>
+                        <Text style={tw`text-txt-dim text-[11px]`}>{formatBytes(file.sizeBytes)}</Text>
+                        <Text style={tw`text-txt-dim text-[11px]`}>{formatDate(file.uploadedAt)}</Text>
+                      </View>
+
+                      {/* Action buttons (Clean, compact icon buttons) */}
+                      <View style={tw`flex-row items-center justify-end gap-1.5 mt-2 pt-2 border-t border-vault-border`}>
+                        {isImg ? (
+                          <TouchableOpacity
+                            onPress={() => openLightbox(file)}
+                            style={tw`p-1.5 rounded-lg bg-vault-surface border border-vault-border`}
+                            title="Preview"
+                          >
+                            <Ionicons name="eye-outline" size={13} color="#94a3b8" />
+                          </TouchableOpacity>
+                        ) : null}
+
+                        <TouchableOpacity
+                          onPress={() => handleDownload(file)}
+                          disabled={downloadingId === fid}
+                          style={tw`p-1.5 rounded-lg bg-vault-surface border border-vault-border`}
+                          title="Download"
+                        >
+                          {downloadingId === fid ? (
+                            <ActivityIndicator size="small" color="#6366f1" />
+                          ) : (
+                            <Ionicons name="download-outline" size={13} color="#94a3b8" />
+                          )}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          onPress={() => setDeleteModal(file)}
+                          style={tw`p-1.5 rounded-lg bg-red-950/30 border border-red-900/50`}
+                          title="Delete"
+                        >
+                          <Ionicons name="trash-outline" size={13} color="#f43f5e" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
                 </View>
+              );
+            })}
+          </View>
+        </ScrollView>
+      ) : (
+        /* ══════════════════════════════════════════════════════════════ */
+        /* COMPACT LIST VIEW                                             */
+        /* ══════════════════════════════════════════════════════════════ */
+        <ScrollView contentContainerStyle={tw`p-4 pb-24`} showsVerticalScrollIndicator={false}>
+          <View style={tw`bg-vault-card border border-vault-border rounded-xl divide-y divide-vault-border overflow-hidden`}>
+            {files.map((file) => {
+              const fid = file.id || file._id;
+              const isImg = isImageFile(file);
+              const thumb = thumbnails[fid];
+              const badge = getFileBadge(file);
 
-                {/* Action buttons */}
-                <View style={tw`flex-row mt-3 pt-3 border-t border-vault-border`}>
+              return (
+                <View key={fid} style={tw`flex-row items-center p-3 gap-3`}>
+                  {/* Small 44x44 thumbnail or icon */}
                   <TouchableOpacity
-                    onPress={() => handleDownload(file)}
-                    disabled={isDownloading}
-                    style={tw`flex-row items-center flex-1 justify-center py-2 rounded-lg bg-accent-primary/15 mr-2`}
+                    onPress={() => (isImg ? openLightbox(file) : handleDownload(file))}
+                    style={tw`w-11 h-11 rounded-lg bg-vault-surface border border-vault-border overflow-hidden items-center justify-center`}
                   >
-                    {isDownloading ? (
-                      <ActivityIndicator size="small" color="#6366f1" />
+                    {isImg && thumb ? (
+                      <Image source={{ uri: thumb }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                     ) : (
-                      <>
-                        <Ionicons name="download-outline" size={16} color="#6366f1" />
-                        <Text style={tw`text-accent-primary text-sm font-medium ml-1.5`}>
-                          Download
-                        </Text>
-                      </>
+                      <Ionicons
+                        name={isImg ? 'image' : isVideoFile(file) ? 'videocam' : 'document'}
+                        size={20}
+                        color={badge.color}
+                      />
                     )}
                   </TouchableOpacity>
 
-                  <TouchableOpacity
-                    onPress={() => setDeleteModal(file)}
-                    style={tw`flex-row items-center flex-1 justify-center py-2 rounded-lg bg-accent-danger/15`}
-                  >
-                    <Ionicons name="trash-outline" size={16} color="#f43f5e" />
-                    <Text style={tw`text-accent-danger text-sm font-medium ml-1.5`}>
-                      Delete
+                  {/* Title and details */}
+                  <View style={tw`flex-1`}>
+                    <Text style={tw`text-txt-primary text-xs font-semibold`} numberOfLines={1}>
+                      {file.originalName}
                     </Text>
-                  </TouchableOpacity>
+                    <View style={tw`flex-row items-center gap-2 mt-0.5`}>
+                      <Text style={tw`text-txt-dim text-[11px]`}>{formatBytes(file.sizeBytes)}</Text>
+                      <Text style={tw`text-txt-dim text-[11px]`}>•</Text>
+                      <Text style={tw`text-txt-dim text-[11px]`}>{formatDate(file.uploadedAt)}</Text>
+                    </View>
+                  </View>
+
+                  {/* Compact action buttons */}
+                  <View style={tw`flex-row items-center gap-1.5`}>
+                    {isImg ? (
+                      <TouchableOpacity
+                        onPress={() => openLightbox(file)}
+                        style={tw`p-2 rounded-lg bg-vault-surface border border-vault-border`}
+                      >
+                        <Ionicons name="eye-outline" size={14} color="#94a3b8" />
+                      </TouchableOpacity>
+                    ) : null}
+
+                    <TouchableOpacity
+                      onPress={() => handleDownload(file)}
+                      disabled={downloadingId === fid}
+                      style={tw`p-2 rounded-lg bg-vault-surface border border-vault-border`}
+                    >
+                      {downloadingId === fid ? (
+                        <ActivityIndicator size="small" color="#6366f1" />
+                      ) : (
+                        <Ionicons name="download-outline" size={14} color="#94a3b8" />
+                      )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => setDeleteModal(file)}
+                      style={tw`p-2 rounded-lg bg-red-950/40 border border-red-900/60`}
+                    >
+                      <Ionicons name="trash-outline" size={14} color="#f43f5e" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            );
-          })
-        )}
-      </ScrollView>
-
-      {/* ── Upload FAB ── */}
-      <View style={tw`absolute bottom-6 right-5`}>
-        <TouchableOpacity
-          onPress={handleUploadPress}
-          disabled={uploading}
-          style={tw`w-14 h-14 rounded-full bg-accent-primary items-center justify-center shadow-lg`}
-        >
-          {uploading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Ionicons name="add" size={28} color="#fff" />
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* ── Hidden file input (web only) ── */}
-      {Platform.OS === 'web' && (
-        <input
-          ref={fileInputRef}
-          type="file"
-          style={{ display: 'none' }}
-          onChange={handleFileSelected}
-        />
+              );
+            })}
+          </View>
+        </ScrollView>
       )}
 
-      {/* ── Delete confirmation modal ── */}
-      <Modal
-        visible={!!deleteModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => !deleting && setDeleteModal(null)}
-      >
-        <View style={tw`flex-1 bg-black/60 items-center justify-center px-6`}>
-          <View style={tw`bg-vault-card rounded-2xl p-6 w-full max-w-sm border border-vault-border`}>
-            <View style={tw`w-14 h-14 rounded-full bg-accent-danger/15 items-center justify-center self-center mb-4`}>
-              <Ionicons name="trash" size={28} color="#f43f5e" />
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* FULL-SCREEN IMAGE VIEWER / LIGHTBOX MODAL                      */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <Modal visible={viewerOpen} transparent animationType="fade" onRequestClose={() => setViewerOpen(false)}>
+        <View style={tw`flex-1 bg-black/95 justify-between`}>
+          {/* Top Bar of Viewer */}
+          <View style={tw`flex-row items-center justify-between p-4 z-20`}>
+            <View style={tw`flex-1 mr-3`}>
+              <Text style={tw`text-white text-sm font-bold`} numberOfLines={1}>
+                {currentViewerImage?.originalName || 'Image'}
+              </Text>
+              <Text style={tw`text-gray-400 text-xs`}>
+                {viewerIndex + 1} of {imageFiles.length} • {formatBytes(currentViewerImage?.sizeBytes)}
+              </Text>
             </View>
-            <Text style={tw`text-txt-primary text-lg font-bold text-center mb-2`}>
-              Delete File?
+
+            <View style={tw`flex-row items-center gap-2`}>
+              {currentViewerImage ? (
+                <TouchableOpacity
+                  onPress={() => handleDownload(currentViewerImage)}
+                  style={tw`p-2 rounded-lg bg-white/10`}
+                  title="Download"
+                >
+                  <Ionicons name="download-outline" size={18} color="#ffffff" />
+                </TouchableOpacity>
+              ) : null}
+
+              <TouchableOpacity
+                onPress={() => setViewerOpen(false)}
+                style={tw`p-2 rounded-lg bg-white/10`}
+                title="Close"
+              >
+                <Ionicons name="close" size={20} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Central Image with Previous / Next Arrows */}
+          <View style={tw`flex-1 items-center justify-center relative p-2`}>
+            {/* Prev button */}
+            {imageFiles.length > 1 && viewerIndex > 0 ? (
+              <TouchableOpacity
+                onPress={() => setViewerIndex((prev) => Math.max(0, prev - 1))}
+                style={tw`absolute left-3 z-30 p-2.5 rounded-full bg-black/60 border border-white/20`}
+              >
+                <Ionicons name="chevron-back" size={22} color="#ffffff" />
+              </TouchableOpacity>
+            ) : null}
+
+            {/* The Image */}
+            {currentViewerUrl ? (
+              <Image
+                source={{ uri: currentViewerUrl }}
+                style={{
+                  width: '95%',
+                  height: '80%',
+                  maxWidth: 900,
+                  maxHeight: Dimensions.get('window').height * 0.75,
+                }}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={tw`items-center justify-center p-8`}>
+                <ActivityIndicator size="large" color="#6366f1" />
+                <Text style={tw`text-gray-400 text-xs mt-3`}>Decrypting image...</Text>
+              </View>
+            )}
+
+            {/* Next button */}
+            {imageFiles.length > 1 && viewerIndex < imageFiles.length - 1 ? (
+              <TouchableOpacity
+                onPress={() => setViewerIndex((prev) => Math.min(imageFiles.length - 1, prev + 1))}
+                style={tw`absolute right-3 z-30 p-2.5 rounded-full bg-black/60 border border-white/20`}
+              >
+                <Ionicons name="chevron-forward" size={22} color="#ffffff" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {/* Bottom metadata */}
+          <View style={tw`p-4 items-center`}>
+            <Text style={tw`text-gray-400 text-xs`}>
+              Uploaded {formatDate(currentViewerImage?.uploadedAt)} • AES-256-GCM Decrypted
             </Text>
-            <Text style={tw`text-txt-secondary text-sm text-center mb-1`}>
-              This will permanently delete
-            </Text>
-            <Text
-              style={tw`text-txt-primary text-sm font-semibold text-center mb-5`}
-              numberOfLines={2}
-            >
-              "{deleteModal?.originalName || deleteModal?.filename || 'this file'}"
+          </View>
+        </View>
+      </Modal>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* DELETE CONFIRMATION MODAL                                      */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <Modal visible={Boolean(deleteModal)} transparent animationType="fade" onRequestClose={() => setDeleteModal(null)}>
+        <View style={tw`flex-1 bg-black/75 items-center justify-center p-4`}>
+          <View style={tw`bg-vault-card border border-vault-border rounded-2xl w-full max-w-sm p-5`}>
+            <View style={tw`w-12 h-12 rounded-xl bg-red-950/40 border border-red-900/60 items-center justify-center mb-3 self-center`}>
+              <Ionicons name="trash-outline" size={22} color="#f43f5e" />
+            </View>
+
+            <Text style={tw`text-txt-primary text-base font-bold text-center mb-1`}>Delete File?</Text>
+            <Text style={tw`text-txt-muted text-xs text-center mb-4`}>
+              "{deleteModal?.originalName}" will be moved to the Trash bin.
             </Text>
 
-            <View style={tw`flex-row`}>
+            <View style={tw`flex-row gap-2`}>
               <TouchableOpacity
                 onPress={() => setDeleteModal(null)}
-                disabled={deleting}
-                style={tw`flex-1 py-3 rounded-xl bg-vault-surface items-center mr-2`}
+                style={tw`flex-1 py-2.5 rounded-xl bg-vault-surface border border-vault-border items-center`}
               >
-                <Text style={tw`text-txt-secondary text-sm font-semibold`}>Cancel</Text>
+                <Text style={tw`text-txt-secondary text-xs font-semibold`}>Cancel</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
-                onPress={handleDelete}
+                onPress={confirmDelete}
                 disabled={deleting}
-                style={tw`flex-1 py-3 rounded-xl bg-accent-danger items-center ml-2`}
+                style={tw`flex-1 py-2.5 rounded-xl bg-red-600 items-center justify-center`}
               >
                 {deleting ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
-                  <Text style={tw`text-white text-sm font-semibold`}>Delete</Text>
+                  <Text style={tw`text-white text-xs font-bold`}>Delete</Text>
                 )}
               </TouchableOpacity>
             </View>
