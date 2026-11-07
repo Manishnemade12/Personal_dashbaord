@@ -274,38 +274,72 @@ export default function VaultFolderFilesView({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [viewerOpen, imageFiles.length]);
 
-  // Touch Swipe & Drag PanResponder for Lightbox
+  // Touch Pinch-to-Zoom, Double-Tap, Swipe & Drag PanResponder for Lightbox
+  const lastTapRef = useRef(0);
+  const initialDistanceRef = useRef(null);
+  const initialScaleRef = useRef(1);
+
   const panResponder = useMemo(() => {
-    let startX = 0;
-    let startY = 0;
     return PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10;
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches && touches.length === 2) {
+          // Pinch start
+          const dx = touches[0].pageX - touches[1].pageX;
+          const dy = touches[0].pageY - touches[1].pageY;
+          initialDistanceRef.current = Math.sqrt(dx * dx + dy * dy);
+          initialScaleRef.current = zoomScale;
+        } else {
+          initialDistanceRef.current = null;
+          // Double tap detection
+          const now = Date.now();
+          if (now - lastTapRef.current < 300) {
+            // Double-tapped! Toggle 1x <-> 2.5x
+            setZoomScale((prev) => (prev > 1.2 ? 1 : 2.5));
+            setPanPosition({ x: 0, y: 0 });
+            lastTapRef.current = 0;
+          } else {
+            lastTapRef.current = now;
+          }
+        }
       },
-      onPanResponderGrant: (_, gestureState) => {
-        startX = gestureState.x0;
-        startY = gestureState.y0;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (zoomScale > 1) {
-          // Pan when zoomed in
-          setPanPosition((prev) => ({
-            x: prev.x + gestureState.vx * 15,
-            y: prev.y + gestureState.vy * 15,
-          }));
+      onPanResponderMove: (evt, gestureState) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches && touches.length === 2 && initialDistanceRef.current) {
+          // Pinch-to-zoom calculation
+          const dx = touches[0].pageX - touches[1].pageX;
+          const dy = touches[0].pageY - touches[1].pageY;
+          const currentDistance = Math.sqrt(dx * dx + dy * dy);
+          const ratio = currentDistance / initialDistanceRef.current;
+          const newScale = Math.min(4, Math.max(1, initialScaleRef.current * ratio));
+          setZoomScale(newScale);
+          if (newScale <= 1.05) {
+            setPanPosition({ x: 0, y: 0 });
+          }
+        } else if (touches && touches.length === 1) {
+          // 1 finger move
+          if (zoomScale > 1.1) {
+            // Pan around zoomed image with screen boundaries
+            setPanPosition((prev) => ({
+              x: prev.x + gestureState.vx * 16,
+              y: prev.y + gestureState.vy * 16,
+            }));
+          }
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (zoomScale <= 1) {
-          // Horizontal swipe threshold: 40px
-          if (gestureState.dx < -40) {
-            // Swipe Left -> Next
+        initialDistanceRef.current = null;
+        if (zoomScale <= 1.1) {
+          // Horizontal swipe threshold: 30px
+          if (gestureState.dx < -30) {
+            // Swipe Left -> Next Image
             setViewerIndex((prev) => Math.min(imageFiles.length - 1, prev + 1));
             setZoomScale(1);
             setPanPosition({ x: 0, y: 0 });
-          } else if (gestureState.dx > 40) {
-            // Swipe Right -> Prev
+          } else if (gestureState.dx > 30) {
+            // Swipe Right -> Prev Image
             setViewerIndex((prev) => Math.max(0, prev - 1));
             setZoomScale(1);
             setPanPosition({ x: 0, y: 0 });
@@ -748,44 +782,12 @@ export default function VaultFolderFilesView({
               </Text>
             </View>
 
-            {/* Viewer action controls: Zoom in/out, Download, Close */}
+            {/* Viewer action controls: Download & Close */}
             <View style={tw`flex-row items-center gap-2`}>
-              <TouchableOpacity
-                onPress={() => {
-                  setZoomScale((prev) => Math.max(1, prev - 0.5));
-                  if (zoomScale <= 1.5) setPanPosition({ x: 0, y: 0 });
-                }}
-                style={tw`p-2 rounded-lg bg-white/10`}
-                title="Zoom Out"
-              >
-                <Ionicons name="remove-circle-outline" size={18} color="#ffffff" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => {
-                  setZoomScale((prev) => (prev === 1 ? 2 : 1));
-                  setPanPosition({ x: 0, y: 0 });
-                }}
-                style={tw`px-2.5 py-1.5 rounded-lg bg-white/10`}
-                title="Toggle Zoom"
-              >
-                <Text style={tw`text-white text-xs font-bold`}>{zoomScale.toFixed(1)}x</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => {
-                  setZoomScale((prev) => Math.min(3.5, prev + 0.5));
-                }}
-                style={tw`p-2 rounded-lg bg-white/10`}
-                title="Zoom In"
-              >
-                <Ionicons name="add-circle-outline" size={18} color="#ffffff" />
-              </TouchableOpacity>
-
               {currentViewerImage ? (
                 <TouchableOpacity
                   onPress={() => handleDownload(currentViewerImage)}
-                  style={tw`p-2 rounded-lg bg-white/10 ml-1`}
+                  style={tw`p-2 rounded-lg bg-white/10`}
                   title="Download"
                 >
                   <Ionicons name="download-outline" size={18} color="#ffffff" />
@@ -806,25 +808,11 @@ export default function VaultFolderFilesView({
             </View>
           </View>
 
-          {/* Central Image with PanResponder Swipe & Zoom Container */}
+          {/* Central Image with PanResponder Touch Gestures: Pinch-to-zoom, Double-tap, Drag & Swipe */}
           <View
             style={tw`flex-1 items-center justify-center relative p-2 overflow-hidden`}
             {...panResponder.panHandlers}
           >
-            {/* Prev button */}
-            {imageFiles.length > 1 && viewerIndex > 0 ? (
-              <TouchableOpacity
-                onPress={() => {
-                  setViewerIndex((prev) => Math.max(0, prev - 1));
-                  setZoomScale(1);
-                  setPanPosition({ x: 0, y: 0 });
-                }}
-                style={tw`absolute left-3 z-30 p-2.5 rounded-full bg-black/60 border border-white/20`}
-              >
-                <Ionicons name="chevron-back" size={22} color="#ffffff" />
-              </TouchableOpacity>
-            ) : null}
-
             {/* The Image with dynamic scale & pan */}
             {currentViewerUrl ? (
               <View
@@ -857,26 +845,12 @@ export default function VaultFolderFilesView({
                 <Text style={tw`text-gray-400 text-xs mt-3`}>Decrypting image...</Text>
               </View>
             )}
-
-            {/* Next button */}
-            {imageFiles.length > 1 && viewerIndex < imageFiles.length - 1 ? (
-              <TouchableOpacity
-                onPress={() => {
-                  setViewerIndex((prev) => Math.min(imageFiles.length - 1, prev + 1));
-                  setZoomScale(1);
-                  setPanPosition({ x: 0, y: 0 });
-                }}
-                style={tw`absolute right-3 z-30 p-2.5 rounded-full bg-black/60 border border-white/20`}
-              >
-                <Ionicons name="chevron-forward" size={22} color="#ffffff" />
-              </TouchableOpacity>
-            ) : null}
           </View>
 
           {/* Bottom metadata */}
           <View style={tw`p-3 items-center flex-row justify-between px-5`}>
             <Text style={tw`text-gray-400 text-xs`}>
-              Swipe left / right to change • Pinch or tap zoom to inspect
+              Swipe left / right • Pinch or double-tap screen to zoom ({zoomScale > 1.05 ? `${zoomScale.toFixed(1)}x` : '1x'})
             </Text>
             <Text style={tw`text-gray-500 text-xs`}>
               Uploaded {formatDate(currentViewerImage?.uploadedAt)}
