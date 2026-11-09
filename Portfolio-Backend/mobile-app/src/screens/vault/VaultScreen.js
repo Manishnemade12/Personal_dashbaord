@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,17 @@ import {
   Platform,
   TextInput,
   Modal,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import tw from '../../utils/tw';
+
+const SAFE_TOP_INSET =
+  Platform.OS === 'android'
+    ? Math.max(StatusBar.currentHeight || 0, 36) + 8
+    : Platform.OS === 'ios'
+    ? 44
+    : 14;
 import {
   vaultApi,
   loadTokens,
@@ -177,8 +185,13 @@ export default function VaultScreen({ onExitToDashboard }) {
       {/* Top navigation bar */}
       <View
         style={[
-          tw`flex-row items-center px-3 border-b border-vault-border`,
-          { height: 52, backgroundColor: '#0d1117' },
+          tw`flex-row items-center px-4 border-b border-vault-border`,
+          {
+            paddingTop: SAFE_TOP_INSET,
+            minHeight: 56 + SAFE_TOP_INSET,
+            paddingBottom: 10,
+            backgroundColor: '#0d1117',
+          },
         ]}
       >
         <TouchableOpacity

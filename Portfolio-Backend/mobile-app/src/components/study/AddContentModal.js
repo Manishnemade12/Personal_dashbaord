@@ -9,11 +9,21 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../../api/client';
 import { StudyDao } from '../../db/dao/StudyDao';
+
+const MODES = [
+  { id: 'auto', label: 'Auto Detect', icon: 'sparkles' },
+  { id: 'subject', label: 'To Subject', icon: 'folder-outline' },
+  { id: 'chunk', label: 'To Sub-chunk', icon: 'git-branch-outline' },
+  { id: 'manual', label: 'Manual', icon: 'create-outline' },
+];
 
 export default function AddContentModal({
   visible,
@@ -26,6 +36,9 @@ export default function AddContentModal({
   onOpenPromptConfig,
   onContentImported,
 }) {
+  const { width: windowWidth } = useWindowDimensions();
+  const isSmallMobile = windowWidth < 480;
+
   const [step, setStep] = useState('input'); // 'input' | 'loading' | 'preview'
   const [mode, setMode] = useState('auto'); // 'auto' | 'subject' | 'chunk' | 'manual'
   const [text, setText] = useState('');
@@ -238,271 +251,312 @@ export default function AddContentModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.dialogCard}>
-          {/* Header */}
-          <View style={styles.dialogHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={styles.iconWrap}>
-                <Ionicons name="sparkles" size={18} color="#6366f1" />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.keyboardWrap}
+        >
+          <View style={styles.dialogCard}>
+            {/* Header */}
+            <View style={styles.dialogHeader}>
+              <View style={styles.headerTitleGroup}>
+                <View style={styles.iconWrap}>
+                  <Ionicons name="sparkles" size={18} color="#6366f1" />
+                </View>
+                <View style={styles.headerTextWrap}>
+                  <Text style={styles.dialogTitle} numberOfLines={1}>
+                    Add Study Content
+                  </Text>
+                  <Text style={styles.dialogSubtitle} numberOfLines={1}>
+                    Paste notes or ChatGPT chats to organize
+                  </Text>
+                </View>
               </View>
-              <View>
-                <Text style={styles.dialogTitle}>Add Study Content</Text>
-                <Text style={styles.dialogSubtitle}>
-                  Paste notes or ChatGPT chats to organize into chapters
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.closeBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={20} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Body Based on Step */}
+            {step === 'loading' ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#6366f1" />
+                <Text style={styles.loadingTitle}>AI is structuring your content...</Text>
+                <Text style={styles.loadingSub}>
+                  Detecting subjects, splitting chapters, formatting markdown, and extracting exam MCQs.
                 </Text>
               </View>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color="#94a3b8" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Body Based on Step */}
-          {step === 'loading' ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#6366f1" />
-              <Text style={styles.loadingTitle}>AI is structuring your content...</Text>
-              <Text style={styles.loadingSub}>
-                Detecting subjects, splitting chapters, formatting markdown, and extracting exam MCQs.
-              </Text>
-            </View>
-          ) : step === 'preview' ? (
-            <View style={{ flex: 1 }}>
-              <Text style={styles.previewHeading}>Hierarchy Preview:</Text>
-              <ScrollView style={styles.previewScroll} showsVerticalScrollIndicator={false}>
-                {previewTree?.subjects?.map((s, si) => (
-                  <View key={si} style={styles.previewSubjBlock}>
-                    <View style={styles.previewSubjHeader}>
-                      <Ionicons name="folder-outline" size={16} color="#6366f1" />
-                      <Text style={styles.previewSubjTitle}>{s.name}</Text>
-                      <Text style={styles.previewSubjCount}>{s.chunks?.length || 0} chunks</Text>
-                    </View>
-                    <View style={styles.previewChunkList}>
-                      {s.chunks?.map((c, ci) => (
-                        <View key={ci} style={styles.previewChunkCard}>
-                          <Text style={styles.previewChunkTitle}>{c.title}</Text>
-                          <Text style={styles.previewChunkSummary} numberOfLines={2}>
-                            {c.summary}
-                          </Text>
-                          <View style={styles.previewMetaRow}>
-                            <Text style={styles.previewMetaTag}>
-                              {c.keyPoints?.length || 0} key points
+            ) : step === 'preview' ? (
+              <View style={{ flex: 1 }}>
+                <Text style={styles.previewHeading}>Hierarchy Preview:</Text>
+                <ScrollView style={styles.previewScroll} showsVerticalScrollIndicator={false}>
+                  {previewTree?.subjects?.map((s, si) => (
+                    <View key={si} style={styles.previewSubjBlock}>
+                      <View style={styles.previewSubjHeader}>
+                        <Ionicons name="folder-outline" size={16} color="#6366f1" />
+                        <Text style={styles.previewSubjTitle}>{s.name}</Text>
+                        <Text style={styles.previewSubjCount}>{s.chunks?.length || 0} chunks</Text>
+                      </View>
+                      <View style={styles.previewChunkList}>
+                        {s.chunks?.map((c, ci) => (
+                          <View key={ci} style={styles.previewChunkCard}>
+                            <Text style={styles.previewChunkTitle}>{c.title}</Text>
+                            <Text style={styles.previewChunkSummary} numberOfLines={2}>
+                              {c.summary}
                             </Text>
-                            <Text style={styles.previewMetaTag}>
-                              {c.terms?.length || 0} terms
-                            </Text>
-                            <Text style={styles.previewMetaTag}>
-                              {c.quiz?.length || 0} MCQs
-                            </Text>
+                            <View style={styles.previewMetaRow}>
+                              <Text style={styles.previewMetaTag}>
+                                {c.keyPoints?.length || 0} key points
+                              </Text>
+                              <Text style={styles.previewMetaTag}>
+                                {c.terms?.length || 0} terms
+                              </Text>
+                              <Text style={styles.previewMetaTag}>
+                                {c.quiz?.length || 0} MCQs
+                              </Text>
+                            </View>
                           </View>
-                        </View>
-                      ))}
+                        ))}
+                      </View>
                     </View>
-                  </View>
-                ))}
-              </ScrollView>
+                  ))}
+                </ScrollView>
 
-              <View style={styles.footerRow}>
-                <TouchableOpacity
-                  style={styles.cancelBtn}
-                  onPress={() => setStep('input')}
-                  disabled={isSaving}
-                >
-                  <Text style={styles.cancelBtnText}>Back</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.confirmBtn}
-                  onPress={handleConfirmAndSaveTree}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  ) : (
-                    <>
-                      <Ionicons name="checkmark-done" size={16} color="#ffffff" />
-                      <Text style={styles.confirmBtnText}>Confirm & Save</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-              {/* Mode Selector Tabs */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.modeTabsScroll}
-                contentContainerStyle={styles.modeTabs}
-              >
-                <TouchableOpacity
-                  style={[styles.modeTab, mode === 'auto' && styles.modeTabActive]}
-                  onPress={() => setMode('auto')}
-                >
-                  <Text style={[styles.modeTabText, mode === 'auto' && styles.modeTabTextActive]}>
-                    Auto Detect
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modeTab, mode === 'subject' && styles.modeTabActive]}
-                  onPress={() => setMode('subject')}
-                >
-                  <Text style={[styles.modeTabText, mode === 'subject' && styles.modeTabTextActive]}>
-                    To Subject
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modeTab, mode === 'chunk' && styles.modeTabActive]}
-                  onPress={() => setMode('chunk')}
-                >
-                  <Text style={[styles.modeTabText, mode === 'chunk' && styles.modeTabTextActive]}>
-                    To Sub-chunk
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modeTab, mode === 'manual' && styles.modeTabActive]}
-                  onPress={() => setMode('manual')}
-                >
-                  <Text style={[styles.modeTabText, mode === 'manual' && styles.modeTabTextActive]}>
-                    Manual
-                  </Text>
-                </TouchableOpacity>
-              </ScrollView>
-
-              {/* Mode Dependent Selectors */}
-              {mode === 'subject' && (
-                <View style={styles.selectorBlock}>
-                  <Text style={styles.inputLabel}>Select Target Subject:</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ gap: 6 }}>
-                    {subjects.map((s) => {
-                      const isSel = selectedSubjectId === s.id;
-                      return (
-                        <TouchableOpacity
-                          key={s.id}
-                          style={[styles.pillBtn, isSel && styles.pillBtnActive]}
-                          onPress={() => setSelectedSubjectId(s.id)}
-                        >
-                          <Text style={[styles.pillBtnText, isSel && styles.pillBtnTextActive]}>
-                            {s.name}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              )}
-
-              {mode === 'chunk' && (
-                <View style={styles.selectorBlock}>
-                  <Text style={styles.inputLabel}>Select Target Parent Chunk:</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ gap: 6 }}>
-                    {chunks.map((c) => {
-                      const isSel = selectedParentChunkId === c.id;
-                      return (
-                        <TouchableOpacity
-                          key={c.id}
-                          style={[styles.pillBtn, isSel && styles.pillBtnActive]}
-                          onPress={() => setSelectedParentChunkId(c.id)}
-                        >
-                          <Text style={[styles.pillBtnText, isSel && styles.pillBtnTextActive]}>
-                            {c.title}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              )}
-
-              {/* Input Area */}
-              {mode === 'manual' ? (
-                <View style={{ gap: 10, marginTop: 10 }}>
-                  <View>
-                    <Text style={styles.inputLabel}>Title</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="e.g. Battle of Plassey 1757"
-                      placeholderTextColor="#64748b"
-                      value={manualTitle}
-                      onChangeText={setManualTitle}
-                    />
-                  </View>
-                  <View>
-                    <Text style={styles.inputLabel}>Summary (2-3 lines)</Text>
-                    <TextInput
-                      style={[styles.textInput, { height: 60 }]}
-                      multiline
-                      placeholder="Key takeaways..."
-                      placeholderTextColor="#64748b"
-                      value={manualSummary}
-                      onChangeText={setManualSummary}
-                    />
-                  </View>
-                  <View>
-                    <Text style={styles.inputLabel}>Markdown Notes</Text>
-                    <TextInput
-                      style={[styles.textInput, { height: 160, textAlignVertical: 'top' }]}
-                      multiline
-                      placeholder="Full markdown notes..."
-                      placeholderTextColor="#64748b"
-                      value={manualNotes}
-                      onChangeText={setManualNotes}
-                    />
-                  </View>
-                </View>
-              ) : (
-                <View style={{ marginTop: 10 }}>
-                  <Text style={styles.inputLabel}>
-                    Paste Study Text / ChatGPT Conversation:
-                  </Text>
-                  <TextInput
-                    style={styles.textArea}
-                    multiline
-                    numberOfLines={10}
-                    placeholder="Paste long ChatGPT notes, syllabus topics, or exam Q&A here... The AI preserves 95%+ verbatim content while extracting chapters, key points, terms, and quiz questions."
-                    placeholderTextColor="#64748b"
-                    value={text}
-                    onChangeText={setText}
-                  />
-                </View>
-              )}
-
-              {/* Prompt Config Banner */}
-              {mode !== 'manual' && onOpenPromptConfig && (
-                <View style={styles.promptBar}>
+                <View style={styles.footerRow}>
                   <TouchableOpacity
-                    style={styles.promptBarBtn}
-                    onPress={onOpenPromptConfig}
+                    style={styles.cancelBtn}
+                    onPress={() => setStep('input')}
+                    disabled={isSaving}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.cancelBtnText}>Back</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.confirmBtn}
+                    onPress={handleConfirmAndSaveTree}
+                    disabled={isSaving}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="options-outline" size={14} color="#818cf8" />
-                    <Text style={styles.promptBarText} numberOfLines={1}>
-                      AI Setup Prompt ({fieldName})
-                    </Text>
-                    <Ionicons name="chevron-forward" size={13} color="#818cf8" />
+                    {isSaving ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <>
+                        <Ionicons name="checkmark-done" size={16} color="#ffffff" style={{ marginRight: 6 }} />
+                        <Text style={styles.confirmBtnText}>Confirm & Save</Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                 </View>
-              )}
-
-              {/* Footer */}
-              <View style={styles.footerRow}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.confirmBtn}
-                  onPress={handleOrganizeWithAi}
-                  disabled={isSaving}
-                >
-                  <Ionicons name="sparkles" size={16} color="#ffffff" />
-                  <Text style={styles.confirmBtnText}>
-                    {mode === 'manual' ? 'Save Chunk' : 'Organize with AI'}
-                  </Text>
-                </TouchableOpacity>
               </View>
-            </ScrollView>
-          )}
-        </View>
+            ) : (
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingBottom: 10 }}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Mode Selector Toggle */}
+                <View style={styles.modeTabsWrap}>
+                  {MODES.map((item) => {
+                    const isAct = mode === item.id;
+                    return (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={[
+                          styles.modeTabBtn,
+                          isSmallMobile ? { flexBasis: '48%' } : { flexBasis: '23%' },
+                          isAct && styles.modeTabBtnActive,
+                        ]}
+                        onPress={() => setMode(item.id)}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons
+                          name={item.icon}
+                          size={14}
+                          color={isAct ? '#ffffff' : '#94a3b8'}
+                          style={{ marginRight: 5 }}
+                        />
+                        <Text
+                          style={[styles.modeTabBtnText, isAct && styles.modeTabBtnTextActive]}
+                          numberOfLines={1}
+                        >
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Mode Dependent Selectors */}
+                {mode === 'subject' && (
+                  <View style={styles.selectorBlock}>
+                    <Text style={styles.inputLabel}>Select Target Subject:</Text>
+                    {subjects.length === 0 ? (
+                      <Text style={styles.emptySelectorText}>No subjects yet. AI will auto-create one.</Text>
+                    ) : (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.pillScrollContainer}
+                      >
+                        {subjects.map((s) => {
+                          const isSel = selectedSubjectId === s.id;
+                          return (
+                            <TouchableOpacity
+                              key={s.id}
+                              style={[styles.pillBtn, isSel && styles.pillBtnActive]}
+                              onPress={() => setSelectedSubjectId(s.id)}
+                              activeOpacity={0.7}
+                            >
+                              <Ionicons
+                                name="folder"
+                                size={13}
+                                color={isSel ? '#ffffff' : '#818cf8'}
+                                style={{ marginRight: 5 }}
+                              />
+                              <Text style={[styles.pillBtnText, isSel && styles.pillBtnTextActive]}>
+                                {s.name}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                    )}
+                  </View>
+                )}
+
+                {mode === 'chunk' && (
+                  <View style={styles.selectorBlock}>
+                    <Text style={styles.inputLabel}>Select Target Parent Chunk:</Text>
+                    {chunks.length === 0 ? (
+                      <Text style={styles.emptySelectorText}>No notes yet. AI will create root chapters.</Text>
+                    ) : (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.pillScrollContainer}
+                      >
+                        {chunks.map((c) => {
+                          const isSel = selectedParentChunkId === c.id;
+                          return (
+                            <TouchableOpacity
+                              key={c.id}
+                              style={[styles.pillBtn, isSel && styles.pillBtnActive]}
+                              onPress={() => setSelectedParentChunkId(c.id)}
+                              activeOpacity={0.7}
+                            >
+                              <Ionicons
+                                name="document-text"
+                                size={13}
+                                color={isSel ? '#ffffff' : '#38bdf8'}
+                                style={{ marginRight: 5 }}
+                              />
+                              <Text style={[styles.pillBtnText, isSel && styles.pillBtnTextActive]}>
+                                {c.title}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                    )}
+                  </View>
+                )}
+
+                {/* Input Area */}
+                {mode === 'manual' ? (
+                  <View style={{ gap: 10, marginTop: 4 }}>
+                    <View>
+                      <Text style={styles.inputLabel}>Title</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="e.g. Battle of Plassey 1757"
+                        placeholderTextColor="#64748b"
+                        value={manualTitle}
+                        onChangeText={setManualTitle}
+                      />
+                    </View>
+                    <View>
+                      <Text style={styles.inputLabel}>Summary (2-3 lines)</Text>
+                      <TextInput
+                        style={[styles.textInput, { height: 60 }]}
+                        multiline
+                        placeholder="Key takeaways..."
+                        placeholderTextColor="#64748b"
+                        value={manualSummary}
+                        onChangeText={setManualSummary}
+                      />
+                    </View>
+                    <View>
+                      <Text style={styles.inputLabel}>Markdown Notes</Text>
+                      <TextInput
+                        style={[styles.textInput, { height: 140, textAlignVertical: 'top' }]}
+                        multiline
+                        placeholder="Full markdown notes..."
+                        placeholderTextColor="#64748b"
+                        value={manualNotes}
+                        onChangeText={setManualNotes}
+                      />
+                    </View>
+                  </View>
+                ) : (
+                  <View style={{ marginTop: 4 }}>
+                    <Text style={styles.inputLabel}>
+                      Paste Study Text / ChatGPT Conversation:
+                    </Text>
+                    <TextInput
+                      style={styles.textArea}
+                      multiline
+                      numberOfLines={8}
+                      placeholder="Paste long ChatGPT notes, syllabus topics, or exam Q&A here... The AI preserves 95%+ verbatim content while extracting chapters, key points, terms, and quiz questions."
+                      placeholderTextColor="#64748b"
+                      value={text}
+                      onChangeText={setText}
+                    />
+                  </View>
+                )}
+
+                {/* Prompt Config Banner */}
+                {mode !== 'manual' && onOpenPromptConfig && (
+                  <View style={styles.promptBar}>
+                    <TouchableOpacity
+                      style={styles.promptBarBtn}
+                      onPress={onOpenPromptConfig}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="options-outline" size={14} color="#818cf8" />
+                      <Text style={styles.promptBarText} numberOfLines={1}>
+                        AI Setup Prompt ({fieldName})
+                      </Text>
+                      <Ionicons name="chevron-forward" size={13} color="#818cf8" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Footer */}
+                <View style={styles.footerRow}>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.confirmBtn}
+                    onPress={handleOrganizeWithAi}
+                    disabled={isSaving}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="sparkles" size={15} color="#ffffff" style={{ marginRight: 6 }} />
+                    <Text style={styles.confirmBtnText} numberOfLines={1}>
+                      {mode === 'manual' ? 'Save Chunk' : 'Organize with AI'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            )}
+          </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
@@ -514,26 +568,47 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+  },
+  keyboardWrap: {
+    width: '100%',
+    maxWidth: 580,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dialogCard: {
     width: '100%',
-    maxWidth: 620,
-    maxHeight: '90%',
+    maxWidth: 580,
+    maxHeight: '92%',
     backgroundColor: '#0f172a',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#1e293b',
-    padding: 20,
+    padding: 16,
+    flexDirection: 'column',
   },
   dialogHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: 14,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#1e293b',
     marginBottom: 12,
+    width: '100%',
+  },
+  headerTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    minWidth: 0,
+    marginRight: 8,
+  },
+  headerTextWrap: {
+    flex: 1,
+    minWidth: 0,
   },
   iconWrap: {
     width: 36,
@@ -556,39 +631,47 @@ const styles = StyleSheet.create({
   closeBtn: {
     padding: 6,
   },
-  modeTabsScroll: {
+  modeTabsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    backgroundColor: '#1e293b',
+    borderRadius: 10,
+    padding: 4,
+    gap: 5,
     marginBottom: 12,
     width: '100%',
   },
-  modeTabs: {
+  modeTabBtn: {
+    flexBasis: '48%',
+    flexGrow: 1,
     flexDirection: 'row',
-    backgroundColor: '#1e293b',
-    borderRadius: 8,
-    padding: 3,
-    minWidth: '100%',
-    gap: 4,
-  },
-  modeTab: {
-    flex: 1,
-    paddingVertical: 7,
-    paddingHorizontal: 10,
     alignItems: 'center',
-    borderRadius: 6,
+    justifyContent: 'center',
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
   },
-  modeTabActive: {
-    backgroundColor: '#334155',
+  modeTabBtnActive: {
+    backgroundColor: '#6366f1',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  modeTabText: {
+  modeTabBtnText: {
     fontSize: 12,
     color: '#94a3b8',
-    fontWeight: '500',
-  },
-  modeTabTextActive: {
-    color: '#f8fafc',
     fontWeight: '600',
+  },
+  modeTabBtnTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
   },
   selectorBlock: {
     marginBottom: 10,
+    width: '100%',
   },
   inputLabel: {
     fontSize: 12,
@@ -596,14 +679,28 @@ const styles = StyleSheet.create({
     color: '#cbd5e1',
     marginBottom: 6,
   },
+  emptySelectorText: {
+    fontSize: 12,
+    color: '#94a3b8',
+    fontStyle: 'italic',
+    paddingVertical: 4,
+  },
+  pillScrollContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+  },
   pillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     backgroundColor: '#1e293b',
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#334155',
-    marginRight: 6,
+    marginRight: 4,
   },
   pillBtnActive: {
     backgroundColor: '#6366f1',
@@ -612,10 +709,11 @@ const styles = StyleSheet.create({
   pillBtnText: {
     fontSize: 12,
     color: '#cbd5e1',
+    fontWeight: '500',
   },
   pillBtnTextActive: {
     color: '#ffffff',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   textInput: {
     backgroundColor: '#1e293b',
@@ -635,43 +733,50 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 13,
     color: '#f8fafc',
-    minHeight: 180,
+    minHeight: 130,
+    maxHeight: 200,
     textAlignVertical: 'top',
   },
   footerRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
     gap: 10,
-    marginTop: 16,
+    marginTop: 14,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#1e293b',
+    width: '100%',
   },
   cancelBtn: {
-    paddingVertical: 9,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#334155',
+    backgroundColor: '#1e293b',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cancelBtnText: {
     fontSize: 13,
     color: '#94a3b8',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   confirmBtn: {
+    flex: 2,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
     backgroundColor: '#6366f1',
-    paddingVertical: 9,
-    paddingHorizontal: 18,
-    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
   },
   confirmBtnText: {
     fontSize: 13,
     color: '#ffffff',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   loadingContainer: {
     paddingVertical: 48,
@@ -699,7 +804,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   previewScroll: {
-    maxHeight: 380,
+    maxHeight: 320,
   },
   previewSubjBlock: {
     backgroundColor: '#1e293b',
@@ -767,7 +872,8 @@ const styles = StyleSheet.create({
   },
   previewMetaRow: {
     flexDirection: 'row',
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: 8,
     marginTop: 6,
   },
   previewMetaTag: {

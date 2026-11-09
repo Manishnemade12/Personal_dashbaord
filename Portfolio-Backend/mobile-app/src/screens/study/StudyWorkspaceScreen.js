@@ -8,6 +8,7 @@ import {
   StatusBar,
   useWindowDimensions,
   Modal,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StudyDao } from '../../db/dao/StudyDao';
@@ -16,6 +17,13 @@ import StudySidebarDrawer from '../../components/study/StudySidebarDrawer';
 import AddContentModal from '../../components/study/AddContentModal';
 import StudyQuickQuizModal from '../../components/study/StudyQuickQuizModal';
 import StudyPromptConfigModal from '../../components/study/StudyPromptConfigModal';
+
+const SAFE_TOP_INSET =
+  Platform.OS === 'android'
+    ? Math.max(StatusBar.currentHeight || 0, 36) + 8
+    : Platform.OS === 'ios'
+    ? 44
+    : 14;
 
 import StudyDashboardScreen from './StudyDashboardScreen';
 import StudyChunkReaderScreen from './StudyChunkReaderScreen';
@@ -441,14 +449,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   topHeader: {
-    height: 50,
+    paddingTop: SAFE_TOP_INSET,
+    minHeight: 56 + SAFE_TOP_INSET,
+    paddingBottom: 10,
     backgroundColor: '#0f172a',
     borderBottomWidth: 1,
     borderBottomColor: '#1e293b',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     width: '100%',
     maxWidth: '100%',
     overflow: 'hidden',

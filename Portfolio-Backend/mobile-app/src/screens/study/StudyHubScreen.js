@@ -14,6 +14,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { StudyDao } from '../../db/dao/StudyDao';
 import CreateFieldModal from '../../components/study/CreateFieldModal';
 
+const SAFE_TOP_INSET =
+  Platform.OS === 'android'
+    ? Math.max(StatusBar.currentHeight || 0, 36) + 8
+    : Platform.OS === 'ios'
+    ? 44
+    : 14;
+
 export default function StudyHubScreen({
   onSelectField,
   onExitToDashboard,
@@ -321,14 +328,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   topHeader: {
-    height: 52,
+    paddingTop: SAFE_TOP_INSET,
+    minHeight: 56 + SAFE_TOP_INSET,
+    paddingBottom: 10,
     backgroundColor: '#0f172a',
     borderBottomWidth: 1,
     borderBottomColor: '#1e293b',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     width: '100%',
     maxWidth: '100%',
     overflow: 'hidden',
