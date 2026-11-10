@@ -255,7 +255,7 @@ export default function AddContentModal({
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardWrap}
         >
-          <View style={styles.dialogCard}>
+          <View style={[styles.dialogCard, isSmallMobile && styles.dialogCardSmall]}>
             {/* Header */}
             <View style={styles.dialogHeader}>
               <View style={styles.headerTitleGroup}>
@@ -580,6 +580,7 @@ const styles = StyleSheet.create({
   dialogCard: {
     width: '100%',
     maxWidth: 580,
+    height: '92%',
     maxHeight: '92%',
     backgroundColor: '#0f172a',
     borderRadius: 16,
@@ -587,6 +588,11 @@ const styles = StyleSheet.create({
     borderColor: '#1e293b',
     padding: 16,
     flexDirection: 'column',
+  },
+  dialogCardSmall: {
+    height: '90%',
+    maxHeight: '90%',
+    padding: 14,
   },
   dialogHeader: {
     flexDirection: 'row',
@@ -882,4 +888,3 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
-

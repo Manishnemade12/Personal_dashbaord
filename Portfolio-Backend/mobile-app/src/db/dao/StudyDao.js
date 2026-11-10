@@ -5,7 +5,7 @@ import { SyncOutboxDao } from './SyncOutboxDao';
 const safeEnqueue = async (...args) => {
   try {
     if (typeof SyncOutboxDao?.enqueue === 'function') {
-      return await safeEnqueue(...args);
+      return await SyncOutboxDao.enqueue(...args);
     }
   } catch (e) {
     console.warn('[StudyDao safeEnqueue warn]', e?.message);
