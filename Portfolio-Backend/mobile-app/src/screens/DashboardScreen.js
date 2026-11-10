@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { colors } from '../styles/theme';
 import { api } from '../api/client';
+import { FinanceDao } from '../db/dao/FinanceDao';
+import { InvestmentDao } from '../db/dao/InvestmentDao';
 import { Ionicons } from '@expo/vector-icons';
 import styles from './styles/dashboardStyles';
 
@@ -31,6 +33,27 @@ export default function DashboardScreen({ onNavigate }) {
 
   const fetchData = async () => {
     try {
+      // Show cached finance and wealth values without waiting for the network.
+      const [localFinance, localInvestment] = await Promise.all([
+        FinanceDao.getMonthlySummary(new Date().toISOString().substring(0, 7)),
+        InvestmentDao.computeSummary(),
+      ]);
+      setFinanceSummary((current) => ({
+        ...(current || {}),
+        monthlyIncome: localFinance.totalIncome,
+        totalSpent: localFinance.totalExpense,
+        remainingBudget: localFinance.netBalance,
+      }));
+      setInvestmentSummary((current) => ({
+        ...(current || {}),
+        totalPortfolioValue: localInvestment.currentValuation,
+        totalInvested: localInvestment.totalInvested,
+        totalPnL: localInvestment.totalGain,
+        totalPnLPercent: localInvestment.returnPercentage,
+        holdingsCount: localInvestment.holdingsCount,
+      }));
+      setLoading(false);
+
       const [blogsRes, projectsRes, photosRes, contactsRes, skillsRes, eventsRes, finRes, invRes] =
         await Promise.allSettled([
           api.getBlogs(),
@@ -49,8 +72,8 @@ export default function DashboardScreen({ onNavigate }) {
       if (contactsRes.status === 'fulfilled') setContacts(contactsRes.value || []);
       if (skillsRes.status === 'fulfilled') setSkills(skillsRes.value || []);
       if (eventsRes.status === 'fulfilled') setCalendarEvents(eventsRes.value || []);
-      if (finRes.status === 'fulfilled') setFinanceSummary(finRes.value || null);
-      if (invRes.status === 'fulfilled') setInvestmentSummary(invRes.value || null);
+      if (finRes.status === 'fulfilled' && finRes.value) setFinanceSummary(finRes.value);
+      if (invRes.status === 'fulfilled' && invRes.value) setInvestmentSummary(invRes.value);
     } catch (error) {
       console.log('Error loading dashboard data:', error);
     } finally {

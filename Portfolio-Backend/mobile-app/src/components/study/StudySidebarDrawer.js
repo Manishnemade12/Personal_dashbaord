@@ -6,7 +6,10 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Platform,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -26,6 +29,9 @@ export default function StudySidebarDrawer({
 }) {
   const [openSubjects, setOpenSubjects] = useState({});
   const [openChunks, setOpenChunks] = useState({});
+  const [subjectDialogVisible, setSubjectDialogVisible] = useState(false);
+  const [subjectName, setSubjectName] = useState('');
+  const [subjectSaving, setSubjectSaving] = useState(false);
 
   // Build hierarchical tree: Subject -> Root Chunks (parentChunkId is null) -> Children
   const tree = useMemo(() => {
@@ -56,21 +62,26 @@ export default function StudySidebarDrawer({
   };
 
   const handlePromptAddSubject = () => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const name = window.prompt('Enter new subject name:');
-      if (name && name.trim()) {
-        onAddSubject(name.trim());
-      }
-    } else {
-      Alert.prompt(
-        'New Subject',
-        'Enter subject name (e.g. Modern History, Biology):',
-        (name) => {
-          if (name && name.trim()) {
-            onAddSubject(name.trim());
-          }
-        }
-      );
+    setSubjectName('');
+    setSubjectDialogVisible(true);
+  };
+
+  const handleCreateSubject = async () => {
+    const trimmedName = subjectName.trim();
+    if (!trimmedName) {
+      Alert.alert('Subject name required', 'Enter a name before creating the subject.');
+      return;
+    }
+
+    setSubjectSaving(true);
+    try {
+      await onAddSubject(trimmedName);
+      setSubjectDialogVisible(false);
+      setSubjectName('');
+    } catch (error) {
+      Alert.alert('Could not create subject', error?.message || 'Please try again.');
+    } finally {
+      setSubjectSaving(false);
     }
   };
 
@@ -364,6 +375,79 @@ export default function StudySidebarDrawer({
           })
         )}
       </ScrollView>
+
+      <Modal
+        visible={subjectDialogVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!subjectSaving) setSubjectDialogVisible(false);
+        }}
+      >
+        <KeyboardAvoidingView
+          style={styles.subjectModalOverlay}
+          behavior="padding"
+        >
+          <View style={styles.subjectModalCard}>
+            <View style={styles.subjectModalHeader}>
+              <View style={styles.subjectModalIcon}>
+                <Ionicons name="folder-open-outline" size={20} color="#818cf8" />
+              </View>
+              <View style={styles.subjectModalTitleWrap}>
+                <Text style={styles.subjectModalTitle}>Create subject</Text>
+                <Text style={styles.subjectModalSubtitle}>
+                  Organize your study content by subject.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setSubjectDialogVisible(false)}
+                disabled={subjectSaving}
+                style={styles.subjectModalClose}
+                accessibilityLabel="Close create subject dialog"
+              >
+                <Ionicons name="close" size={20} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.subjectInputLabel}>Subject name</Text>
+            <TextInput
+              style={styles.subjectInput}
+              value={subjectName}
+              onChangeText={setSubjectName}
+              placeholder="e.g. Modern History"
+              placeholderTextColor="#64748b"
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={handleCreateSubject}
+              editable={!subjectSaving}
+            />
+
+            <View style={styles.subjectModalActions}>
+              <TouchableOpacity
+                style={styles.subjectCancelBtn}
+                onPress={() => setSubjectDialogVisible(false)}
+                disabled={subjectSaving}
+              >
+                <Text style={styles.subjectCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.subjectCreateBtn}
+                onPress={handleCreateSubject}
+                disabled={subjectSaving}
+              >
+                {subjectSaving ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <>
+                    <Ionicons name="add" size={17} color="#ffffff" />
+                    <Text style={styles.subjectCreateText}>Create subject</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -497,6 +581,104 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
   },
+  subjectModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+  },
+  subjectModalCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#0f172a',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+    padding: 18,
+  },
+  subjectModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  subjectModalIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(99, 102, 241, 0.18)',
+    marginRight: 10,
+  },
+  subjectModalTitleWrap: {
+    flex: 1,
+  },
+  subjectModalTitle: {
+    color: '#f8fafc',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  subjectModalSubtitle: {
+    color: '#94a3b8',
+    fontSize: 12,
+    marginTop: 3,
+  },
+  subjectModalClose: {
+    padding: 5,
+    marginLeft: 8,
+  },
+  subjectInputLabel: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 7,
+  },
+  subjectInput: {
+    width: '100%',
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#475569',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    color: '#f8fafc',
+    fontSize: 14,
+  },
+  subjectModalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 18,
+  },
+  subjectCancelBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingVertical: 11,
+  },
+  subjectCancelText: {
+    color: '#cbd5e1',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  subjectCreateBtn: {
+    flex: 1.4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 10,
+    backgroundColor: '#6366f1',
+    paddingVertical: 11,
+  },
+  subjectCreateText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   subjectBlock: {
     marginBottom: 6,
   },
@@ -587,4 +769,3 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
 });
-

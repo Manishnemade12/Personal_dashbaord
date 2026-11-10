@@ -1,7 +1,41 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Alert, Platform, useWindowDimensions } from 'react-native';
 import apiDefault, { api as apiNamed } from '../../../api/client';
+import { InvestmentDao } from '../../../db/dao/InvestmentDao';
 const api = apiNamed || apiDefault;
+
+const toLocalHolding = (holding) => ({
+  ...holding,
+  symbol: holding.symbol || holding.symbolOrCode,
+  name: holding.name || holding.instrumentName || holding.symbolOrCode,
+  symbolOrCode: holding.symbolOrCode || holding.symbol,
+  instrumentName: holding.instrumentName || holding.name || holding.symbol,
+  assetClass: holding.assetClass || holding.asset_class || 'Equity',
+  averageBuyPrice: Number(holding.averageBuyPrice ?? holding.avgBuyPrice ?? holding.avg_buy_price ?? 0),
+  latestPrice: Number(
+    holding.latestPrice ??
+      holding.lastKnownPrice ??
+      holding.last_known_price ??
+      holding.currentPrice ??
+      holding.current_price ??
+      0
+  ),
+  currentPrice: Number(holding.currentPrice ?? holding.latestPrice ?? holding.lastKnownPrice ?? 0),
+  investedValue: Number(
+    holding.investedValue ??
+      Number(holding.quantity || 0) *
+        Number(holding.averageBuyPrice ?? holding.avgBuyPrice ?? holding.avg_buy_price ?? 0)
+  ),
+});
+
+const toLocalHoldingPayload = (holding) => ({
+  ...holding,
+  symbol: holding.symbol || holding.symbolOrCode,
+  name: holding.name || holding.instrumentName || holding.symbolOrCode,
+  assetClass: holding.assetClass || 'Equity',
+  avgBuyPrice: holding.averageBuyPrice ?? holding.avgBuyPrice ?? holding.buyPrice,
+  lastKnownPrice: holding.latestPrice ?? holding.currentPrice ?? holding.averageBuyPrice ?? holding.buyPrice,
+});
 
 export default function useInvestments() {
   const { width } = useWindowDimensions();
@@ -18,16 +52,40 @@ export default function useInvestments() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadData = async () => {
-    setLoading(true);
     try {
+      // Hydrate from SQLite first so the portfolio is usable immediately and offline.
+      const [localSummary, localHoldings] = await Promise.all([
+        InvestmentDao.computeSummary(),
+        InvestmentDao.getHoldings(),
+      ]);
+      if (localHoldings.length > 0) {
+        setHoldings(localHoldings.map(toLocalHolding));
+        setSummary((current) => ({
+          ...(current || {}),
+          totalPortfolioValue: localSummary.currentValuation,
+          totalInvested: localSummary.totalInvested,
+          totalPnL: localSummary.totalGain,
+          totalPnLPercent: localSummary.returnPercentage,
+          holdingsCount: localSummary.holdingsCount,
+        }));
+      }
+      setLoading(false);
+
+      // Refresh in the background. A failed request must not replace cached data.
       const [sumRes, holdRes] = await Promise.all([
         api.getInvestmentSummary(),
         api.getHoldings(),
       ]);
-      setSummary(sumRes || null);
-      setHoldings(Array.isArray(holdRes) ? holdRes : []);
+      if (Array.isArray(holdRes)) {
+        for (const holding of holdRes) {
+          await InvestmentDao.saveHolding(toLocalHoldingPayload(holding), true);
+        }
+        const updatedHoldings = await InvestmentDao.getHoldings();
+        setHoldings(updatedHoldings.map(toLocalHolding));
+      }
+      if (sumRes) setSummary(sumRes);
     } catch (err) {
-      console.error('Error loading investment portfolio:', err);
+      console.warn('[Investment Offline] Using cached portfolio data:', err.message);
     } finally {
       setLoading(false);
       setRefreshing(false);

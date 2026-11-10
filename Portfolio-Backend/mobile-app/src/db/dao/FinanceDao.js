@@ -53,32 +53,48 @@ export const FinanceDao = {
     const dateStr = txData.date ? new Date(txData.date).toISOString() : now;
     const month = txData.month || dateStr.substring(0, 7);
 
-    await db.runAsync(
-      `INSERT INTO finance_transactions (
-        client_id, server_id, type, amount, category, description,
-        date, month, payment_method, sync_status, is_deleted, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
-      [
-        clientId,
-        serverId,
-        txData.type || 'expense',
-        Number(txData.amount || 0),
-        txData.category || 'General',
-        txData.description || '',
-        dateStr,
-        month,
-        txData.paymentMethod || txData.payment_method || 'UPI',
-        isSyncPull ? 'SYNCED' : 'PENDING_CREATE',
-        now,
-        now,
-      ]
+    const existing = await db.getFirstAsync(
+      `SELECT client_id FROM finance_transactions
+       WHERE client_id = ? OR (server_id IS NOT NULL AND server_id = ?)`,
+      [clientId, serverId]
     );
+    const values = [
+      serverId,
+      txData.type || 'expense',
+      Number(txData.amount || 0),
+      txData.category || 'General',
+      txData.description || '',
+      dateStr,
+      month,
+      txData.paymentMethod || txData.payment_method || 'UPI',
+      isSyncPull ? 'SYNCED' : 'PENDING_CREATE',
+      now,
+    ];
 
-    if (!isSyncPull) {
+    if (existing) {
+      await db.runAsync(
+        `UPDATE finance_transactions SET
+          server_id = COALESCE(?, server_id), type = ?, amount = ?, category = ?,
+          description = ?, date = ?, month = ?, payment_method = ?,
+          sync_status = ?, is_deleted = 0, updated_at = ?
+         WHERE client_id = ?`,
+        [...values, existing.client_id]
+      );
+    } else {
+      await db.runAsync(
+        `INSERT INTO finance_transactions (
+          client_id, server_id, type, amount, category, description,
+          date, month, payment_method, sync_status, is_deleted, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+        [clientId, ...values, now]
+      );
+    }
+
+    if (!isSyncPull && !existing) {
       await SyncOutboxDao.enqueueMutation('finance_transaction', 'CREATE', clientId, txData);
     }
 
-    return clientId;
+    return existing?.client_id || clientId;
   },
 
   async updateTransaction(clientId, txData, isSyncPull = false) {
@@ -270,4 +286,3 @@ export const FinanceDao = {
 };
 
 export default FinanceDao;
-

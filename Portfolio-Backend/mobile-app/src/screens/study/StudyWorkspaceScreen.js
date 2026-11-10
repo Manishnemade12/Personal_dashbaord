@@ -121,6 +121,7 @@ export default function StudyWorkspaceScreen({
       await refreshData();
     } catch (e) {
       console.warn('[StudyWorkspace] Add subject error:', e);
+      throw e;
     }
   };
 
@@ -587,4 +588,3 @@ const styles = StyleSheet.create({
     color: '#f8fafc',
   },
 });
-
