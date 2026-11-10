@@ -12,6 +12,180 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { StudyDao } from '../../db/dao/StudyDao';
 
+const isTableRow = (line) => /^\s*\|?.+\|.+\|?\s*$/.test(line);
+const isTableSeparator = (line) =>
+  /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+
+const renderInlineMarkdown = (text, keyPrefix = '') => {
+  const parts = String(text || '').split(/(`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_)/g);
+  return parts.map((part, index) => {
+    if (!part) return null;
+    const key = `${keyPrefix}-${index}`;
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <Text key={key} style={styles.inlineCode} selectable>
+          {part.slice(1, -1)}
+        </Text>
+      );
+    }
+    if (
+      (part.startsWith('**') && part.endsWith('**')) ||
+      (part.startsWith('__') && part.endsWith('__'))
+    ) {
+      return (
+        <Text key={key} style={styles.mdStrong} selectable>
+          {part.slice(2, -2)}
+        </Text>
+      );
+    }
+    if (
+      (part.startsWith('*') && part.endsWith('*')) ||
+      (part.startsWith('_') && part.endsWith('_'))
+    ) {
+      return (
+        <Text key={key} style={styles.mdEmphasis} selectable>
+          {part.slice(1, -1)}
+        </Text>
+      );
+    }
+    return (
+      <Text key={key} selectable>
+        {part}
+      </Text>
+    );
+  });
+};
+
+const getTableCells = (line) =>
+  line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim());
+
+function MarkdownContent({ value }) {
+  const lines = String(value || '').replace(/\r\n/g, '\n').split('\n');
+  const blocks = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    const line = lines[index];
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith('```')) {
+      const language = trimmed.slice(3).trim();
+      const codeLines = [];
+      index += 1;
+      while (index < lines.length && !lines[index].trim().startsWith('```')) {
+        codeLines.push(lines[index]);
+        index += 1;
+      }
+      if (index < lines.length) index += 1;
+      blocks.push(
+        <View key={`code-${index}`} style={styles.codeBlock}>
+          {language ? <Text style={styles.codeLanguage}>{language}</Text> : null}
+          <Text style={styles.codeText} selectable>
+            {codeLines.join('\n')}
+          </Text>
+        </View>
+      );
+      continue;
+    }
+
+    if (
+      isTableRow(trimmed) &&
+      index + 1 < lines.length &&
+      isTableSeparator(lines[index + 1])
+    ) {
+      const rows = [getTableCells(line)];
+      index += 2;
+      while (index < lines.length && isTableRow(lines[index].trim()) && lines[index].trim()) {
+        rows.push(getTableCells(lines[index]));
+        index += 1;
+      }
+      const columnCount = Math.max(...rows.map((row) => row.length));
+      blocks.push(
+        <ScrollView
+          key={`table-${index}`}
+          horizontal
+          showsHorizontalScrollIndicator
+          style={styles.tableScroll}
+        >
+          <View style={styles.table}>
+            {rows.map((row, rowIndex) => (
+              <View
+                key={`row-${rowIndex}`}
+                style={[styles.tableRow, rowIndex === 0 && styles.tableHeaderRow]}
+              >
+                {Array.from({ length: columnCount }).map((_, columnIndex) => (
+                  <View
+                    key={`cell-${rowIndex}-${columnIndex}`}
+                    style={[styles.tableCell, rowIndex === 0 && styles.tableHeaderCell]}
+                  >
+                    <Text style={rowIndex === 0 ? styles.tableHeaderText : styles.tableText} selectable>
+                      {renderInlineMarkdown(row[columnIndex] || '', `cell-${rowIndex}-${columnIndex}`)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      );
+      continue;
+    }
+
+    if (!trimmed) {
+      blocks.push(<View key={`space-${index}`} style={{ height: 8 }} />);
+      index += 1;
+      continue;
+    }
+
+    const heading = trimmed.match(/^(#{1,6})\s+(.+)$/);
+    if (heading) {
+      const headingStyle =
+        heading[1].length === 1
+          ? styles.mdH1
+          : heading[1].length === 2
+          ? styles.mdH2
+          : styles.mdH3;
+      blocks.push(
+        <Text key={`heading-${index}`} style={headingStyle} selectable>
+          {renderInlineMarkdown(heading[2], `heading-${index}`)}
+        </Text>
+      );
+      index += 1;
+      continue;
+    }
+
+    const bullet = trimmed.match(/^([-*+]|\u2022)\s+(.+)$/);
+    if (bullet) {
+      blocks.push(
+        <View key={`bullet-${index}`} style={styles.bulletRow}>
+          <Text style={styles.bulletDot} selectable>
+            {'\u2022'}
+          </Text>
+          <Text style={styles.bulletText} selectable>
+            {renderInlineMarkdown(bullet[2], `bullet-${index}`)}
+          </Text>
+        </View>
+      );
+      index += 1;
+      continue;
+    }
+
+    blocks.push(
+      <Text key={`paragraph-${index}`} style={styles.mdP} selectable>
+        {renderInlineMarkdown(trimmed, `paragraph-${index}`)}
+      </Text>
+    );
+    index += 1;
+  }
+
+  return <>{blocks}</>;
+}
+
 export default function StudyChunkReaderScreen({
   chunkId,
   subjects = [],
@@ -318,48 +492,9 @@ export default function StudyChunkReaderScreen({
               {/* Formatted Markdown Reader */}
               <View style={styles.notesContainer}>
                 {chunk.notes ? (
-                  chunk.notes.split('\n').map((line, li) => {
-                    const trimmed = line.trim();
-                    if (trimmed.startsWith('### ')) {
-                      return (
-                        <Text key={li} style={styles.mdH3}>
-                          {trimmed.slice(4)}
-                        </Text>
-                      );
-                    }
-                    if (trimmed.startsWith('## ')) {
-                      return (
-                        <Text key={li} style={styles.mdH2}>
-                          {trimmed.slice(3)}
-                        </Text>
-                      );
-                    }
-                    if (trimmed.startsWith('# ')) {
-                      return (
-                        <Text key={li} style={styles.mdH1}>
-                          {trimmed.slice(2)}
-                        </Text>
-                      );
-                    }
-                    if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('• ')) {
-                      return (
-                        <View key={li} style={styles.bulletRow}>
-                          <Text style={styles.bulletDot}>•</Text>
-                          <Text style={styles.bulletText}>{trimmed.slice(2)}</Text>
-                        </View>
-                      );
-                    }
-                    if (!trimmed) {
-                      return <View key={li} style={{ height: 8 }} />;
-                    }
-                    return (
-                      <Text key={li} style={styles.mdP}>
-                        {trimmed}
-                      </Text>
-                    );
-                  })
+                  <MarkdownContent value={chunk.notes} />
                 ) : (
-                  <Text style={styles.emptyNoteText}>*No notes yet.*</Text>
+                  <Text style={styles.emptyNoteText} selectable>*No notes yet.*</Text>
                 )}
               </View>
             </View>
@@ -716,6 +851,84 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 8,
   },
+  mdStrong: {
+    fontWeight: '800',
+    color: '#f8fafc',
+  },
+  mdEmphasis: {
+    fontStyle: 'italic',
+    color: '#e2e8f0',
+  },
+  inlineCode: {
+    fontFamily: 'monospace',
+    color: '#a5b4fc',
+    backgroundColor: '#1e293b',
+  },
+  codeBlock: {
+    backgroundColor: '#020617',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    minWidth: '100%',
+  },
+  codeLanguage: {
+    color: '#94a3b8',
+    fontFamily: 'monospace',
+    fontSize: 11,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  codeText: {
+    color: '#dbeafe',
+    fontFamily: 'monospace',
+    fontSize: 12,
+    lineHeight: 19,
+  },
+  tableScroll: {
+    marginBottom: 12,
+    maxWidth: '100%',
+  },
+  table: {
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 8,
+    overflow: 'hidden',
+    minWidth: 520,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+    backgroundColor: '#0f172a',
+  },
+  tableHeaderRow: {
+    backgroundColor: '#1e293b',
+  },
+  tableCell: {
+    width: 170,
+    minHeight: 42,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRightWidth: 1,
+    borderRightColor: '#334155',
+  },
+  tableHeaderCell: {
+    minHeight: 46,
+  },
+  tableText: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  tableHeaderText: {
+    color: '#f8fafc',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
   bulletRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -985,4 +1198,3 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
 });
-
