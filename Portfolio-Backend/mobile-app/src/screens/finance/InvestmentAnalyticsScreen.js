@@ -14,6 +14,7 @@ import { SECTOR_COLORS, PALETTE_FALLBACK, MARKET_CAP_COLORS, RISK_COLORS, TAB_OP
 import AnalyticsHeader from './components/AnalyticsHeader';
 import AnalyticsTabBar from './components/AnalyticsTabBar';
 import { api } from '../../api/client';
+import { InvestmentDao } from '../../db/dao/InvestmentDao';
 
 export default function InvestmentAnalyticsScreen({ onNavigate }) {
   const { width } = useWindowDimensions();
@@ -32,7 +33,13 @@ export default function InvestmentAnalyticsScreen({ onNavigate }) {
       setSelectedSlice(null);
       setSelectedMonth(null);
     } catch (err) {
-      console.error('Error fetching analytics:', err);
+      console.warn('[InvestmentAnalytics] API unavailable; using local portfolio data:', err.message);
+      try {
+        const localAnalytics = await InvestmentDao.computeAnalytics();
+        setAnalytics(localAnalytics);
+      } catch (localErr) {
+        console.error('[InvestmentAnalytics] Failed to load local portfolio data:', localErr);
+      }
     } finally {
       setLoading(false);
     }

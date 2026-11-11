@@ -180,6 +180,11 @@ class SyncEngine {
               await InvestmentDao.saveHolding(ih, true);
             }
           }
+          if (Array.isArray(changes.investmentTransactions)) {
+            for (const transaction of changes.investmentTransactions) {
+              await InvestmentDao.executeTransaction(transaction, true);
+            }
+          }
 
           // Portfolio Blogs & Projects
           if (Array.isArray(changes.portfolioBlogs)) {
@@ -245,4 +250,3 @@ class SyncEngine {
 
 export const syncEngine = new SyncEngine();
 export default syncEngine;
-

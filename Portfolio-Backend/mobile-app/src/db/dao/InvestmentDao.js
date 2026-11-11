@@ -33,6 +33,19 @@ export const InvestmentDao = {
     const db = await getDatabase();
     const clientId = data.client_id || data.clientId || generateUUID();
     const serverId = data.server_id || data.serverId || data._id || null;
+    const symbol = data.symbol || data.symbolOrCode || data.symbol_or_code || '';
+    const name = data.name || data.instrumentName || data.instrument_name || symbol;
+    const avgBuyPrice = Number(
+      data.avgBuyPrice ?? data.averageBuyPrice ?? data.avg_buy_price ?? data.buyPrice ?? 0
+    );
+    const lastKnownPrice = Number(
+      data.lastKnownPrice ??
+        data.latestPrice ??
+        data.last_known_price ??
+        data.currentPrice ??
+        data.current_price ??
+        avgBuyPrice
+    );
     const now = new Date().toISOString();
 
     const existing = await db.getFirstAsync(
@@ -50,12 +63,12 @@ export const InvestmentDao = {
          WHERE client_id = ?`,
         [
           serverId,
-          data.symbol,
-          data.name || data.symbol,
+          symbol,
+          name,
           data.assetClass || data.asset_class || 'Equity',
           Number(data.quantity || 0),
-          Number(data.avgBuyPrice || data.avg_buy_price || 0),
-          Number(data.lastKnownPrice || data.last_known_price || data.currentPrice || 0),
+          avgBuyPrice,
+          lastKnownPrice,
           data.currency || 'INR',
           data.exchange || 'NSE',
           data.notes || '',
@@ -81,12 +94,12 @@ export const InvestmentDao = {
         [
           clientId,
           serverId,
-          data.symbol,
-          data.name || data.symbol,
+          symbol,
+          name,
           data.assetClass || data.asset_class || 'Equity',
           Number(data.quantity || 0),
-          Number(data.avgBuyPrice || data.avg_buy_price || 0),
-          Number(data.lastKnownPrice || data.last_known_price || data.currentPrice || 0),
+          avgBuyPrice,
+          lastKnownPrice,
           data.currency || 'INR',
           data.exchange || 'NSE',
           data.notes || '',
@@ -129,10 +142,16 @@ export const InvestmentDao = {
     const txClientId = txData.client_id || txData.clientId || generateUUID();
     const now = new Date().toISOString();
 
-    const symbol = txData.symbol.toUpperCase();
-    const type = txData.type.toUpperCase(); // 'BUY' or 'SELL'
-    const qty = Number(txData.quantity || 0);
-    const price = Number(txData.price || 0);
+    const symbol = String(txData.symbol || txData.symbolOrCode || '').toUpperCase();
+    const type = String(txData.type || '').toUpperCase(); // 'BUY' or 'SELL'
+    const qty = Number(txData.quantity ?? txData.units ?? 0);
+    const price = Number(txData.price ?? txData.pricePerUnit ?? 0);
+    const holdingClientId = txData.holdingClientId || txData.holding_client_id || txData.holdingId || null;
+    const serverId = txData.server_id || txData.serverId || txData._id || null;
+
+    if (!symbol || !['BUY', 'SELL'].includes(type) || qty <= 0 || price < 0) {
+      throw new Error('Invalid investment transaction payload');
+    }
 
     // Run within transaction
     await db.withTransactionAsync(async () => {
@@ -144,8 +163,8 @@ export const InvestmentDao = {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
         [
           txClientId,
-          txData.server_id || null,
-          txData.holdingClientId || null,
+          serverId,
+          holdingClientId,
           symbol,
           type,
           qty,
@@ -179,9 +198,9 @@ export const InvestmentDao = {
         await db.runAsync(
           `UPDATE investment_holdings SET 
             quantity = ?, avg_buy_price = ?, last_known_price = ?, 
-            sync_status = 'PENDING_UPDATE', updated_at = ?
+            sync_status = ?, updated_at = ?
            WHERE client_id = ?`,
-          [newQty, newAvgPrice, price, now, holding.client_id]
+          [newQty, newAvgPrice, price, isSyncPull ? 'SYNCED' : 'PENDING_UPDATE', now, holding.client_id]
         );
       }
     });
@@ -203,6 +222,51 @@ export const InvestmentDao = {
     }
     sql += ` ORDER BY date DESC, created_at DESC`;
     return await db.getAllAsync(sql, params);
+  },
+
+  async computeAnalytics() {
+    const holdings = await this.getHoldings();
+    const totalValue = holdings.reduce(
+      (sum, holding) => sum + Number(holding.quantity || 0) * Number(holding.lastKnownPrice || holding.avgBuyPrice || 0),
+      0
+    );
+    const groups = (selector) => {
+      const map = new Map();
+      holdings.forEach((holding) => {
+        const name = selector(holding);
+        const value =
+          Number(holding.quantity || 0) * Number(holding.lastKnownPrice || holding.avgBuyPrice || 0);
+        const item = {
+          id: holding._id,
+          instrumentName: holding.name,
+          symbolOrCode: holding.symbol,
+          assetClass: holding.assetClass,
+          quantity: holding.quantity,
+          latestPrice: holding.lastKnownPrice || holding.avgBuyPrice,
+          value: Number(value.toFixed(2)),
+        };
+        const group = map.get(name) || { value: 0, items: [] };
+        group.value += value;
+        group.items.push(item);
+        map.set(name, group);
+      });
+      return Array.from(map.entries()).map(([name, group]) => ({
+        name,
+        value: Number(group.value.toFixed(2)),
+        percent: totalValue > 0 ? Number(((group.value / totalValue) * 100).toFixed(2)) : 0,
+        items: group.items,
+      }));
+    };
+
+    return {
+      holdingsCount: holdings.length,
+      totalValue: Number(totalValue.toFixed(2)),
+      byAssetClass: groups((holding) => holding.assetClass || 'Other'),
+      bySector: groups((holding) => holding.assetClass || 'Other'),
+      byMarketCap: groups((holding) => holding.assetClass === 'Equity' ? 'Equity' : 'Non-Equity / Safe'),
+      byRiskLevel: groups((holding) => holding.assetClass === 'Equity' ? 'Moderate Risk' : 'Low Risk'),
+      byMonth: [],
+    };
   },
 
   // ================= Local Valuation Summary =================
@@ -233,4 +297,3 @@ export const InvestmentDao = {
 };
 
 export default InvestmentDao;
-

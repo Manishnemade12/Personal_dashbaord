@@ -51,6 +51,41 @@ router.post('/push', async (req, res) => {
     }
 
     try {
+      if (m.entity === 'investment_holding') {
+        m.payload = {
+          ...m.payload,
+          symbolOrCode: m.payload.symbolOrCode || m.payload.symbol || m.payload.symbol_or_code,
+          instrumentName: m.payload.instrumentName || m.payload.name || m.payload.instrument_name,
+          averageBuyPrice:
+            m.payload.averageBuyPrice ??
+            m.payload.avgBuyPrice ??
+            m.payload.avg_buy_price ??
+            m.payload.buyPrice ??
+            0,
+          latestPrice:
+            m.payload.latestPrice ??
+            m.payload.lastKnownPrice ??
+            m.payload.last_known_price ??
+            m.payload.currentPrice ??
+            0,
+          assetClass: m.payload.assetClass || m.payload.asset_class || 'Equity',
+        };
+      } else if (m.entity === 'investment_transaction') {
+        m.payload = {
+          ...m.payload,
+          holdingId: m.payload.holdingId || m.payload.holding_id || m.payload.holdingClientId,
+          units: m.payload.units ?? m.payload.quantity ?? 0,
+          pricePerUnit: m.payload.pricePerUnit ?? m.payload.price ?? 0,
+          totalAmount:
+            m.payload.totalAmount ??
+            Number(m.payload.units ?? m.payload.quantity ?? 0) * Number(m.payload.pricePerUnit ?? m.payload.price ?? 0),
+        };
+        if (m.payload.holdingId && !require('mongoose').Types.ObjectId.isValid(m.payload.holdingId)) {
+          const holding = await MODELS.investment_holding.findOne({ clientId: m.payload.holdingId, userId });
+          if (holding) m.payload.holdingId = holding._id;
+        }
+      }
+
       if (m.entity === 'calendar_event' && m.action === 'CREATE') {
         const mongoose = require('mongoose');
         m.payload = m.payload || {};

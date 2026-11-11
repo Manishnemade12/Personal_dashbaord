@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import styles from './styles/portfolioInsightsStyles';
 import { api } from '../../api/client';
+import { InvestmentDao } from '../../db/dao/InvestmentDao';
 
 export default function PortfolioInsightsScreen({ onNavigate }) {
   const { width } = useWindowDimensions();
@@ -44,7 +45,38 @@ export default function PortfolioInsightsScreen({ onNavigate }) {
       });
       setInsightsData(res);
     } catch (err) {
-      console.warn('[PortfolioInsights] Failed to fetch insights:', err.message);
+      console.warn('[PortfolioInsights] API unavailable; using local portfolio data:', err.message);
+      try {
+        const [holdings, localSummary] = await Promise.all([
+          InvestmentDao.getHoldings(),
+          InvestmentDao.computeSummary(),
+        ]);
+        setInsightsData({
+          summary: {
+            totalNetWorth: localSummary.currentValuation,
+            totalInvested: localSummary.totalInvested,
+            totalCurrentValue: localSummary.currentValuation,
+            overallPnl: localSummary.totalGain,
+            overallPnlPercent: localSummary.returnPercentage,
+            holdingsCount: localSummary.holdingsCount,
+            stocksCount: holdings.filter((holding) => holding.assetClass === 'Equity').length,
+            mutualFundsCount: holdings.filter((holding) => holding.assetClass === 'Mutual Fund').length,
+            cashBalance: 0,
+          },
+          highlights: {},
+          stocks: holdings.map((holding) => ({
+            id: holding._id,
+            instrumentName: holding.name,
+            symbolOrCode: holding.symbol,
+            assetClass: holding.assetClass,
+            quantity: holding.quantity,
+            currentValue: Number(holding.quantity || 0) * Number(holding.lastKnownPrice || holding.avgBuyPrice || 0),
+            investedValue: Number(holding.quantity || 0) * Number(holding.avgBuyPrice || 0),
+          })),
+        });
+      } catch (localErr) {
+        console.error('[PortfolioInsights] Failed to load local portfolio data:', localErr);
+      }
     }
   };
 
