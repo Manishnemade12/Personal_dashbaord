@@ -12,6 +12,7 @@ import {
   PanResponder,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import tw from '../../../utils/tw';
 import { vaultApi, getAuthToken, getBaseUrl } from '../../../services/vault/vaultApi';
 import { vaultCrypto } from '../../../services/vault/vaultCrypto';
@@ -404,14 +405,7 @@ export default function VaultFolderFilesView({
   };
 
   /* ── Upload ── */
-  const handleUploadPress = () => {
-    if (Platform.OS === 'web' && fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleFileChange = async (e) => {
-    const picked = e?.target?.files?.[0];
+  const uploadFile = async (picked) => {
     if (!picked) return;
     setUploading(true);
     setError('');
@@ -432,6 +426,37 @@ export default function VaultFolderFilesView({
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleUploadPress = async () => {
+    if (Platform.OS === 'web' && fileInputRef.current) {
+      fileInputRef.current.click();
+      return;
+    }
+
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const asset = result.assets[0];
+      await uploadFile({
+        uri: asset.uri,
+        name: asset.name || 'upload',
+        type: asset.mimeType || 'application/octet-stream',
+      });
+    } catch (err) {
+      setError(err.message || 'Could not open the file picker.');
+    }
+  };
+
+  const handleFileChange = async (e) => {
+    const picked = e?.target?.files?.[0];
+    await uploadFile(picked);
   };
 
   const currentViewerImage = imageFiles[viewerIndex] || null;
