@@ -144,9 +144,22 @@ router.get('/all', async (req, res) => {
 
 router.post('/ai/chunk-content', async (req, res) => {
   try {
-    const { content, fieldId, fieldName, customPrompt, apiKey } = req.body;
+    const {
+      content,
+      fieldId,
+      fieldName,
+      customPrompt,
+      apiKey,
+      targetMode,
+      targetSubjectId,
+      targetSubjectName,
+    } = req.body;
     if (!content || content.trim().length < 20) {
       return res.status(400).json({ error: 'Please provide at least a paragraph of study content.' });
+    }
+    const subjectChunkMode = targetMode === 'subject_chunks';
+    if (subjectChunkMode && (!String(targetSubjectId || '').trim() || !String(targetSubjectName || '').trim())) {
+      return res.status(400).json({ error: 'Select a subject before creating AI chunks.' });
     }
 
     let effectivePrompt = customPrompt || '';
@@ -167,11 +180,13 @@ router.post('/ai/chunk-content', async (req, res) => {
       fieldName: effectiveFieldName || 'General Studies',
       customPrompt: effectivePrompt,
       apiKey,
+      targetSubjectName: subjectChunkMode ? String(targetSubjectName).trim() : undefined,
+      requireAi: subjectChunkMode,
     });
     res.json(organizedTree);
   } catch (err) {
     console.error('[Study API] /ai/chunk-content error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(Number(err.status) || 500).json({ error: err.message });
   }
 });
 

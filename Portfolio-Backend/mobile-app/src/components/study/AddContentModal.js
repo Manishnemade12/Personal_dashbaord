@@ -20,7 +20,7 @@ import { StudyDao } from '../../db/dao/StudyDao';
 
 const MODES = [
   { id: 'auto', label: 'Auto Detect', icon: 'sparkles' },
-  { id: 'subject', label: 'To Subject', icon: 'folder-outline' },
+  { id: 'subject', label: 'AI → Subject', icon: 'sparkles' },
   { id: 'chunk', label: 'To Sub-chunk', icon: 'git-branch-outline' },
   { id: 'manual', label: 'Manual', icon: 'create-outline' },
 ];
@@ -119,15 +119,28 @@ export default function AddContentModal({
         fieldName,
         customPrompt,
         apiKey: customKey || undefined,
-      });
+        targetMode: mode === 'subject' ? 'subject_chunks' : undefined,
+        targetSubjectId: mode === 'subject' ? selectedSubjectId : undefined,
+        targetSubjectName: mode === 'subject'
+          ? subjects.find((subject) => subject.id === selectedSubjectId)?.name
+          : undefined,
+      }, { timeout: 180000 });
 
       if (res && res.subjects && res.subjects.length > 0) {
+        if (mode === 'subject' && res._meta?.usedAi !== true) {
+          throw new Error('AI chunking did not run. Update the AI API key and retry; no content was saved.');
+        }
         setPreviewTree(res);
         setStep('preview');
         return;
       }
     } catch (err) {
       console.warn('[AddContentModal AI Error]', err);
+      if (mode === 'subject') {
+        setStep('input');
+        Alert.alert('Could not create AI chunks', err?.message || 'Check the AI connection and try again. No content was saved.');
+        return;
+      }
     }
 
     // High fidelity offline heuristic organizer fallback (no blocking popup)
@@ -287,7 +300,9 @@ export default function AddContentModal({
                 <ActivityIndicator size="large" color="#6366f1" />
                 <Text style={styles.loadingTitle}>AI is structuring your content...</Text>
                 <Text style={styles.loadingSub}>
-                  Detecting subjects, splitting chapters, formatting markdown, and extracting exam MCQs.
+                  {mode === 'subject'
+                    ? `Splitting your content into focused chunks for ${subjects.find((subject) => subject.id === selectedSubjectId)?.name || 'the selected subject'}.`
+                    : 'Detecting subjects, splitting chapters, formatting markdown, and extracting exam MCQs.'}
                 </Text>
               </View>
             ) : step === 'preview' ? (
@@ -396,7 +411,7 @@ export default function AddContentModal({
                   <View style={styles.selectorBlock}>
                     <Text style={styles.inputLabel}>Select Target Subject:</Text>
                     {subjects.length === 0 ? (
-                      <Text style={styles.emptySelectorText}>No subjects yet. AI will auto-create one.</Text>
+                      <Text style={styles.emptySelectorText}>Create a subject first, then choose where these AI chunks should be saved.</Text>
                     ) : (
                       <ScrollView
                         horizontal
@@ -426,6 +441,9 @@ export default function AddContentModal({
                         })}
                       </ScrollView>
                     )}
+                    <Text style={styles.emptySelectorText}>
+                      AI will split long content into focused 250–500 word chunks and save them under this subject.
+                    </Text>
                   </View>
                 )}
 
@@ -505,13 +523,17 @@ export default function AddContentModal({
                 ) : (
                   <View style={{ marginTop: 4 }}>
                     <Text style={styles.inputLabel}>
-                      Paste Study Text / ChatGPT Conversation:
+                      {mode === 'subject'
+                        ? `Paste content to split into small chunks for ${subjects.find((subject) => subject.id === selectedSubjectId)?.name || 'your selected subject'}:`
+                        : 'Paste Study Text / ChatGPT Conversation:'}
                     </Text>
                     <TextInput
                       style={styles.textArea}
                       multiline
                       numberOfLines={8}
-                      placeholder="Paste long ChatGPT notes, syllabus topics, or exam Q&A here... The AI preserves 95%+ verbatim content while extracting chapters, key points, terms, and quiz questions."
+                      placeholder={mode === 'subject'
+                        ? 'Paste your notes, lesson, syllabus, or ChatGPT response. AI will split it into focused chunks and keep them under the selected subject.'
+                        : 'Paste long ChatGPT notes, syllabus topics, or exam Q&A here... The AI preserves 95%+ verbatim content while extracting chapters, key points, terms, and quiz questions.'}
                       placeholderTextColor="#64748b"
                       value={text}
                       onChangeText={setText}
@@ -549,7 +571,7 @@ export default function AddContentModal({
                   >
                     <Ionicons name="sparkles" size={15} color="#ffffff" style={{ marginRight: 6 }} />
                     <Text style={styles.confirmBtnText} numberOfLines={1}>
-                      {mode === 'manual' ? 'Save Chunk' : 'Organize with AI'}
+                      {mode === 'manual' ? 'Save Chunk' : mode === 'subject' ? 'Create Subject Chunks' : 'Organize with AI'}
                     </Text>
                   </TouchableOpacity>
                 </View>

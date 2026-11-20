@@ -65,7 +65,7 @@ async function getApiKey(userProvidedKey = null) {
   if (userProvidedKey && userProvidedKey.trim().length > 15) {
     return userProvidedKey.trim();
   }
-  const envKey = process.env.GROK_API_KEY || process.env.GROQ_API_KEY || process.env.XAI_API_KEY;
+  const envKey = process.env.XAI_API_KEY || process.env.GROQ_API_KEY || process.env.GROK_API_KEY;
   if (envKey && !envKey.includes('your_') && envKey.trim().length > 15) {
     return envKey.trim();
   }
@@ -236,27 +236,48 @@ async function organizeContentWithAi(rawContent, options = {}) {
   }
 
   const fieldOrContext = options.fieldName || options.fieldContext || 'Academic & Professional Studies';
-  const customInstruction = options.customPrompt || '';
+  const selectedSubjectInstructions = options.targetSubjectName
+    ? `
+SELECTED-SUBJECT CHUNK MODE:
+- Put all content into exactly one subject named "${options.targetSubjectName}". Do not create or rename subjects.
+- Split the material into several focused, small root chunks under that subject. Target roughly 250-500 words per chunk; split at concepts, headings, procedures, or examples. Keep a formula, table, code sample, or tightly coupled explanation together when splitting it would make it unclear.
+- For source content over 500 words, return at least two chunks. Never place a long source in one oversized chunk.
+- Preserve source facts, examples, formulas, dates, names, and code. Distribute the original material across chunks without dropping sections or repeating the same section.
+- Keep every chunk's children array empty; all selected-subject chunks are peers.
+- Add concise summaries, key points, terms, and a few source-grounded MCQs per chunk. Do not invent facts or questions whose answers are absent from the source.`
+    : '';
+  const customInstruction = [options.customPrompt, selectedSubjectInstructions].filter(Boolean).join('\n\n');
   const systemPrompt = options.systemPromptOverride || getUniversalSystemPrompt(fieldOrContext, customInstruction);
 
   const apiKey = await getApiKey(options.apiKey);
   if (!apiKey) {
+    if (options.requireAi) {
+      const error = new Error('AI chunking needs a valid Groq or xAI API key on the backend. No content was saved.');
+      error.status = 503;
+      throw error;
+    }
     console.warn('[studyAiChunkerService] No valid API key found. Using heuristic chunker.');
     return heuristicChunkContent(rawContent, options);
   }
 
-  // Model selection
-  let modelName = 'llama-3.3-70b-versatile';
-  if (options.modelName) {
-    modelName = options.modelName;
-  } else if (process.env.GROK_MODEL && !process.env.GROK_MODEL.includes('gpt-oss')) {
-    modelName = process.env.GROK_MODEL;
-  }
+  const isXai = apiKey.startsWith('xai-');
+  const configuredModel = String(options.modelName || process.env.GROK_MODEL || '').trim();
+  const modelName = isXai
+    ? (configuredModel && !/^(openai\/|llama|meta-llama|qwen)/i.test(configuredModel) ? configuredModel : 'grok-4.7')
+    : (configuredModel || 'openai/gpt-oss-120b');
+  const endpoint = isXai
+    ? 'https://api.x.ai/v1/chat/completions'
+    : 'https://api.groq.com/openai/v1/chat/completions';
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 100000);
 
   try {
-    const userPrompt = `ORGANIZE THE FOLLOWING STUDY CONTENT FOR "${fieldOrContext.toUpperCase()}".\n\nRAW CONTENT:\n${rawContent.slice(0, 60000)}`;
+    const subjectInstruction = options.targetSubjectName
+      ? `Create chunks only for the selected subject "${options.targetSubjectName}". Keep these as small sibling chunks.`
+      : 'Organize the content into the relevant subjects and smaller chunks.';
+    const userPrompt = `ORGANIZE THE FOLLOWING STUDY CONTENT FOR "${fieldOrContext.toUpperCase()}". ${subjectInstruction}\n\nRAW CONTENT:\n${rawContent.slice(0, 60000)}`;
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -270,10 +291,19 @@ async function organizeContentWithAi(rawContent, options = {}) {
         ],
         response_format: { type: 'json_object' },
         temperature: 0.2,
+        ...(isXai ? { max_tokens: 16000 } : { max_completion_tokens: 16000, reasoning_effort: 'medium' }),
       }),
+      signal: controller.signal,
     });
 
     if (!response.ok) {
+      if (options.requireAi) {
+        const error = new Error(response.status === 401 || response.status === 403
+          ? 'The configured AI API key was rejected. Update the backend key and retry; no content was saved.'
+          : `AI chunking provider returned ${response.status}. No content was saved.`);
+        error.status = 502;
+        throw error;
+      }
       const errText = await response.text();
       console.warn(`[studyAiChunkerService] AI response error ${response.status}: ${errText}. Using heuristic fallback.`);
       return heuristicChunkContent(rawContent, options);
@@ -282,6 +312,7 @@ async function organizeContentWithAi(rawContent, options = {}) {
     const data = await response.json();
     const contentStr = data.choices?.[0]?.message?.content;
     if (!contentStr) {
+      if (options.requireAi) throw new Error('AI returned an empty response. No content was saved.');
       console.warn('[studyAiChunkerService] Empty choices content. Using heuristic fallback.');
       return heuristicChunkContent(rawContent, options);
     }
@@ -295,6 +326,22 @@ async function organizeContentWithAi(rawContent, options = {}) {
     }
 
     if (parsed && Array.isArray(parsed.subjects) && parsed.subjects.length > 0) {
+      if (options.targetSubjectName) {
+        const flattenChunks = (items = []) => items.flatMap((item) => [
+          { ...item, children: [] },
+          ...flattenChunks(Array.isArray(item.children) ? item.children : []),
+        ]);
+        const chunks = flattenChunks(parsed.subjects.flatMap((subject) => subject.chunks || []));
+        const wordCount = rawContent.trim().split(/\s+/).filter(Boolean).length;
+        if (!chunks.length || (wordCount > 500 && chunks.length < 2)) {
+          throw new Error('AI did not split the content into enough focused chunks. Please retry with the same subject.');
+        }
+        parsed.subjects = [{
+          name: options.targetSubjectName,
+          description: `AI-organized content saved under ${options.targetSubjectName}.`,
+          chunks,
+        }];
+      }
       parsed._meta = {
         usedAi: true,
         method: 'llm',
@@ -303,11 +350,15 @@ async function organizeContentWithAi(rawContent, options = {}) {
       return parsed;
     }
 
+    if (options.requireAi) throw new Error('AI returned an invalid study outline. No content was saved.');
     console.warn('[studyAiChunkerService] Parsed tree missing subjects array. Using heuristic fallback.');
     return heuristicChunkContent(rawContent, options);
   } catch (err) {
     console.error('[studyAiChunkerService] Exception in AI chunker:', err.message);
+    if (options.requireAi) throw err;
     return heuristicChunkContent(rawContent, options);
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
