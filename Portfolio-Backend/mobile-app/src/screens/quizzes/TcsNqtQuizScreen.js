@@ -30,7 +30,7 @@ const COLORS = {
 const MODES = [
   { id: 'mixed', title: 'Mixed practice', subtitle: 'Adaptive set across subjects', icon: 'shuffle-outline' },
   { id: 'subject', title: 'Subject quiz', subtitle: 'Focus on one section', icon: 'layers-outline' },
-  { id: 'topic', title: 'Topic practice', subtitle: 'Drill a specific concept', icon: 'pricetag-outline' },
+  { id: 'topic', title: 'Topic quick quiz', subtitle: 'Choose one or more topics', icon: 'pricetag-outline' },
   { id: 'full_mock', title: 'Full mock', subtitle: '190-minute integrated pattern', icon: 'timer-outline' },
 ];
 
@@ -218,7 +218,7 @@ export default function TcsNqtQuizScreen({ userId = 'admin', onExitToDashboard }
   const [difficulty, setDifficulty] = useState('exam');
   const [questionCount, setQuestionCount] = useState(10);
   const [selectedSubjectId, setSelectedSubjectId] = useState('nqt_numerical');
-  const [selectedTopicId, setSelectedTopicId] = useState('num_percent');
+  const [selectedTopicIds, setSelectedTopicIds] = useState(['num_percent']);
   const [activeQuiz, setActiveQuiz] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -292,7 +292,6 @@ export default function TcsNqtQuizScreen({ userId = 'admin', onExitToDashboard }
 
   const topics = dashboard?.topics || [];
   const recentAttempts = dashboard?.attempts || [];
-  const selectedTopic = topics.find((topic) => topic.id === selectedTopicId);
   const currentQuestion = activeQuiz?.questionSnapshot?.[currentQuestionIndex] || null;
   const answeredCount = activeQuiz
     ? activeQuiz.questionSnapshot.filter((question) => Boolean(answers[question.id])).length
@@ -322,8 +321,12 @@ export default function TcsNqtQuizScreen({ userId = 'admin', onExitToDashboard }
         difficulty,
         questionCount: effectiveCount,
         subjectId: selectedSubjectId,
-        topicId: selectedTopicId,
+        topicId: selectedTopicIds.length === 1 ? selectedTopicIds[0] : null,
+        topicIds: selectedTopicIds,
       };
+      if (mode === 'topic' && selectedTopicIds.length === 0) {
+        throw new Error('Select at least one topic for your quick quiz.');
+      }
       const adaptation = await NqtQuizDao.getGenerationContext(userId);
       const generatedQuiz = await api.generateNqtQuiz({ userId, config, adaptation });
       const quiz = await NqtQuizDao.saveGeneratedQuiz(generatedQuiz, userId);
@@ -345,7 +348,7 @@ export default function TcsNqtQuizScreen({ userId = 'admin', onExitToDashboard }
     } finally {
       setGenerating(false);
     }
-  }, [difficulty, mode, questionCount, selectedSubjectId, selectedTopicId, userId]);
+  }, [difficulty, mode, questionCount, selectedSubjectId, selectedTopicIds, userId]);
 
   const finishQuiz = useCallback(async () => {
     if (!activeQuiz || finishingRef.current) return;
@@ -471,7 +474,7 @@ export default function TcsNqtQuizScreen({ userId = 'admin', onExitToDashboard }
 
   const beginTopicPractice = (topic) => {
     setMode('topic');
-    setSelectedTopicId(topic.id);
+    setSelectedTopicIds([topic.id]);
     setSelectedSubjectId(topic.subjectId);
     setTab('overview');
     setView('home');
@@ -663,7 +666,7 @@ export default function TcsNqtQuizScreen({ userId = 'admin', onExitToDashboard }
                         onPress={() => {
                           setSelectedSubjectId(subject.id);
                           const topic = topics.find((entry) => entry.subjectId === subject.id);
-                          if (topic) setSelectedTopicId(topic.id);
+                          if (topic) setSelectedTopicIds([topic.id]);
                         }}
                       />
                     ))}
@@ -673,22 +676,21 @@ export default function TcsNqtQuizScreen({ userId = 'admin', onExitToDashboard }
 
               {mode === 'topic' ? (
                 <View style={styles.selectorBlock}>
-                  <Text style={styles.fieldLabel}>TOPIC</Text>
+                  <Text style={styles.fieldLabel}>TOPICS · SELECT ONE OR MORE</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillRow}>
                     {topics.map((topic) => (
                       <Pill
                         key={topic.id}
                         label={topic.name}
-                        selected={selectedTopicId === topic.id}
-                        onPress={() => {
-                          setSelectedTopicId(topic.id);
-                          setSelectedSubjectId(topic.subjectId);
-                        }}
+                        selected={selectedTopicIds.includes(topic.id)}
+                        onPress={() => setSelectedTopicIds((previous) => previous.includes(topic.id)
+                          ? previous.filter((id) => id !== topic.id)
+                          : [...previous, topic.id])}
                       />
                     ))}
                   </ScrollView>
                   <Text style={styles.selectorHint}>
-                    {selectedTopic?.name || 'Selected topic'} · {selectedTopic?.bankCount || 0} saved question{selectedTopic?.bankCount === 1 ? '' : 's'}; new sets are generated for you
+                    {selectedTopicIds.length} topic{selectedTopicIds.length === 1 ? '' : 's'} selected · New questions are generated for the selected concepts
                   </Text>
                 </View>
               ) : null}

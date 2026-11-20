@@ -5,6 +5,11 @@ const PATTERN_PROFILE = {
     { id: 'foundation', name: 'Foundation', minutes: 75 },
     { id: 'advanced', name: 'Advanced', minutes: 115 },
   ],
+  sources: [
+    'https://www.tcs.com/careers/india/tcs-all-india-nqt-hiring',
+    'https://www.tcsion.com/hub/national-qualifier-test/',
+  ],
+  topicPriorityNote: 'Importance and frequency are preparation priorities, not official TCS percentages.',
   subjects: [
     { subjectId: 'nqt_numerical', name: 'Numerical Ability', section: 'Foundation', minutes: 25, examWeight: 1.25, orderIndex: 1 },
     { subjectId: 'nqt_verbal', name: 'Verbal Ability', section: 'Foundation', minutes: 25, examWeight: 1.1, orderIndex: 2 },

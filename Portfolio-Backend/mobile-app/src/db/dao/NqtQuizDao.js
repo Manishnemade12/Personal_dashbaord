@@ -82,13 +82,17 @@ export const NqtQuizDao = {
     await db.withTransactionAsync(async () => {
       for (const subject of catalog.subjects) {
         await db.runAsync(
-          `INSERT OR REPLACE INTO nqt_subjects (id, name, section, exam_weight, order_index) VALUES (?, ?, ?, ?, ?)`,
+          `INSERT INTO nqt_subjects (id, name, section, exam_weight, order_index) VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET name = excluded.name, section = excluded.section,
+             exam_weight = excluded.exam_weight, order_index = excluded.order_index`,
           [subject.id, subject.name, subject.section, subject.examWeight || 1, subject.order || 0]
         );
       }
       for (const topic of catalog.topics) {
         await db.runAsync(
-          `INSERT OR REPLACE INTO nqt_topics (id, subject_id, name, importance, frequency, difficulty) VALUES (?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO nqt_topics (id, subject_id, name, importance, frequency, difficulty) VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET subject_id = excluded.subject_id, name = excluded.name,
+             importance = excluded.importance, frequency = excluded.frequency, difficulty = excluded.difficulty`,
           [topic.id, topic.subjectId, topic.name, topic.importance || 3, topic.frequency || 3, topic.difficulty || 'medium']
         );
       }

@@ -8,9 +8,9 @@ const ALLOWED_LABELS = ['A', 'B', 'C', 'D'];
 
 async function resolveCredential() {
   for (const [name, value] of [
-    ['GROK_API_KEY', process.env.GROK_API_KEY],
-    ['GROQ_API_KEY', process.env.GROQ_API_KEY],
     ['XAI_API_KEY', process.env.XAI_API_KEY],
+    ['GROQ_API_KEY', process.env.GROQ_API_KEY],
+    ['GROK_API_KEY', process.env.GROK_API_KEY],
   ]) {
     if (value && value.trim().length > 15 && !value.includes('your_')) {
       return { key: value.trim(), source: name };
@@ -174,7 +174,9 @@ async function callProvider({ provider, model, key, messages, maxTokens, userId 
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const message = body?.error?.message || body?.error || `Provider returned ${response.status}`;
+      const message = [401, 403].includes(response.status)
+        ? `The configured ${provider === 'xai' ? 'XAI_API_KEY' : 'GROK_API_KEY or GROQ_API_KEY'} was rejected. Replace it in the backend .env file and restart the server.`
+        : body?.error?.message || body?.error || `Provider returned ${response.status}`;
       const error = new Error(`Question generation provider error (${response.status}): ${String(message).slice(0, 400)}`);
       error.status = response.status;
       throw error;

@@ -249,7 +249,11 @@ router.post('/generate', async (req, res) => {
       return res.status(400).json({ error: 'Quiz size must be between 5 and 30 questions.' });
     }
     if (config.mode === 'subject' && !config.subjectId) return res.status(400).json({ error: 'Choose a subject for a subject quiz.' });
-    if (config.mode === 'topic' && !config.topicId) return res.status(400).json({ error: 'Choose a topic for topic practice.' });
+    const requestedTopicIds = config.mode === 'topic'
+      ? [...new Set((Array.isArray(config.topicIds) ? config.topicIds : config.topicId ? [config.topicId] : [])
+        .map((topicId) => String(topicId).trim()).filter(Boolean))]
+      : [];
+    if (config.mode === 'topic' && !requestedTopicIds.length) return res.status(400).json({ error: 'Choose one or more topics for topic practice.' });
 
     const [subjects, allTopics] = await Promise.all([
       NqtSubject.find().sort({ orderIndex: 1 }).lean(),
@@ -258,10 +262,10 @@ router.post('/generate', async (req, res) => {
     const subjectIds = new Set(subjects.map((subject) => subject.subjectId));
     const topicIds = new Set(allTopics.map((topic) => topic.topicId));
     if (config.mode === 'subject' && !subjectIds.has(config.subjectId)) return res.status(400).json({ error: 'Unknown NQT subject.' });
-    if (config.mode === 'topic' && !topicIds.has(config.topicId)) return res.status(400).json({ error: 'Unknown NQT topic.' });
+    if (config.mode === 'topic' && requestedTopicIds.some((topicId) => !topicIds.has(topicId))) return res.status(400).json({ error: 'One or more selected NQT topics are unknown.' });
     const topics = allTopics.filter((topic) => (
       (config.mode !== 'subject' || topic.subjectId === config.subjectId)
-      && (config.mode !== 'topic' || topic.topicId === config.topicId)
+      && (config.mode !== 'topic' || requestedTopicIds.includes(topic.topicId))
     )).map((topic) => ({
       id: topic.topicId,
       subjectId: topic.subjectId,
@@ -275,7 +279,8 @@ router.post('/generate', async (req, res) => {
       difficulty: config.difficulty,
       questionCount,
       subjectId: config.mode === 'subject' ? config.subjectId : null,
-      topicId: config.mode === 'topic' ? config.topicId : null,
+      topicId: config.mode === 'topic' && requestedTopicIds.length === 1 ? requestedTopicIds[0] : null,
+      topicIds: config.mode === 'topic' ? requestedTopicIds : [],
     };
 
     const performance = await NqtTopicPerformance.find({ userId }).lean();
@@ -328,7 +333,9 @@ router.post('/generate', async (req, res) => {
       topicWeight: { ...(localAdaptation.topicWeight || {}), ...topicWeight },
       repeatedMistakes: [...new Set([...(localAdaptation.repeatedMistakes || []), ...repeatedMistakes])].slice(0, 10),
     };
-    const targetMix = mixTargets(questionCount, config.mode);
+    const targetMix = ['mixed', 'full_mock'].includes(config.mode)
+      ? mixTargets(questionCount, config.mode)
+      : null;
     const result = await generateNqtQuestions({
       config: normalizedConfig,
       topics,
@@ -356,12 +363,14 @@ router.post('/generate', async (req, res) => {
       mode: normalizedConfig.mode,
       subjectId: normalizedConfig.subjectId,
       topicId: normalizedConfig.topicId,
+      topicIds: normalizedConfig.topicIds,
       difficulty: normalizedConfig.difficulty,
       questionCount,
       durationSeconds,
       questionIds: questions.map((question) => question.id),
       config: normalizedConfig,
       patternProfile: PATTERN_PROFILE.id,
+      patternProfileSnapshot: PATTERN_PROFILE,
       promptVersion: result.promptVersion,
       provider: result.provider,
       model: result.model,

@@ -29,7 +29,7 @@ OUTPUT CONTRACT
 - Return exactly the requested number of questions in {"questions":[...]}. Do not include question IDs; the server assigns IDs.
 - Every question must have: subjectId, topicId, prompt, options (four {"label":"A","text":"..."} objects), answer (one label A-D), difficulty, pattern, estimatedSeconds (integer 30-600), and solution.
 - Every solution must have: overview (string), steps (array of 2-7 strings), shortcut (string), formula (string), alternatives (array of 0-3 strings), optionAnalysis (object with nonempty explanations for A, B, C, D), and commonMistakes (string).
-- If the requested set is mixed or a full mock, use the exact subject targets supplied in sectionMix and use a varied progression of easy, medium and hard items. The requested full-mock mix is this app's practice composition, not an official TCS question count.`;
+- If the requested set is mixed or a full mock, use the exact subject targets supplied in sectionMix. Those are this app's practice mix, not official TCS question counts. Keep every generated item's difficulty aligned with the requested difficulty while varying the reasoning complexity.`;
 
 function buildNqtUserPrompt({ config, topics, adaptation = {}, recentQuestions = [], patternProfile, targetMix }) {
   const subjectMap = {
@@ -53,6 +53,9 @@ function buildNqtUserPrompt({ config, topics, adaptation = {}, recentQuestions =
 
   const requestedSubject = config.subjectId ? subjectMap[config.subjectId] : null;
   const requestedTopic = topics.find((topic) => topic.id === config.topicId)?.name || null;
+  const requestedTopics = topics
+    .filter((topic) => (config.topicIds || []).includes(topic.id))
+    .map((topic) => topic.name);
   const payload = {
     patternProfile,
     request: {
@@ -61,6 +64,7 @@ function buildNqtUserPrompt({ config, topics, adaptation = {}, recentQuestions =
       difficulty: config.difficulty,
       requestedSubject,
       requestedTopic,
+      requestedTopics,
       answerFormat: 'four-option MCQ, A-D',
     },
     sectionMix: targetMix ? Object.entries(targetMix).map(([subjectId, target]) => ({ subjectId, target })) : null,
