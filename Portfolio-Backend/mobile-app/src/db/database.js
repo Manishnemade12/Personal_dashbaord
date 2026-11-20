@@ -41,6 +41,14 @@ export const getDatabase = async () => {
         }
       }
 
+      // NQT question records are isolated by user. Existing bundled question rows are retained as legacy data.
+      try {
+        await db.execAsync("ALTER TABLE nqt_questions ADD COLUMN user_id TEXT NOT NULL DEFAULT 'legacy';");
+      } catch (nqtQuestionUserColumnErr) {}
+      try {
+        await db.execAsync('CREATE INDEX IF NOT EXISTS idx_nqt_questions_user ON nqt_questions(user_id, topic_id);');
+      } catch (nqtQuestionIndexErr) {}
+
       // Ensure field_id column and index on study_subjects
       try {
         await db.execAsync("ALTER TABLE study_subjects ADD COLUMN field_id TEXT DEFAULT 'field_ssc';");

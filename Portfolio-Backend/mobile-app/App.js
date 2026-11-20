@@ -43,6 +43,7 @@ import ProjectApiScreen from './src/screens/api/ProjectApiScreen';
 import AiColdEmailScreen from './src/screens/ai/AiColdEmailScreen';
 import StudyHubScreen from './src/screens/study/StudyHubScreen';
 import StudyWorkspaceScreen from './src/screens/study/StudyWorkspaceScreen';
+import TcsNqtQuizScreen from './src/screens/quizzes/TcsNqtQuizScreen';
 import VaultScreen from './src/screens/vault/VaultScreen';
 
 // Calculate safe status bar height for Android to prevent header colliding with notification bar
@@ -367,6 +368,17 @@ export default function App() {
           onExit={() => setActiveStudyField(null)}
           routeParams={routeParams}
         />
+      </View>
+    );
+  }
+
+  // Dedicated TCS NQT workspace with its own quiz state and persistent data model.
+  if (currentRoute === 'Quizzes') {
+    const userId = String(currentUser?._id || currentUser?.id || currentUser?.email || 'admin');
+    return (
+      <View style={{ flex: 1, backgroundColor: '#07111f', width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
+        <StatusBar barStyle="light-content" backgroundColor="#07111f" />
+        <TcsNqtQuizScreen userId={userId} onExitToDashboard={() => navigate('Dashboard')} />
       </View>
     );
   }

@@ -2,7 +2,7 @@
  * SQLite Relational Database DDL Schema for Portfolio Admin Offline-First Architecture.
  */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 3;
 
 export const CREATE_TABLES_SQL = [
   // Versioning and migrations
@@ -526,6 +526,106 @@ export const CREATE_TABLES_SQL = [
   );`,
   `CREATE INDEX IF NOT EXISTS idx_study_weak_subj ON study_weak_questions(subject_id, mastered, is_deleted);`,
   `CREATE INDEX IF NOT EXISTS idx_study_weak_hash ON study_weak_questions(subject_id, question_hash);`,
+
+  // TCS NQT quiz module. These tables are intentionally independent from Study Flow.
+  `CREATE TABLE IF NOT EXISTS nqt_subjects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    section TEXT NOT NULL,
+    exam_weight REAL DEFAULT 1,
+    order_index INTEGER DEFAULT 0
+  );`,
+  `CREATE TABLE IF NOT EXISTS nqt_topics (
+    id TEXT PRIMARY KEY,
+    subject_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    importance INTEGER DEFAULT 3,
+    frequency INTEGER DEFAULT 3,
+    difficulty TEXT DEFAULT 'medium',
+    FOREIGN KEY(subject_id) REFERENCES nqt_subjects(id)
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_nqt_topics_subject ON nqt_topics(subject_id);`,
+  `CREATE TABLE IF NOT EXISTS nqt_questions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT 'legacy',
+    subject_id TEXT NOT NULL,
+    topic_id TEXT NOT NULL,
+    prompt TEXT NOT NULL,
+    options TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    solution TEXT NOT NULL,
+    difficulty TEXT DEFAULT 'medium',
+    pattern TEXT DEFAULT 'NQT-style practice',
+    estimated_seconds INTEGER DEFAULT 90,
+    importance REAL DEFAULT 1,
+    FOREIGN KEY(subject_id) REFERENCES nqt_subjects(id),
+    FOREIGN KEY(topic_id) REFERENCES nqt_topics(id)
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_nqt_questions_subject ON nqt_questions(subject_id, difficulty);`,
+  `CREATE INDEX IF NOT EXISTS idx_nqt_questions_topic ON nqt_questions(topic_id);`,
+  `CREATE TABLE IF NOT EXISTS nqt_generated_quizzes (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT 'admin',
+    mode TEXT NOT NULL,
+    subject_id TEXT,
+    topic_id TEXT,
+    difficulty TEXT NOT NULL,
+    question_count INTEGER NOT NULL,
+    duration_seconds INTEGER NOT NULL,
+    question_snapshot TEXT NOT NULL,
+    config TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_nqt_quizzes_user ON nqt_generated_quizzes(user_id, created_at);`,
+  `CREATE TABLE IF NOT EXISTS nqt_attempts (
+    id TEXT PRIMARY KEY,
+    quiz_id TEXT NOT NULL,
+    user_id TEXT NOT NULL DEFAULT 'admin',
+    score INTEGER NOT NULL,
+    correct_count INTEGER NOT NULL,
+    incorrect_count INTEGER NOT NULL,
+    unanswered_count INTEGER NOT NULL,
+    accuracy REAL NOT NULL,
+    time_taken_seconds INTEGER NOT NULL,
+    started_at TEXT NOT NULL,
+    completed_at TEXT NOT NULL,
+    FOREIGN KEY(quiz_id) REFERENCES nqt_generated_quizzes(id)
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_nqt_attempts_user_date ON nqt_attempts(user_id, completed_at DESC);`,
+  `CREATE TABLE IF NOT EXISTS nqt_answers (
+    id TEXT PRIMARY KEY,
+    attempt_id TEXT NOT NULL,
+    question_id TEXT NOT NULL,
+    subject_id TEXT NOT NULL,
+    topic_id TEXT NOT NULL,
+    selected_option TEXT,
+    correct_option TEXT NOT NULL,
+    is_correct INTEGER NOT NULL,
+    is_marked INTEGER DEFAULT 0,
+    time_spent_seconds INTEGER DEFAULT 0,
+    answered_at TEXT NOT NULL,
+    FOREIGN KEY(attempt_id) REFERENCES nqt_attempts(id)
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_nqt_answers_attempt ON nqt_answers(attempt_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_nqt_answers_user_topic ON nqt_answers(subject_id, topic_id, answered_at);`,
+  `CREATE TABLE IF NOT EXISTS nqt_topic_performance (
+    user_id TEXT NOT NULL DEFAULT 'admin',
+    topic_id TEXT NOT NULL,
+    attempts INTEGER DEFAULT 0,
+    correct_count INTEGER DEFAULT 0,
+    incorrect_count INTEGER DEFAULT 0,
+    unanswered_count INTEGER DEFAULT 0,
+    total_time_seconds INTEGER DEFAULT 0,
+    last_attempt_at TEXT,
+    PRIMARY KEY(user_id, topic_id),
+    FOREIGN KEY(topic_id) REFERENCES nqt_topics(id)
+  );`,
+  `CREATE TABLE IF NOT EXISTS nqt_sync_queue (
+    attempt_id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );`,
 
   // Study User Streaks
   `CREATE TABLE IF NOT EXISTS study_user_streaks (

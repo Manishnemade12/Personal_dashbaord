@@ -51,8 +51,8 @@ export const getApiBaseUrl = () => API_BASE_URL;
 
 const request = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
-  const isAiRoute = typeof endpoint === 'string' && endpoint.includes('/ai/');
-  const defaultTimeout = isAiRoute ? 60000 : 15000;
+  const isAiRoute = typeof endpoint === 'string' && (endpoint.includes('/ai/') || endpoint.includes('/nqt-quizzes/generate'));
+  const defaultTimeout = isAiRoute ? 210000 : 15000;
   const timeoutMs = options.timeout || defaultTimeout;
 
   const controller = new AbortController();
@@ -107,6 +107,16 @@ export const api = {
   post: (endpoint, body = {}, options = {}) => request(endpoint, { method: 'POST', body, ...options }),
   put: (endpoint, body = {}, options = {}) => request(endpoint, { method: 'PUT', body, ...options }),
   delete: (endpoint, options = {}) => request(endpoint, { method: 'DELETE', ...options }),
+
+  // TCS NQT quiz engine (/api/nqt-quizzes)
+  getNqtQuizCatalog: (userId = 'admin') => request(`/nqt-quizzes/catalog?userId=${encodeURIComponent(userId)}`),
+  generateNqtQuiz: (data) => request('/nqt-quizzes/generate', { method: 'POST', body: data, timeout: 210000 }),
+  submitNqtQuizAttempt: (data) => request('/nqt-quizzes/attempts', { method: 'POST', body: data }),
+  getNqtQuizAnalytics: (userId = 'admin') => request(`/nqt-quizzes/analytics?userId=${encodeURIComponent(userId)}`),
+  getNqtQuizAttempts: (userId = 'admin', limit = 100) =>
+    request(`/nqt-quizzes/attempts?userId=${encodeURIComponent(userId)}&limit=${limit}`),
+  getNqtQuizAttempt: (attemptId, userId = 'admin') =>
+    request(`/nqt-quizzes/attempts/${encodeURIComponent(attemptId)}?userId=${encodeURIComponent(userId)}`),
 
   // Auth Login (Checks real admin collection in MongoDB)
   login: (email, password) =>

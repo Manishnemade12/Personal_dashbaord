@@ -54,6 +54,7 @@ export default function SidebarDrawer({
   const isAiColdEmailActive = currentRoute === 'AiColdEmail';
   const isDashboardActive = currentRoute === 'Dashboard';
   const isStudyActive = currentRoute === 'Study';
+  const isQuizzesActive = currentRoute === 'Quizzes';
   const isVaultActive = currentRoute === 'Vault';
 
   const [activeDropdown, setActiveDropdown] = useState(() => {
@@ -293,6 +294,20 @@ export default function SidebarDrawer({
                     <Text style={{ fontSize: 10, color: '#6366f1', fontWeight: '700' }}>SSC</Text>
                   </View>
                 </View>
+              </View>
+            </TouchableOpacity>
+
+            {/* Dedicated TCS NQT preparation workspace */}
+            <TouchableOpacity
+              style={[styles.navItem, isQuizzesActive && styles.navActive]}
+              onPress={() => handleNav('Quizzes')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.navRow}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="school-outline" size={20} color={isQuizzesActive ? '#ffffff' : '#0f766e'} />
+                </View>
+                <Text style={[styles.navText, isQuizzesActive && styles.navTextActive]}>TCS NQT Quizzes</Text>
               </View>
             </TouchableOpacity>
 
